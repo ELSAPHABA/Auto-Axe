@@ -27,7 +27,6 @@
 | 금 선물 | `GOLD_FUTURE` | **yfinance** | `GC=F` | **COMEX 금 선물**, USD/troy oz, 무료·지연 가능 |
 | 비트코인 USD | `BITCOIN` | **yfinance** | `BTC-USD` | Yahoo 집계 시세, 거래소 공식 체결가와 별개 |
 | 금 현물가 | `XAUUSD.spot_estimate` | **Gold API** | `/price/XAU` | `GC=F` 선물로 현물가격을 덮어쓰지 않는다 |
-| 국제유가 Dubai | `DUBAI_SPOT_MONTHLY` | **World Bank Pink Sheet** | 월간 Gold/Oil report | **동일한 일별 Dubai 현물의 검증된 yfinance 심볼 없음**. 공식 무료 월간/수동 유지 |
 
 추가로 `GC=F`는 금선물 *보조 지표*로 수집하고 현물 금값 `XAU/USD`의 기본 공급원은 그대로 유지한다. `BTC-USD`는 yfinance를 표준 시장 **요약 시세**로 삼되 실제 Coinbase/Binance 거래소 체결 틱의 무료 WebSocket은 추가로 활성화할 수 있다. `BTCUSDT`와 `BTC-USD`를 같은 값으로 병합하지 않는다.
 
