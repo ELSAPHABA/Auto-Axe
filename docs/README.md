@@ -43,3 +43,11 @@ python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit 
 | BTC Coinbase/Binance WS, 금 최근가격, SEC/IR 공시, BLS·BEA 공식 발표, 정책금리 이벤트·공식 시계열 | WTI/Brent EIA 일별 현물, Dubai 월평균, VIX Cboe 일별, Treasury 일별 수익률, 파생 만기 달력 | CNN 원본 공포·탐욕, 피자지수, 장중 VIX·국채 현물·원유 가격, 불확실한 컨센서스 |
 
 > 작성된 코드는 **PoC**로, GitHub에 저장 및 Python 문법 검증을 거쳐야 한다. 별도 등록·개인 키가 필요한 무료 API의 실제 인증이나 24시간 무중단 동작을 보장하지 않는다. 주문 기능은 변경하지 않는다.
+
+
+## 사용자 지정 출처 및 yfinance 실증 (2026-11-22)
+
+- 피자지수 수집 대상: **[PizzINT](https://www.pizzint.watch/)**. 공개 JSON `/api/dashboard-data`는 실제 응답하지만 robots 정책과 Terms의 권한 확인 전 자동화하지 않으며, HTML 스크래핑은 API 범위 밖 금지.
+- 미국 주식 공포·탐욕지수 수집 대상: **[CNN International](https://edition.cnn.com/markets/fear-and-greed)**. CNN 약관의 스크래핑 금지 때문에 승인 전 수동.
+- [YFinance_Data_Validation.md](./YFinance_Data_Validation.md): `^VIX`, `^TNX`, `CL=F`, `BZ=F` 일봉/1분봉 직접 조회 성공. **실시간 무지연 아님(확인 불가; 원유 Yahoo Delayed Quote)**; 진짜 Dubai유 일별 심볼 미확인.
+- [examples/yfinance_probe.py](./examples/yfinance_probe.py): yfinance 무료 라이브러리의 최근 분봉·메타데이터·WS 구독 가능성을 검증하는 별도 **테스트 전용** 스크립트 (`pip install yfinance`).
