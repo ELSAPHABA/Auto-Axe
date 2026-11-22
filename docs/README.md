@@ -34,3 +34,12 @@ NH나무 OpenAPI 기반 퀀트 플랫폼 **Auto-Axe**의 외부 거시·심리·
 4. **실험 채널**: 피자지수·비공식 심리지표. 백테스트 핵심 신호에 즉시 투입하지 않는다.
 
 **중요:** 이 문서는 데이터 공급원과 구현 경로를 조사한 설계서다. 모든 API의 실제 호출·인증·요금제 및 법적 재배포 권한까지 검증한 실행 완료 보고서는 아니다. 실서비스에 편입하기 전 공급자 문서와 약관을 다시 확인한다.
+
+## 실시간·준실시간 수집 확장 (2026-11-22)
+
+- [Real_Time_Data_Sources.md](./Real_Time_Data_Sources.md) — 요청한 모든 지표별 **실시간 API/WS/상용 시장 피드** 및 **API 부재 시 조건부 스크래핑** 가능성, 무료·유료 구분, 법적 제약, 데이터 지연을 표로 정리.
+- [Realtime_Quickstart.md](./Realtime_Quickstart.md) — 설치·실행 커맨드, 공급원별 curl/WS/Python 예제, 공식 일정·공시 감시, 허용된 HTML 파싱, 유료 서비스 확장.
+- [examples/realtime_collector.py](./examples/realtime_collector.py) — BTC 거래 WebSocket, 금 spot, SEC 8-K Atom, BLS ICS/실제 수치, FRED, EIA, Cboe VIX EOD를 stdout JSONL로 출력하는 **실행형 참조 스크립트**.
+- [examples/requirements.txt](./examples/requirements.txt) · [examples/.env.example](./examples/.env.example) — 실행 환경과 비밀키 샘플.
+
+> **주의:** 실시간 시장 시세와 단순 최신 API 결과는 서로 다르다. Cboe VIX/미 국채 현물/ICE Brent·WTI·Gold 선물/Platts Dubai의 진짜 실시간 값에는 별도 계약이 필요할 수 있다. CNN 비공식 점수와 Google Maps 기반 피자지수는 데이터 이용 권한 심사 전 운영 수집·자동주문 피처에서 제외한다. 예제는 주문 기능이나 DB를 변경하지 않으며, 실제 API 권한별 수신 테스트는 별도로 수행해야 한다.
