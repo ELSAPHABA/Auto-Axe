@@ -30,7 +30,6 @@
 | Brent | yfinance `BZ=F` | NYMEX **Brent Financial 선물**, ICE 원계약과 다름 |
 | 금 선물 | yfinance `GC=F` | COMEX 선물; 금 현물은 기존 Gold API 유지 |
 | 비트코인 | yfinance `BTC-USD` | 거래소 원본 틱은 Coinbase/Binance 무료 WS 선택 |
-| Dubai 현물 | World Bank Pink Sheet 월평균 | 검증된 동일한 일별 yfinance 종목 없음 |
 | CNN 공포·탐욕 | [CNN International](https://edition.cnn.com/markets/fear-and-greed) | 약관상 허가 전 수동 |
 | 피자지수 | [PizzINT](https://www.pizzint.watch/) | 공개 JSON 확인, robots/약관 권한 확인 전 수동 |
 | 가이던스·경제발표·파생 만기·정책금리 | SEC·BLS·BEA·OCC·중앙은행 공개 자료 | 공식 원본 이벤트·시계열 |
