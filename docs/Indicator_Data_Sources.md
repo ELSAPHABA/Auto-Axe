@@ -13,7 +13,7 @@
 | Dubai | World Bank Pink Sheet 월간 자료 | 공개 평가자료 수동 | 월별 |
 | VIX | Cboe `VIX_History.csv` | 장중 VIX 수동 | EOD |
 | 미국 국채 | Treasury Par Yield XML/CSV | 장중 현물수익률 수동 | 일별 |
-| 피자지수 | 공개 사용권 확인된 API 없음 | pentagon.pizza 수동 관찰 | 수동 |
+| 피자지수 | 공개 JSON endpoint(권한 확인 필요) | PizzINT 수동 관찰 | 수동 |
 | 경제지표 발표 일정 | BLS ICS, Fed 일정, 공식 BEA/Census 페이지 | 허용 HTML → 수동 | 이벤트 |
 | 경제지표 실제값 | BLS v2, BEA API 및 공식 발표문 | HTML → 수동 | 이벤트 |
 | 파생상품 만기 | OCC/OIC, CME·Cboe 공개 달력 | 예외 수동 검증 | 예정/수정 |
