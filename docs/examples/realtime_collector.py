@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Auto-Axe reference collector (stdout JSON Lines, no orders).
-Commands: gold, coinbase, binance, sec-8k, bls-calendar, bls-actual, fred, eia, vix-eod
+Commands: yf-market, treasury-five, gold, coinbase, binance, sec-8k, bls-calendar, bls-actual, fred, eia, vix-eod
 Set env vars in docs/examples/.env.example. Respect source terms and credentials.
 """
 import argparse
@@ -80,6 +80,98 @@ def poll(name, interval, callback):
         except (requests.RequestException, ValueError, KeyError, RuntimeError) as exc:
             logging.error("%s: %s", name, exc)
         time.sleep(max(interval, 1))
+
+
+# The five requested government bond yield tenors; Yahoo has no verified
+# official 2-year cash-yield ticker, so US Treasury XML supplies the 2Y value.
+TENORS = {
+    "3M": ("^IRX", "BC_3MONTH"),
+    "2Y": (None, "BC_2YEAR"),
+    "5Y": ("^FVX", "BC_5YEAR"),
+    "10Y": ("^TNX", "BC_10YEAR"),
+    "30Y": ("^TYX", "BC_30YEAR"),
+}
+
+# Finance Yahoo symbols are NOT the same as the spot reference values.
+YF_MARKET_SYMBOLS = {
+    "VIX": ("^VIX", "volatility_index", "index_point"),
+    "UST_3M": ("^IRX", "treasury_yield_index", "percent"),
+    "UST_5Y": ("^FVX", "treasury_yield_index", "percent"),
+    "UST_10Y": ("^TNX", "treasury_yield_index", "percent"),
+    "UST_30Y": ("^TYX", "treasury_yield_index", "percent"),
+    "WTI_FUTURE": ("CL=F", "nymex_crude_futures_continuous", "USD/bbl"),
+    "BRENT_FUTURE": ("BZ=F", "nymex_brent_last_day_financial_futures", "USD/bbl"),
+    "GOLD_FUTURE": ("GC=F", "comex_gold_futures_continuous", "USD/troy_oz"),
+    "BITCOIN": ("BTC-USD", "crypto_usd_quote", "USD/BTC"),
+}
+YF_CHOICES = list(YF_MARKET_SYMBOLS)
+
+
+def yf_market(selected, bar_interval="1m", period="1d"):
+    """One latest bar per market; Yahoo data can be exchange-delayed."""
+    import yfinance as yf  # optional library required only for this source
+    for key in selected:
+        symbol, instrument_type, unit = YF_MARKET_SYMBOLS[key]
+        try:
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(period=period, interval=bar_interval,
+                                auto_adjust=False, timeout=15)
+            if df.empty:
+                logging.warning("yfinance: no bars for %s %s", key, symbol)
+                continue
+            metadata = ticker.get_history_metadata() or {}
+            last = df.iloc[-1]
+            timestamp = df.index[-1].isoformat()
+            close = last.get("Close")
+            if close is None or close != close:  # NaN check
+                continue
+            emit("yfinance", key, float(close), timestamp,
+                 symbol=symbol, instrument_type=instrument_type, unit=unit,
+                 open=float(last["Open"]) if last["Open"] == last["Open"] else None,
+                 high=float(last["High"]) if last["High"] == last["High"] else None,
+                 low=float(last["Low"]) if last["Low"] == last["Low"] else None,
+                 bar_interval=bar_interval, quote_exchange=metadata.get("exchangeName"),
+                 exchange_delay_minutes=metadata.get("exchangeDataDelayedBy"),
+                 status="potentially_delayed",
+                 source_url="https://finance.yahoo.com/quote/" + symbol,
+                 note="Web research/personal use; no guarantee of licensed or undelayed market data")
+        except Exception as exc:
+            logging.error("yfinance source %s (%s) unavailable: %s", key, symbol, exc)
+
+
+def treasury_five():
+    """Official daily 3M/2Y/5Y/10Y/30Y PAR yield curve, separate from Yahoo indices."""
+    import xml.etree.ElementTree as ET
+    now = dt.datetime.now(UTC)
+    for month in (now.strftime("%Y%m"), (now.replace(day=1) - dt.timedelta(days=1)).strftime("%Y%m")):
+        response = request("GET",
+            "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml",
+            params={"data": "daily_treasury_yield_curve", "field_tdr_date_value_month": month},
+            headers={"Accept": "application/xml,application/atom+xml"})
+        root = ET.fromstring(response.content)
+        entries = root.findall("{http://www.w3.org/2005/Atom}entry")
+        if not entries:
+            continue
+        data = []
+        for entry in entries:
+            row = {node.tag.split("}")[-1]: node.text for node in entry.iter()}
+            if row.get("NEW_DATE"):
+                data.append(row)
+        if not data:
+            continue
+        last = max(data, key=lambda r: r["NEW_DATE"])
+        for tenor, (_, field) in TENORS.items():
+            value = last.get(field)
+            if value is None or not value.strip():
+                logging.warning("Treasury missing %s at %s", tenor, last["NEW_DATE"])
+                continue
+            emit("US_Treasury", "UST_" + tenor + "_PAR_YIELD",
+                 float(value), last["NEW_DATE"][:10], unit="percent",
+                 instrument_type="official_daily_par_yield",
+                 source_url="https://home.treasury.gov/treasury-daily-interest-rate-xml-feed",
+                 status="official_daily_not_live")
+        return
+    raise RuntimeError("No Treasury daily yield curve entries found for current/previous month")
 
 
 def gold():
@@ -301,7 +393,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", choices=[
         "gold", "sec-8k", "bls-calendar", "bls-actual", "fred", "eia",
-        "vix-eod", "coinbase", "binance", "rss"])
+        "vix-eod", "coinbase", "binance", "rss", "yf-market", "treasury-five"])
+    parser.add_argument("--symbols", nargs="+", default=YF_CHOICES,
+                        choices=YF_CHOICES,
+                        help="market indicators for yfinance (2Y is official Treasury only)")
+    parser.add_argument("--bar-interval", default="1m",
+                        help="yfinance bar interval: 1m, 5m, 1d (not real-time guarantee)")
+    parser.add_argument("--period", default="1d", help="yfinance lookback (1d, 5d, etc)")
     parser.add_argument("--series", default="", help="FRED or EIA series ID")
     parser.add_argument("--feed", choices=sorted(OFFICIAL_FEEDS), help="official RSS name for rss command")
     parser.add_argument("--interval", type=int, default=0,
@@ -321,7 +419,9 @@ def main():
         "gold": gold, "sec-8k": sec_8k, "bls-calendar": bls_calendar,
         "bls-actual": bls_actual, "fred": lambda: fred(args.series),
         "eia": lambda: eia(args.series), "vix-eod": vix_eod,
-        "rss": lambda: rss(args.feed)
+        "rss": lambda: rss(args.feed),
+        "yf-market": lambda: yf_market(args.symbols, args.bar_interval, args.period),
+        "treasury-five": treasury_five
     }[args.source]
     if args.interval > 0:
         poll(args.source, args.interval, cb)
