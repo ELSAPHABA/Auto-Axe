@@ -1,45 +1,45 @@
-# Auto-Axe 시장 지표 수집 조사
+# Auto-Axe 데이터 수집 설계 — 무료 소스 전용
 
-> 조사 기준: **2026-11-22 (KST)** · 단계: 데이터 소스 탐색 및 수집 설계 (수집기 구현 전)
+> **2026-11-22** · `Auto-Axe`(NH나무 OpenAPI 퀀트 플랫폼) 시장 데이터 수집 조사 문서. **모든 유료 데이터 피드·구독은 제외**한다.
 
-NH나무 OpenAPI 기반 퀀트 플랫폼 **Auto-Axe**의 외부 거시·심리·이벤트 지표를 수집하기 위한 자료다. **가격·금리의 시계열**, **발표·만기 일정**, **텍스트 기반 가이던스**, **실험적 OSINT 신호**를 분리하여 설계한다.
+## 선택 원칙
 
-## 문서
+**1. 무료 API / WebSocket / 공개 CSV → 2. 이용약관상 허용된 RSS·Atom·ICS·HTML 스크래핑 → 3. 수동 입력**.
 
-- [Indicator_Data_Sources.md](./Indicator_Data_Sources.md): 요청한 **전체 지표별** 공식 출처, 실제 API/파일 경로, 수집 방식, 단위·갱신 주기, 상용 대안, 제약·출처 링크.
-- [Collector_Design.md](./Collector_Design.md): 공급원 어댑터 설계, 수집 우선순위, 표준 스키마, 주기·시각·휴장일 처리, 백테스트 재현성, 운영·검증 체크리스트.
+자동 수집 가능한 무료 원본이라도 일별·월별 공표 데이터의 갱신 빈도를 초 단위로 올릴 수 없다. 또한 *웹에 표시된다*고 *자동 추출·저장 권한이 있다*는 뜻은 아니다. 원본 값과 대체 프록시 상품은 섞지 않는다.
 
-## 핵심 결론
+## 문서 바로가기
 
-| 구분 | 우선 선택 | 주의 |
+- [Free_Data_Collection.md](./Free_Data_Collection.md) — **최신 마스터 명세**: 미국 주식 공포·탐욕, 기업 가이던스, 금, WTI·Brent·Dubai, VIX, 미 국채, 피자지수, 경제 발표·실제값, 파생 만기, 미·일·영·유로존 정책금리, 비트코인 **전체 16개 영역**을 무료 API → 허용 스크래핑 → 수동으로 분류하고 URL·주기·제약을 상세 설명.
+- [Realtime_Quickstart.md](./Realtime_Quickstart.md) — 설치/실행, 공개 BTC WebSocket, 무료 Gold API, SEC, BLS, FRED/EIA 참고, 공식 RSS·HTML 등 구현 가이드.
+- [Manual_Collection.md](./Manual_Collection.md) — 무료 자동 수집 불가능한 지표의 수동 목록·입력 필드·CSV 형식.
+- [Collector_Design.md](./Collector_Design.md) — 수집 어댑터/표준 스키마/파이프라인 장애·데이터 수정 및 최초 공개 시점의 백테스트 처리.
+- [Indicator_Data_Sources.md](./Indicator_Data_Sources.md), [Real_Time_Data_Sources.md](./Real_Time_Data_Sources.md) — 무료 전용 요약 색인(마스터 명세의 보조자료).
+
+## 코드
+
+- [examples/realtime_collector.py](./examples/realtime_collector.py): 실시간 BTC 공개 WS, 금 최근가격, SEC Atom, BLS ICS 및 실제값, FRED/EIA/Cboe 공개값 출력.
+- [examples/manual_record.py](./examples/manual_record.py): API·허용 스크래핑이 안 되는 수치의 **수동 CSV 한 행 등록**.
+- [examples/requirements.txt](./examples/requirements.txt) · [examples/.env.example](./examples/.env.example): 무료 API용 Python 의존성·선택적 무료키.
+
+## 빠른 실행
+
+```bash
+python -m pip install -r docs/examples/requirements.txt
+python docs/examples/realtime_collector.py coinbase
+python docs/examples/realtime_collector.py gold --interval 60
+```
+
+수동 입력 예시(값은 예시이며 실제 관측 아님):
+
+```bash
+python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit index --source-url https://www.cnn.com/markets/fear-and-greed --operator researcher --note "EXAMPLE only"
+```
+
+## 데이터 가용성 요약
+
+| 무료 자동 수집 | 공개 소스 있으나 장중 실시간이 아님 | 기본 수동 |
 |---|---|---|
-| 미국 주식 공포·탐욕 | CNN 화면 및 자체 대체 지수 | CNN 공식 공개 API가 확인되지 않음; 비공식 JSON은 계약/변경 위험 |
-| 기업 실적 가이던스 | SEC EDGAR 8-K/10-Q/10-K + 발표자료, 필요 시 LSEG | *기업 자체 전망*과 *애널리스트 컨센서스* 구별 |
-| 금 | World Bank 월간, 제3자 spot API, 라이선스 LBMA | LBMA 공식 금 벤치마크의 사용·재배포 권리 확인 |
-| WTI / Brent | EIA API (일별 현물) | CME 선물 근월물과 현물은 별개 |
-| Dubai | IMF/FRED `POILDUBUSDM` (월별) | WTI/Brent 일별 데이터와 같은 빈도로 취급 금지 |
-| VIX | Cboe 공식 EOD CSV | 실시간 값은 별도 상용 피드 |
-| 미국 국채 | U.S. Treasury 수익률 곡선 / FRED `DGS*` | 국채 *수익률*과 개별 채권 *가격*은 다른 데이터 |
-| 펜타곤 피자지수 | 공개 PizzINT/Pentagon.Pizza 관찰 | 검증된 금융 지표 아님, Google Maps 추출 약관 확인 |
-| 금리·경제 발표 | FOMC·BLS ICS·BEA·Census 공식 달력 | 예정 시각 변경·미국 DST 대응 |
-| 파생상품 만기 | OCC/Cboe·CME 상품별 공식 캘린더 | 모든 옵션·선물이 '셋째 금요일' 만기는 아님 |
-| 미·일·영·유럽 정책금리 | Fed/FRED·BOJ·BoE·ECB 공식 데이터 | 정책 목표, 하한·상한, 실효금리를 별개로 모델링 |
-| Bitcoin | Coinbase 공개 시장 데이터, 예비 공급원 Kraken | 거래소별 가격 차이 및 24×7 시간축 |
+| BTC Coinbase/Binance WS, 금 최근가격, SEC/IR 공시, BLS·BEA 공식 발표, 정책금리 이벤트·공식 시계열 | WTI/Brent EIA 일별 현물, Dubai 월평균, VIX Cboe 일별, Treasury 일별 수익률, 파생 만기 달력 | CNN 원본 공포·탐욕, 피자지수, 장중 VIX·국채 현물·원유 가격, 불확실한 컨센서스 |
 
-### 권장 실행 순서
-
-1. **P0 (공식·기계 판독)**: FRED/Treasury, EIA, Cboe VIX 일별, BLS ICS, ECB/BoE/BOJ, Coinbase.
-2. **P1 (정규화 필요)**: SEC 가이던스 이벤트 추출, 거래소별 만기 규칙, BEA/FOMC 일정 갱신.
-3. **P2 (계약·품질 검토)**: CNN 원본 지수, 실시간 LBMA/VIX·Dubai, 컨센서스/가이던스 상용 데이터.
-4. **실험 채널**: 피자지수·비공식 심리지표. 백테스트 핵심 신호에 즉시 투입하지 않는다.
-
-**중요:** 이 문서는 데이터 공급원과 구현 경로를 조사한 설계서다. 모든 API의 실제 호출·인증·요금제 및 법적 재배포 권한까지 검증한 실행 완료 보고서는 아니다. 실서비스에 편입하기 전 공급자 문서와 약관을 다시 확인한다.
-
-## 실시간·준실시간 수집 확장 (2026-11-22)
-
-- [Real_Time_Data_Sources.md](./Real_Time_Data_Sources.md) — 요청한 모든 지표별 **실시간 API/WS/상용 시장 피드** 및 **API 부재 시 조건부 스크래핑** 가능성, 무료·유료 구분, 법적 제약, 데이터 지연을 표로 정리.
-- [Realtime_Quickstart.md](./Realtime_Quickstart.md) — 설치·실행 커맨드, 공급원별 curl/WS/Python 예제, 공식 일정·공시 감시, 허용된 HTML 파싱, 유료 서비스 확장.
-- [examples/realtime_collector.py](./examples/realtime_collector.py) — BTC 거래 WebSocket, 금 spot, SEC 8-K Atom, BLS ICS/실제 수치, FRED, EIA, Cboe VIX EOD를 stdout JSONL로 출력하는 **실행형 참조 스크립트**.
-- [examples/requirements.txt](./examples/requirements.txt) · [examples/.env.example](./examples/.env.example) — 실행 환경과 비밀키 샘플.
-
-> **주의:** 실시간 시장 시세와 단순 최신 API 결과는 서로 다르다. Cboe VIX/미 국채 현물/ICE Brent·WTI·Gold 선물/Platts Dubai의 진짜 실시간 값에는 별도 계약이 필요할 수 있다. CNN 비공식 점수와 Google Maps 기반 피자지수는 데이터 이용 권한 심사 전 운영 수집·자동주문 피처에서 제외한다. 예제는 주문 기능이나 DB를 변경하지 않으며, 실제 API 권한별 수신 테스트는 별도로 수행해야 한다.
+> 작성된 코드는 **PoC**로, GitHub에 저장 및 Python 문법 검증을 거쳐야 한다. 별도 등록·개인 키가 필요한 무료 API의 실제 인증이나 24시간 무중단 동작을 보장하지 않는다. 주문 기능은 변경하지 않는다.
