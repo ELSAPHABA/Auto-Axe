@@ -1,12 +1,13 @@
 # Auto-Axe 무료 수집기 설계 및 운영 표준
 
-> **무료 API/WS → 허용된 RSS/Atom/ICS/공개 HTML 스크래핑 → 수동 기록**. 이전의 데이터 구독/거래소 유료 피드 관련 설계·계약·어댑터는 폐기한다. 기준일: 2026-11-22.
+> **시장가격 및 금리지표는 yfinance 우선 → 나머지는 무료 API/WS → 허용된 RSS/HTML → 수동 기록**. 이전의 데이터 구독/거래소 유료 피드 관련 설계·계약·어댑터는 폐기한다. 기준일: 2026-11-22.
 
 ## 1. 모듈 구성
 
 ```mermaid
 flowchart LR
-  A[무료 WS Coinbase/Binance] --> N[normalize UTC / event & observed time]
+  A[yfinance 시장 지표/시세] --> N
+  X[무료 WS Coinbase/Binance 선택] --> N[normalize UTC / event & observed time]
   B[공식 무료 REST EIA/BLS/Treasury/ECB/BOJ/Gold] --> N
   C[공식 RSS/Atom/ICS Fed/SEC/IR/BLS] --> N
   D[약관 허용된 공개 HTML/CSV] --> N
@@ -18,7 +19,7 @@ flowchart LR
 
 - 수집기의 `provider`, `collection_method=API|WEBSOCKET|SCRAPE|MANUAL`, `source_url`, `frequency`, `cost=0`, `terms_check_at`, `quality_status` 고정 기록.
 - 무료 공개 브라우저 시세가 해당 서비스에서 **자동 수집·보관 허가**된다는 가정을 하지 않는다. CNN, Google Maps Popular Times, Cboe Quote Dashboard, TradingView/Yahoo 내부 시세 역공학은 승인 소스로 자동 등록하지 않음.
-- 비트코인은 진짜 실시간 체결 업데이트, 금은 최근가격 API, 국채·현물 유가·VIX 등은 EOD/월간 공식 원본: **정확한 빈도명을 화면에 표시**.
+- VIX·3M/5Y/10Y/30Y 금리지표·WTI/Brent/금 선물·BTC/USD 시장 요약 시세는 **yfinance가 기본**. 국채 **2Y**는 무료 Treasury XML 일별; 금 **현물**은 Gold API. EIA 유가 현물과 Cboe VIX EOD 및 Treasury 전체 공식 곡선은 보조 검증용. **정확한 지연과 빈도**를 표시.
 - API 장애 → 동일 정의의 허용된 무료 데이터가 있을 때만 fallback → 정책 허용 스크래핑 → **수동**. 같은 자산이라도 선물과 현물처럼 `instrument_type`이 다르면 서로 fallback으로 섞지 않는다.
 
 ## 2. 저장 스키마
@@ -62,7 +63,9 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 
 | 어댑터 | 권장 실행 | 변동 시 |
 |---|---|---|
-| Coinbase/Binance WS | 상시 스트리밍 | heartbeat/sequence gap 확인 → 백오프 후 재연결; 허용 REST 백필 |
+| yfinance 시세·지수 | 요청/표시 주기에 맞춰 1~5분(제안) 최신봉 조회 | Yahoo 수신 시점/장시간/지연·약관 확인 |
+| Treasury 공식 국채 2년물 + 5종 교차검증 | 게시 후 일 1회 | 파 수익률 공식값과 Yahoo 지수 비교 |
+| Coinbase/Binance WS (선택) | 상시 스트리밍 | heartbeat/sequence gap 확인 → 백오프 후 재연결; 허용 REST 백필 |
 | Gold API | 30~60초 폴링 | `updatedAt` 변경 시만 저장 |
 | SEC 신규 8-K/기업 IR RSS | 평시 60~120초 (정책 허용 범위) | 링크 신규→공시 첨부 파싱·검수 |
 | BLS ICS/BEA/Fed 일정 | 일 1~4회, 발표 전 추가 확인 | 변경된 이벤트 UID 버전 저장 |
@@ -71,7 +74,7 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 | World Bank Dubai/금 월간 | 매월 새 자료 게시 후 | 월평균 발표 시각 보존 |
 | Fed/BOJ/ECB RSS, BoE 결정 | 평시 수분~시간 간격, 발표 시 집중 | headline → 결정문 본문 → 수치/발효일 검증 |
 | OCC/CME 만기/휴장 | 주간, 긴급 변경 공지 | 계약별 명목 만기·처리일 변경 검증 |
-| CNN/Pizza/장중 VIX·국채·원유 | 자동 수집 금지/불명확 시 수동 | 수동 기록 레지스트리로 입력 |
+| CNN/Pizza/권한 미확인 시세 및 2Y 일중 | 자동 수집 불가 시 수동 | Yahoo 지연·권리 문제 또는 공식 2Y 미게시 시 수동 기록 |
 
 구독이 없는 정적 원본을 매초 호출하지 않는다. 공식 무료 API의 권리·요금·호출량과 문서화를 주기적으로 재검토한다.
 
@@ -98,3 +101,16 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 - [무료 실행 가이드](./Realtime_Quickstart.md)
 - [수동 입력 정책·CSV](./Manual_Collection.md)
 - [Python 수집기](./examples/realtime_collector.py), [환경변수](./examples/.env.example)
+
+
+## 미국 국채 만기 구성
+
+| 만기 | 우선 소스 | 보조 공식 일별 |
+|---|---|---|
+| 3개월 | yfinance `^IRX` | Treasury `BC_3MONTH` |
+| 2년 | **Treasury `BC_2YEAR`** | 동일 원본, Yahoo 2년 현물 티커 미검증 |
+| 5년 | yfinance `^FVX` | Treasury `BC_5YEAR` |
+| 10년 | yfinance `^TNX` | Treasury `BC_10YEAR` |
+| 30년 | yfinance `^TYX` | Treasury `BC_30YEAR` |
+
+[최신 기본 수집 명세](./YFinance_First_Collection.md). 국채 금리선물과 현물 수익률을 같은 컬럼에 기록하지 말 것.
