@@ -14,7 +14,7 @@
 
 | 지표 | 1순위 무료 API·WS·파일 | 2순위 스크래핑 (허용 시) | 3순위 수동 수집 | 데이터 빈도 / 상태 |
 |---|---|---|---|---|
-| 미국 주식 CNN 공포·탐욕 | **공식 무료 API 미확인**; CNN 비문서화 JSON은 권한 확인 전 운영 제외 | CNN 원본 화면 자동 추출도 사용권 미확인 → 기본 비활성 | CNN [Fear & Greed](https://www.cnn.com/markets/fear-and-greed) 화면의 `score/category/as_of` 기록 | 수동 스냅샷. CNN 수치가 실시간 틱인지 미보장 |
+| 미국 주식 CNN 공포·탐욕 | **공식 무료 API 미확인**; CNN 비문서화 JSON은 권한 확인 전 운영 제외 | CNN 원본 화면 자동 추출도 사용권 미확인 → 기본 비활성 | CNN [Fear & Greed](https://edition.cnn.com/markets/fear-and-greed) 화면의 `score/category/as_of` 기록 | 수동 스냅샷. CNN 수치가 실시간 틱인지 미보장 |
 | 기업 실적 가이던스 | **SEC EDGAR** submissions JSON + 8-K Atom/RSS, 문서/Exhibit 원문 | 회사 공식 IR 보도자료 및 허용된 HTML, RSS 없는 경우 | PDF·콜에서 매출/EPS 전망을 근거 링크와 함께 입력 | `EVENT`: 신규 공시/보도자료 |
 | 금 (XAU/USD) | [Gold API](https://gold-api.com/docs) `GET https://api.gold-api.com/price/XAU` | 필요 없음 | API 장애 시 제공자 화면 확인 | `NEAR` 제3자 현물 추정, `updatedAt` 사용 |
 | WTI 원유 | [EIA API](https://www.eia.gov/opendata/documentation.php) `PET.RWTC.D` | 공식 EIA 게시 데이터 CSV/HTML 대체 (약관 준수) | **장중 선물가격 필요 시** 무료 차트 수동 조회, 상품·지연 표시 | 원유 **현물 공식 EOD**; 무료 검증된 자동 틱 없음 |
@@ -22,7 +22,7 @@
 | Dubai 원유 | [World Bank Pink Sheet](https://www.worldbank.org/en/research/commodity-markets) **월간**; [FRED POILDUBUSDM](https://fred.stlouisfed.org/series/POILDUBUSDM) 개인 조회용 | 출처가 허락하는 게시 자료만; GME Oman 보고서는 **Dubai spot 아님** | Dubai 평가가격의 최신 공개 표·날짜·정의 수동 기록 | **MONTHLY** / 장중 Dubai 원값 자동 수집 불가 |
 | VIX | [Cboe VIX Historical CSV](https://www.cboe.com/tradable_products/vix/vix_historical_data) | Cboe 호가 대시보드 자동 추출 **명시 금지** | 장중 VIX를 필요로 할 때 Cboe 공개 화면에서 수동·지연명시 | **EOD**; 무료 공식 실시간 API 없음 |
 | 미국 국채 수익률 | [Treasury Par Yield CSV/XML](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) (1/2/5/10/30년 등) | Treasury 공개표 (자동화 허용 시) | 장중 2Y/10Y 현물 수익률 수동 조회·타입 기록 | **EOD** 공식 곡선; 장중 자동 실시간 없음 |
-| 펜타곤 피자지수 | 확인된 무료·합법적인 **수치 API 없음** | Google Maps Popular Times 외부 추출·축적은 정책상 제한 → 기본 제외 | [pentagon.pizza](https://pentagon.pizza/) 상태·관찰시각·분류를 수동 기록 | 실험적 `MANUAL`; 시장 신호로 자동 주문 금지 |
+| 펜타곤 피자지수 | 공개 JSON **/api/dashboard-data** 확인 (robots/Terms 권한 확인 필요) | Google Maps Popular Times 외부 추출·축적은 정책상 제한 → 기본 제외 | [pentagon.pizza](https://www.pizzint.watch/) 상태·관찰시각·분류를 수동 기록 | 실험적 `MANUAL`; 시장 신호로 자동 주문 금지 |
 | 미국 지표·금리 발표 일정 | [BLS 일정 ICS](https://www.bls.gov/schedule/news_release/bls.ics), FOMC 일정, BEA 발표 일정 | BEA/FOMC/Census 등 공식 HTML/RSS/ICS | 일정 변경·공식 문서 PDF를 수동 입력 | `EVENT`: 공고 즉시 또는 변경시 |
 | 미국 지표 실제 발표값 | [BLS v2 API](https://www.bls.gov/developers/api_signature_v2.htm), BEA API, Census API | BLS [CPI 보도자료](https://www.bls.gov/news.release/cpi.htm), [고용보고서](https://www.bls.gov/news.release/empsit.htm), BEA 공식 발표 HTML (허용 범위) | 원문 확인 후 수치·최초 발표·수정여부 수동 입력 | `EVENT`; API가 원문보다 늦을 수 있음 |
 | 파생상품 만기 | [OCC/OIC Expiration Calendar](https://www.optionseducation.org/referencelibrary/expiration-calendar) 공식 공개 자료, CME 상품 계약 사양 | 거래소 공개 이벤트 표/캘린더의 허용된 자동 파싱 | 예외·휴장·AM/PM 결제 등 수동 교차검증 | **예정 이벤트**; 실시간 DTE는 자체 계산 |
@@ -38,7 +38,7 @@
 
 ### 1. CNN 공포·탐욕: 운영 기본 = 수동
 
-원본 [CNN Fear & Greed](https://www.cnn.com/markets/fear-and-greed). 커뮤니티가 사용한 `https://production.dataviz.cnn.io/index/fearandgreed/graphdata`는 문서화되지 않은 엔드포인트이며 공개 접근 가능성과 자동 수집/저장 허가가 동일하지 않다. 403/429·스키마 변경 시 차단 우회하지 않는다. **문서화된 이용 허가가 확인되기 전에는 자동 호출 코드로 기본 제공하지 않음**. `score`(0~100), `sentiment_category`, `source_as_of`(화면에 기재되어 있을 때만), `captured_at`, URL을 기록. 대안은 무료 허용 소스로 직접 만든 독립 심리지표를 별도 이름으로 설계한다.
+원본 [CNN Fear & Greed](https://edition.cnn.com/markets/fear-and-greed). 커뮤니티가 사용한 `https://production.dataviz.cnn.io/index/fearandgreed/graphdata`는 문서화되지 않은 엔드포인트이며 공개 접근 가능성과 자동 수집/저장 허가가 동일하지 않다. 403/429·스키마 변경 시 차단 우회하지 않는다. **문서화된 이용 허가가 확인되기 전에는 자동 호출 코드로 기본 제공하지 않음**. `score`(0~100), `sentiment_category`, `source_as_of`(화면에 기재되어 있을 때만), `captured_at`, URL을 기록. 대안은 무료 허용 소스로 직접 만든 독립 심리지표를 별도 이름으로 설계한다.
 
 ### 2. 기업 가이던스: 무료 공식 공시가 가장 빠른 범용 경로
 
@@ -69,7 +69,7 @@
 
 ### 6. 펜타곤 피자지수: 수동
 
-[pentagon.pizza](https://pentagon.pizza/)의 공개 Activity Index를 **화면에서 수동 관찰**한다. Google Maps Popular Times에서 숫자를 추출하는 문서화된 무료 REST API는 확인되지 않았고, [Google Places 데이터 정책](https://developers.google.com/maps/documentation/places/web-service/policies)은 외부 추출·저장 및 재배포를 제한한다. 서드파티 피자지수 페이지의 직접 스크래핑도 원천 콘텐츠 권리 검토가 필요하다. `activity_label`, `activity_score_if_public`, `observed_at`, `source_url`, `manual_note`만 기록하고 **객관적 예측력/자동매매 신호로 확정하지 않는다**.
+[pentagon.pizza](https://www.pizzint.watch/)의 공개 Activity Index를 **화면에서 수동 관찰**한다. PizzINT 자체 공개 JSON은 관측되지만 API 호출 권한 확인 전 자동 실행하지 않는다. Google Maps Popular Times 원천 데이터를 추출하는 문서화된 무료 REST API는 확인되지 않았고, [Google Places 데이터 정책](https://developers.google.com/maps/documentation/places/web-service/policies)은 외부 추출·저장 및 재배포를 제한한다. 서드파티 피자지수 페이지의 직접 스크래핑도 원천 콘텐츠 권리 검토가 필요하다. `activity_label`, `activity_score_if_public`, `observed_at`, `source_url`, `manual_note`만 기록하고 **객관적 예측력/자동매매 신호로 확정하지 않는다**.
 
 ### 7. 경제지표 발표 일정·실제 수치
 
