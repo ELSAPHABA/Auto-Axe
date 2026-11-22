@@ -37,3 +37,10 @@
 - [실행형 무료 수집 Quickstart](./Realtime_Quickstart.md)
 - [수동 수집 절차](./Manual_Collection.md)
 - [무료 수집 데이터베이스·재연결 설계](./Collector_Design.md)
+
+
+## 지정 웹 출처·yfinance 갱신
+
+- 피자지수 원본 **[pizzint.watch](https://www.pizzint.watch/)**: 사이트 공개 `/api/dashboard-data` JSON 확인; robots의 `Disallow: /api/` 및 Terms의 API 범위 외 스크래핑 금지 때문에 **권한 확인 전 수동**. 허용된 API 이용을 우선하고 비허용 HTML 직접 스크래핑은 하지 않음.
+- 공탐지수 원본 **[edition.cnn.com](https://edition.cnn.com/markets/fear-and-greed)**: 페이지에 비공식 CNN 데이터 URL 표시 확인, 그러나 [CNN Terms](https://www.cnn.com/terms)가 자동 추출을 금지하여 **명시적 허가 전 수동**.
+- **yfinance** `^VIX`/`^TNX`/`CL=F`/`BZ=F`: 무료 1분봉 응답 수신 성공, **실시간 체결/지연 없음은 검증되지 않음**. `CL=F`/`BZ=F` Yahoo Delayed Quote, Dubai 현물 일별 검증된 티커 없음. 자세한 실험결과 [YFinance_Data_Validation.md](./YFinance_Data_Validation.md).
