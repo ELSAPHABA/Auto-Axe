@@ -55,3 +55,10 @@ CNN_FEAR_GREED,SENTIMENT,https://www.cnn.com/markets/fear-and-greed,,2026-11-22T
 - **피자:** Google Popular Times 수치용 무료 구조화 API 미확인. Google Maps 스크래핑으로 이 문제를 해결하지 않는다.
 - **Dubai 장중 현물 평가:** 무료 공개 실시간 API/합법 정량 스크래핑 경로 미확인. 월별 공개 평가만 자동 또는 수동.
 - **VIX 장중·국채 장중·WTI/Brent 선물 장중:** 공식 무료 자동 피드를 확보하지 못했다면 현재 프로젝트에서는 수동 기록. 표시된 데이터 지연과 계약 정의 유지.
+
+
+## 사용자 지정 원본 URL (2026-11-22 반영)
+
+- `CNN_FEAR_GREED`: **https://edition.cnn.com/markets/fear-and-greed**. 데이터 출처가 지정되었지만 CNN 약관이 자동 데이터 스크래핑을 금지하므로 명시적 허가 전 **수동 입력**. 기존 `www.cnn.com` 링크는 사용하지 않는다.
+- `PENTAGON_PIZZA`: **https://www.pizzint.watch/**. 기존 `pentagon.pizza`는 대상에서 제외. 공개 JSON `/api/dashboard-data`가 실제 존재하지만 `/robots.txt`의 `Disallow:/api/`와 공개 API를 합리적으로 허용한다는 Terms 사이 권한 해석을 먼저 확인해야 한다. Terms는 API 밖 HTML 스크래핑을 금지한다. **현재 수동 입력**, 허가 후 공개 JSON 수집으로 승격.
+- `VIX_INTRADAY`, `UST_10Y_INTRADAY`, `WTI_FUTURES_INTRADAY`, `BRENT_FUTURES_INTRADAY`: `yfinance` 조회로 1분봉을 얻는 사례를 검증했으나 실시간성·Yahoo 자동 수집 사용권이 확인될 때까지 **운영 대체 미승인**. [검증 문서](./YFinance_Data_Validation.md).
