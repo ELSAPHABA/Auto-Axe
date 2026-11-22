@@ -1,33 +1,36 @@
-# 무료 시장지표 데이터 소스 카탈로그
+# Auto-Axe 무료 지표 데이터 소스 요약
 
-> 2026-11-22 · Auto-Axe 공식 수집 우선순위: **무료 API/WebSocket → 허용된 HTML·RSS·ICS 다운로드/스크래핑 → 수동**. 기존 유료 공급원 조사 내용은 폐기되었다.
+> 최신 수집 정책: **yfinance가 지원하는 시장가격·수익률 지표는 yfinance 우선**. 미지원/비해당 자료는 기관 무료 API·RSS·ICS·CSV → 허용된 스크래핑 → 수동 입력. 유료 피드 제외. 정확한 근거는 [YFinance_First_Collection.md](./YFinance_First_Collection.md).
 
-**상세 항목별 공식 링크·제약·수집 빈도**는 [Free_Data_Collection.md](./Free_Data_Collection.md)가 최신 기준이다. 실행법은 [Realtime_Quickstart.md](./Realtime_Quickstart.md), 수동 항목은 [Manual_Collection.md](./Manual_Collection.md) 참조.
+## 국채 — 고정 5종
 
-| 항목 | 무료 자동화 우선 | 무료 자동화가 부족할 경우 | 최신성 |
-|---|---|---|---|
-| CNN 공포·탐욕 | 공식 무료 사용권이 확인된 API 없음 | CNN 원본 수동 입력 | 스냅샷 |
-| 기업 가이던스 | SEC EDGAR 제출·Atom, 기업 IR RSS | 허용된 기업 IR HTML → 원문 수동 검수 | 신규 공개 이벤트 |
-| 금 | gold-api.com `/price/XAU` | 수동 | 준실시간 캐시 |
-| WTI/Brent | EIA 무료 키 일별 현물 PET.RWTC.D/PET.RBRTE.D | 일중 선물값은 수동, 상품 종류 분리 | 일별 |
-| Dubai | World Bank Pink Sheet 월간 자료 | 공개 평가자료 수동 | 월별 |
-| VIX | Cboe `VIX_History.csv` | 장중 VIX 수동 | EOD |
-| 미국 국채 | Treasury Par Yield XML/CSV | 장중 현물수익률 수동 | 일별 |
-| 피자지수 | 공개 JSON endpoint(권한 확인 필요) | PizzINT 수동 관찰 | 수동 |
-| 경제지표 발표 일정 | BLS ICS, Fed 일정, 공식 BEA/Census 페이지 | 허용 HTML → 수동 | 이벤트 |
-| 경제지표 실제값 | BLS v2, BEA API 및 공식 발표문 | HTML → 수동 | 이벤트 |
-| 파생상품 만기 | OCC/OIC, CME·Cboe 공개 달력 | 예외 수동 검증 | 예정/수정 |
-| 미국 금리 | Fed 결정 RSS + 공식 발표, 공개 시계열 | 수동 검증 | 결정 이벤트 |
-| 일본 금리 | BOJ RSS + 통계 API | 정책 성명 수동 검증 | 이벤트/일별 |
-| 영국 금리 | BoE 공식 Bank Rate 공개자료 | 정책 성명 수동 검증 | 이벤트/일별 |
-| 유로존 금리 | ECB RSS + SDMX DFR API | 성명 수동 검증 | 이벤트/일별 |
-| 비트코인 | Coinbase BTC-USD/Binance BTCUSDT 무료 WS | 장애 시 수동 | 체결 스트림 |
+| 만기 | Auto-Axe 식별자 | 기본 소스 |
+|---|---|---|
+| 3개월 | `UST_3M` | yfinance `^IRX` |
+| 2년 | `UST_2Y` | US Treasury 무료 XML `BC_2YEAR` |
+| 5년 | `UST_5Y` | yfinance `^FVX` |
+| 10년 | `UST_10Y` | yfinance `^TNX` |
+| 30년 | `UST_30Y` | yfinance `^TYX` |
 
-무료라고 해서 반드시 실시간이 아니다. **데이터 관측시점과 획득시점을 분리**하고 값의 이용약관을 확인한다. Yahoo 등의 비문서화 quote URL을 약관 확인 없이 자동 수집기로 등록하지 않는다.
+참고: `2YY=F`와 `ZT=F`는 2년물 **선물**로 현물 파 수익률에 대응하지 않는다. Treasury XML에서는 5개 만기의 공식 일별 수익률을 모두 별도로 교차검증할 수 있다.
 
+## 나머지 요청 지표
 
-## 2026-11-22 사용자 지정 소스 및 추가 시험
+| 지표 | 우선 무료 소스 | 비고 |
+|---|---|---|
+| VIX | **yfinance `^VIX`** | 무지연 미보증; Cboe CSV는 일별 확인용 |
+| WTI | **yfinance `CL=F`** | NYMEX 원유선물; EIA 일별 WTI 현물과 별개 |
+| Brent | **yfinance `BZ=F`** | NYMEX Brent Financial 선물; EIA 현물과 별개 |
+| 금 선물 | **yfinance `GC=F`** | COMEX 금선물; 금 현물가격은 Gold API 유지 |
+| 비트코인 | **yfinance `BTC-USD`** | Coinbase/Binance 공개 WS는 개별 거래소 체결값 보조 |
+| Dubai 현물 | World Bank 공개 월별 자료 | 동일한 Dubai spot 일별 yfinance ticker 미확인 |
+| CNN 공탐 | [edition.cnn.com](https://edition.cnn.com/markets/fear-and-greed) | 허가 전 자동 스크래핑 불가 → 수동 |
+| PizzINT 피자 | [pizzint.watch](https://www.pizzint.watch/) | JSON 존재, robots·약관 권한 확인 전 수동 |
+| 기업 가이던스 | SEC EDGAR·기업 공식 IR RSS | 이벤트 원본 |
+| 경제지표·발표일정 | BLS·BEA·FOMC·Census | 원기관 공식 |
+| 파생상품 만기 | OCC/OIC·CME 공식 일정 | 계약별 최종 거래/처리일 별개 |
+| 미국·일본·영국·유로존 정책금리 | Fed·BOJ·BoE·ECB 공식 발표/API | 시장 금리지표로 정책금리 대체 금지 |
 
-- **피자지수:** [PizzINT](https://www.pizzint.watch/) (기존 pentagon.pizza 대체). 공개 JSON URL /api/dashboard-data HTTP200 확인. 단 robots `Disallow:/api/` 및 Terms의 API 외 스크래핑 금지로 허가 확인 전 수동.
-- **공포·탐욕:** [CNN International](https://edition.cnn.com/markets/fear-and-greed) (기존 www.cnn.com 원본 대체). CNN Terms에 따라 자동 스크래핑 승인 전 수동.
-- **yfinance:** VIX `^VIX`, 국채 지표 `^TNX`, WTI 선물 `CL=F`, Brent 선물 `BZ=F`의 일봉·1분봉 실제 조회 검증. 실시간 지연 없음 미보증, Dubai유 일별 실제 spot 심볼 미확인. [상세](./YFinance_Data_Validation.md).
+**yfinance는 공식 데이터 라이선스의 대체가 아니다.** 무료·지연·개인연구 조건과 `source_event_at`, `received_at`을 기록한다.
+
+더 자세한 문서: [무료 전체 카탈로그](./Free_Data_Collection.md) · [시장 데이터 기본 설계](./YFinance_First_Collection.md) · [실행 명령](./Realtime_Quickstart.md).
