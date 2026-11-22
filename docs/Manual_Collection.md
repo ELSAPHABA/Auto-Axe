@@ -12,7 +12,6 @@
 | `UST_10Y_INTRADAY` | [Treasury 공식 일별](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics) 외 수동 장중 수익률 출처 | 원본 출처, 현물/지표형, 10Y %, 화면 지연 | 장중 추적 필요 시 | 국채 현물 수익률 vs 선물 가격 |
 | `WTI_FUTURES_INTRADAY` | 공개적으로 열람 가능한 거래소/상품 페이지 | 가격 USD/bbl, 거래소·선물 월물, 지연표시 | 장중값이 필요할 때 | EIA WTI 현물 **일별**과 별도 |
 | `BRENT_FUTURES_INTRADAY` | ICE 등 상품 표시 화면 | 가격 USD/bbl, 거래소·월물·지연 | 장중값이 필요할 때 | 현물 Brent 일별과 별도 |
-| `DUBAI_SPOT_ASSESSMENT` | [World Bank 월별](https://www.worldbank.org/en/research/commodity-markets), [IMF/FRED 월별](https://fred.stlouisfed.org/series/POILDUBUSDM) 및 신뢰 가능한 공개 Dubai 평가 원문 | 관측 기간, 평가 방식, 공개시각·단위 | 공식 새 수치 게시 시 | Oman 선물 등 다른 상품을 **Dubai spot으로 기록 금지** |
 | `EARNINGS_CONSENSUS` | 각 기업 IR 및 권한 있는 공개 금융 자료 | ticker, 회계연도/분기, forecast EPS/revenue, 애널리스트 수(명시된 경우), 날짜 | 실적 전 예상치 비교 필요 시 | SEC **회사 자체 guidance**와 분리 |
 | `EARNINGS_GUIDANCE_EXCEPTION` | 기업 공식 IR PDF/실적콜 등 | metric, 범위, FY/Q, GAAP 여부, 최초 발표, 원문 링크 | 자동 parser 실패 시 | 리뷰필요 사유 기록 |
 | `EXPIRATION_EXCEPTION` | [OCC 공식](https://www.optionseducation.org/referencelibrary/expiration-calendar), [CME 공식](https://www.cmegroup.com/tools-information/calendars/expiration-calendar.html) | 상품별 명목 만기·최종거래·처리·결제일 | 휴일/특별처리 공지 시 | 달력의 일반 셋째 금요일 규칙으로 대체 금지 |
@@ -53,7 +52,6 @@ CNN_FEAR_GREED,SENTIMENT,https://edition.cnn.com/markets/fear-and-greed,,2026-11
 
 - **CNN:** 비문서화 JSON 경로는 공식 사용권이 확인되지 않아 운영 자동화 미승인. 인간이 본 점수만 수동 기록.
 - **피자:** Google Popular Times 수치용 무료 구조화 API 미확인. Google Maps 스크래핑으로 이 문제를 해결하지 않는다.
-- **Dubai 장중 현물 평가:** 무료 공개 실시간 API/합법 정량 스크래핑 경로 미확인. 월별 공개 평가만 자동 또는 수동.
 - **VIX 장중·국채 3M/5Y/10Y/30Y 지표·WTI/Brent 선물 장중:** 기본 시장 데이터는 yfinance로 수집한다. **yfinance 데이터 이용권·지연·접근 문제 시에만 수동**으로 전환한다. **국채 2Y는 Treasury 공식 일별**이 기본이며 일중 수익률을 선물로 대체하지 않는다.
 
 
@@ -68,5 +66,4 @@ CNN_FEAR_GREED,SENTIMENT,https://edition.cnn.com/markets/fear-and-greed,,2026-11
 
 - `VIX_INTRADAY`·`UST_3M/5Y/10Y/30Y`·`WTI_FUTURES_INTRADAY`·`BRENT_FUTURES_INTRADAY`·`BTC-USD`·`GC=F`는 **yfinance 조회가 기본**이다. 수동 표는 허가/접속·신뢰도 문제의 **fallback** 기록을 뜻한다.
 - `UST_2Y`는 **Treasury 공식 2년물 일별**. Yahoo 2년물 선물은 수익률 원본이 아니므로 수동 화면상 시장 금리 값과 혼합하지 않는다.
-- CNN 원본·PizzINT·Dubai 현물 일별은 이전과 동일하게 권한/동일상품 소스 확인 전 수동 대상이다.
 - [최신 소스 정책](./YFinance_First_Collection.md).
