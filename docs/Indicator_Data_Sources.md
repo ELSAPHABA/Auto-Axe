@@ -23,7 +23,6 @@
 | Brent | **yfinance `BZ=F`** | NYMEX Brent Financial 선물; EIA 현물과 별개 |
 | 금 선물 | **yfinance `GC=F`** | COMEX 금선물; 금 현물가격은 Gold API 유지 |
 | 비트코인 | **yfinance `BTC-USD`** | Coinbase/Binance 공개 WS는 개별 거래소 체결값 보조 |
-| Dubai 현물 | World Bank 공개 월별 자료 | 동일한 Dubai spot 일별 yfinance ticker 미확인 |
 | CNN 공탐 | [edition.cnn.com](https://edition.cnn.com/markets/fear-and-greed) | 허가 전 자동 스크래핑 불가 → 수동 |
 | PizzINT 피자 | [pizzint.watch](https://www.pizzint.watch/) | JSON 존재, robots·약관 권한 확인 전 수동 |
 | 기업 가이던스 | SEC EDGAR·기업 공식 IR RSS | 이벤트 원본 |
