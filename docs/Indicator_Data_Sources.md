@@ -24,3 +24,10 @@
 | 비트코인 | Coinbase BTC-USD/Binance BTCUSDT 무료 WS | 장애 시 수동 | 체결 스트림 |
 
 무료라고 해서 반드시 실시간이 아니다. **데이터 관측시점과 획득시점을 분리**하고 값의 이용약관을 확인한다. Yahoo 등의 비문서화 quote URL을 약관 확인 없이 자동 수집기로 등록하지 않는다.
+
+
+## 2026-11-22 사용자 지정 소스 및 추가 시험
+
+- **피자지수:** [PizzINT](https://www.pizzint.watch/) (기존 pentagon.pizza 대체). 공개 JSON URL /api/dashboard-data HTTP200 확인. 단 robots `Disallow:/api/` 및 Terms의 API 외 스크래핑 금지로 허가 확인 전 수동.
+- **공포·탐욕:** [CNN International](https://edition.cnn.com/markets/fear-and-greed) (기존 www.cnn.com 원본 대체). CNN Terms에 따라 자동 스크래핑 승인 전 수동.
+- **yfinance:** VIX `^VIX`, 국채 지표 `^TNX`, WTI 선물 `CL=F`, Brent 선물 `BZ=F`의 일봉·1분봉 실제 조회 검증. 실시간 지연 없음 미보증, Dubai유 일별 실제 spot 심볼 미확인. [상세](./YFinance_Data_Validation.md).
