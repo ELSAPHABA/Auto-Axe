@@ -1,197 +1,100 @@
-# Auto-Axe 외부 지표 수집기 설계
+# Auto-Axe 무료 수집기 설계 및 운영 표준
 
-> 기준 2026-11-22 KST. 본 문서는 **구현 가이드**이며 실제 파이프라인 배포/자동화 또는 각 API의 전수 실호출을 의미하지 않는다. 데이터 공급원·정확한 키는 [Indicator_Data_Sources.md](./Indicator_Data_Sources.md) 참조.
+> **무료 API/WS → 허용된 RSS/Atom/ICS/공개 HTML 스크래핑 → 수동 기록**. 이전의 데이터 구독/거래소 유료 피드 관련 설계·계약·어댑터는 폐기한다. 기준일: 2026-11-22.
 
-## 1. 설계 목표와 범위
-
-- **수집**: ① 가격·시계열(금, 유가, VIX, 국채, BTC, 정책금리, 공탐) ② 이벤트 일정(CPI/PCE/NFP/FOMC, 파생 만기) ③ 정형화할 기업 가이던스 ④ 참고용 피자지수.
-- **가용성**: 공식 소스 장애가 주문·기존 시세 수집 경로에 전파되지 않도록 비동기 배치와 큐 중심의 별도 서브시스템 구성.
-- **일관성**: 데이터 시간, 수집 시간, 최초 공개 시간, 수정 시간, 원본 출처, 라이선스·품질을 원자료와 함께 관리.
-- **백테스트**: *그 당시 시장에 공개된 데이터*만 알고 있었던 것처럼 재현 가능해야 한다. 월별/일별/실시간 시계열을 하나로 혼합하여 허위 초과수익을 만들지 않는다.
-
-## 2. 권장 아키텍처
+## 1. 모듈 구성
 
 ```mermaid
 flowchart LR
-    S[Scheduler / event trigger] --> J[Collector job queue]
-    J --> A[Official API adapters]
-    J --> B[Official CSV / ICS parsers]
-    J --> C[SEC filings + NLP extraction]
-    J --> D[Licensed market-data adapters]
-    A --> R[Raw landing + request metadata]
-    B --> R
-    C --> R
-    D --> R
-    R --> V[Validate / normalize / deduplicate]
-    V --> TS[(Time-series storage)]
-    V --> EV[(Economic & expiry event store)]
-    V --> GD[(Guidance revisions store)]
-    TS --> F[Feature & signal engine]
-    EV --> F
-    GD --> F
-    F --> UI[Dashboard / alerts / backtest]
-    F -.-> Q[Execution safeguards]
+  A[무료 WS Coinbase/Binance] --> N[normalize UTC / event & observed time]
+  B[공식 무료 REST EIA/BLS/Treasury/ECB/BOJ/Gold] --> N
+  C[공식 RSS/Atom/ICS Fed/SEC/IR/BLS] --> N
+  D[약관 허용된 공개 HTML/CSV] --> N
+  E[수동 입력 CSV] --> N
+  N --> Q[검증/빈도/중복/권한/데이터 지연]
+  Q --> DB[(시계열·이벤트·수동 레코드 DB)]
+  DB --> P[피처 계산/대시보드/백테스트]
 ```
 
-**피자지수/CNN 비공식 데이터**는 계약·권리 심사 전 운영 파이프라인과 연결하지 않고 dashboard의 별도 experimental 소스 목록으로만 유지한다. 나무 OpenAPI 주문 기능과 외부 수집기 간 장애·권한 경계를 분리한다.
+- 수집기의 `provider`, `collection_method=API|WEBSOCKET|SCRAPE|MANUAL`, `source_url`, `frequency`, `cost=0`, `terms_check_at`, `quality_status` 고정 기록.
+- 무료 공개 브라우저 시세가 해당 서비스에서 **자동 수집·보관 허가**된다는 가정을 하지 않는다. CNN, Google Maps Popular Times, Cboe Quote Dashboard, TradingView/Yahoo 내부 시세 역공학은 승인 소스로 자동 등록하지 않음.
+- 비트코인은 진짜 실시간 체결 업데이트, 금은 최근가격 API, 국채·현물 유가·VIX 등은 EOD/월간 공식 원본: **정확한 빈도명을 화면에 표시**.
+- API 장애 → 동일 정의의 허용된 무료 데이터가 있을 때만 fallback → 정책 허용 스크래핑 → **수동**. 같은 자산이라도 선물과 현물처럼 `instrument_type`이 다르면 서로 fallback으로 섞지 않는다.
 
-## 3. 어댑터 인터페이스 및 공급원 설정
-
-공급원별 책임을 다음처럼 통일한다.
-
-```python
-from typing import Protocol, Iterable
-
-class Collector(Protocol):
-    def fetch(self, start_utc, end_utc) -> Iterable[dict]: ...
-    def normalize(self, raw: dict) -> Iterable[dict]: ...
-    def healthcheck(self) -> dict: ...
-```
-
-- `provider_id`: e.g. `eia`, `fred`, `cboe`, `treasury`, `bls`, `sec`, `ecb`, `boj`, `boe`, `coinbase`.
-- `dataset_id`: 공급자 원본 시리즈 식별자 `DGS10`, `PET.RWTC.D` 등.
-- `transport`: REST JSON, CSV, ICS, 공식 웹페이지, 라이선스 API.
-- `auth`: API key/계약 토큰/무인증 (비밀은 환경변수·secret store, Git 커밋 금지).
-- `market_calendar`: NYSE, US federal, UK, Eurozone, JP, 24x7, custom.
-- `source_timezone`: America/New_York, Europe/London, Europe/Frankfurt, Asia/Tokyo, UTC.
-- `schedule`: source별 cron/TTL/백필 범위. 실제 공개가 완료되지 않은 미래 시점은 `pending`으로 유지.
-- `legal_status`: `approved|review_required|display_only|blocked` 및 계약 증빙/갱신기한.
-
-### 1차 우선순위
-
-| 단계 | 데이터 | 기본 폴링 제안 | 검증 |
-|---|---|---|---|
-| P0 | Treasury/FRED 일별·EIA 현물·Cboe VIX | 미국 거래일 EOD 후 1~3회 지연 재시도 | 장마감/발행기관 게시 후만 확정 |
-| P0 | Coinbase/Binance BTC | 1~5분 봉 마감 후 또는 필요 시 1분 | 누락 캔들·거래소 상태 확인 |
-| P0 | BLS ICS / FOMC / BEA / ECB 결정 일정 | 매일 1회 + 중요 이벤트 전 재확인 | 일정 변경·취소 탐지 |
-| P0 | Fed/BOJ/BoE/ECB 금리 | 일 1회 + 정책 결정일 집중 수집 | 목표치와 실효치 분리 |
-| P1 | OCC/Cboe/CME 만기 달력 | 매주, 월초 및 휴장 공지 시 | 계약별 최종거래·결제일 검증 |
-| P1 | SEC filing/guidance | 영업일 5~30분(공정이용/지연 고려) | 원문 공시 버전 및 텍스트 추출 |
-| P1 | 금 제3자 spot | 상용 약관·허용 빈도에 따라 1~5분 | 합성가격/벤치마크 구분 |
-| P2 | 월간 Dubai/Gold Pink Sheet | 월 1회 + 공개 후 재수집 | 빈도·게시 지연·수정 추적 |
-| 실험 | CNN / Pizza | 공식 계약 전 자동 수집 보류 | 수집 권리·재현성 심사 |
-
-위 주기는 **Auto-Axe의 제안값**이지 공급자가 보장하는 업데이트 간격이 아니다. API별 실제 `Retry-After`, 사용량 제한 및 갱신 시각 측정 후 조정한다.
-
-## 4. 저장 모델
-
-### 공통 시계열 `market_observations`
+## 2. 저장 스키마
 
 ```sql
-CREATE TABLE market_observations (
+CREATE TABLE indicator_observations (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     provider TEXT NOT NULL,
     series_id TEXT NOT NULL,
-    instrument TEXT NOT NULL,
-    observation_at TIMESTAMPTZ NOT NULL,
+    method TEXT NOT NULL CHECK (method IN ('api','websocket','scrape','manual')),
+    instrument_type TEXT NOT NULL,
+    value NUMERIC(30,12),
+    unit TEXT,
+    quote_currency TEXT,
+    venue TEXT,
+    contract_code TEXT,
+    period_label TEXT,
+    observation_at TIMESTAMPTZ,
     published_at TIMESTAMPTZ,
-    ingested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    revision_id TEXT NOT NULL DEFAULT 'initial',
-    value NUMERIC(28, 10),
-    unit TEXT NOT NULL,
-    frequency TEXT NOT NULL,
-    price_type TEXT,
-    market_timezone TEXT,
+    first_seen_at TIMESTAMPTZ NOT NULL,
+    received_at TIMESTAMPTZ NOT NULL,
+    revision_id TEXT,
+    reported_delay_minutes INT,
+    status TEXT NOT NULL,
     source_url TEXT NOT NULL,
-    quality_status TEXT NOT NULL,
-    raw_sha256 TEXT NOT NULL,
-    PRIMARY KEY (provider, series_id, observation_at, revision_id)
+    raw_sha256 TEXT,
+    attribution TEXT,
+    note TEXT
 );
+CREATE INDEX indicator_by_series_event
+ON indicator_observations(series_id, observation_at, first_seen_at);
 ```
 
-`published_at` 값이 확인되지 않는 경우 임의로 `observation_at`이나 `ingested_at`을 넣지 말고 NULL과 불명확 플래그를 사용한다. 개장 시각에 아직 공개되지 않은 EOD 시계열을 미리 참조해서는 안 된다. 수정 공표 가능성 있는 거시지표는 `revision_id`/vintage 및 `first_seen_at`을 사용해 버전별 저장한다.
+`observation_at`이 공개되지 않은 경우 NULL. 자동화에 쓸 수 있는 시점은 첫 공개/실제 수집 시점 중 늦은 보수적 기준. `received_at`을 `observation_at`으로 대입해 백테스트 미래값 누출하지 않는다.
 
-### 이벤트 `calendar_events`
+공시 가이던스는 별도 `corporate_guidance` 테이블: `cik/ticker`, `accession`, `filing_url`, `fiscal_year/quarter`, `metric`, `gaap_or_adjusted`, `low/high`, `first_seen_at`, `review_status`. 추출기가 문맥을 확정하지 못하면 `manual_review_required`.
 
-```text
-provider, external_uid, event_type, country_or_market, title,
-scheduled_at_utc, scheduled_timezone, status(SCHEDULED/RESCHEDULED/CANCELLED/RELEASED),
-published_at, last_seen_at, event_version, official_url,
-instrument_or_contract, last_trade_at, settlement_at, actual_value,
-forecast_value, previous_value, unit, revision_id
-```
+발표/만기는 `event_calendar`에 `scheduled_at`, `released_at`, `first_seen_at`, `actual/forecast/previous`, `expiration_at`, `last_trade_at`, `processing_at`, `settlement_at`, `is_holiday_override`, `source_url`를 따로 기록. 명목 만기일과 처리일은 달라도 된다.
 
-- 일정 원본의 `UID`가 없으면 `provider+event_type+period+contract`의 안정적인 키 사용.
-- 발표일정(예정 데이터)과 통계값(결과 데이터)은 테이블/이벤트 타입으로 분리. 결측 `forecast_value`는 0이 아니다.
-- 파생상품은 매 거래소·상품 고유 `last_trade_at`, `expiration_at`, `settlement_at`, `exercise_style`, `AM_PM`, `holiday_override` 기록.
+## 3. 무료 수집 스케줄 (제안, 게시기관 보장 주기가 아님)
 
-### 가이던스 `corporate_guidance`
-
-```text
-ticker, cik, accession_number, filing_type, filed_at, accepted_at,
-first_seen_at, source_url, source_excerpt, fiscal_year, fiscal_quarter,
-metric(revenue/EPS/margin/capex/etc.), accounting_basis(GAAP/adjusted),
-currency, unit, range_low, range_high, point_estimate,
-guidance_kind(issued/reaffirmed/raised/lowered/withdrawn),
-extractor_version, review_status, supersedes_id
-```
-
-- 기업의 가이던스(issuer guidance)와 벤더의 애널리스트 컨센서스(sell-side estimate)는 **물리적 테이블과 라이선스까지 분리**.
-- 법인식별코드 CIK 10자리 패딩; 액세션·발표시각·원문 링크로 재현 가능하도록 함.
-- 회계연도 시작/마감, FY/Q, diluted EPS/adjusted EPS, 통화, 범위를 정규화하되 원문은 유지.
-
-## 5. UTC 정규화와 데이터 품질
-
-1. **세 가지 시간축**: `observation_at` (값이 가리키는 시각/거래일), `published_at` (시장에 첫 공개된 시각), `ingested_at` (서버가 획득한 시각). `first_seen_at`은 공개시각 불명확 시 보수적 대용.
-2. **Timezone**: 내부 저장 UTC TIMESTAMPTZ, 사용자 표시 `Asia/Seoul`; 원래의 `America/New_York` 등 IANA 시간대를 소스에 보존하여 DST 계산. 미국 CPI 08:30 ET를 연중 고정 UTC로 변환하지 않는다.
-3. **캘린더**: 미국 주식 휴장·옵션·선물 결제 캘린더, JP/UK/Eurozone 은행 영업일, 가상자산 24×7 별도. 2026-06-19 Juneteenth는 만기 예외 사례.
-4. **주기**: 월별 Dubai를 일별 금리/유가와 결합할 때 실제 **공개시점 이후**의 마지막 값만 사용. `event_time`와 `valid_from`을 별도로 사용하고 사전 공표된 것처럼 백필 금지.
-5. **단위**: 국채/정책금리는 % (예: 4.50), 금 USD/tr.oz, 유가 USD/bbl, VIX 지수/연율변동성 %, BTC USD/USDT, 각 시리즈에 scale 명시. 수익률 bps 변경과 퍼센트포인트 변경도 구분.
-6. **품질 상태**: `provisional`, `verified`, `revised`, `missing`, `stale`, `disputed`. 허용 기간 넘어 업데이트 없는 값은 stale으로 표시.
-7. **조회 출처**: raw HTTP status, request URL(토큰 제거), 응답 해시, 수집 버전, 라이선스 레코드 보존. 숫자만 저장하면 데이터 정정 근거가 사라진다.
-
-## 6. 리트라이·백필·계약 안전장치
-
-- `429`, `502/503/504`, timeout: exponential backoff + jitter + 공급자 `Retry-After` 존중. 403 또는 계약상 차단을 프록시·UA 회전으로 우회하지 말 것.
-- idempotency key: `provider|series|observation_at|revision_id` 또는 `event_source|uid|version`; 같은 raw 버전 재수집 시 중복 제거.
-- 체크포인트: `cursor`, `last_success_at`, `last_published_at`, `etag`, `last_modified`; 이벤트 캘린더는 미래 6~12개월 rolling window 재확인.
-- 백필 검증: 공개일·수정일 없는 과거 시계열은 `historical_only` 취급하고 PIT 백테스트 경고.
-- 자격증명: EIA/FRED/API keys는 `.env` 또는 클라우드 Secret Manager; 소스 로그, HTTP URL에 키가 그대로 남지 않게 마스킹.
-- 사용권: data ingestion, caching, derivative works, commercial redistribution, UI rendering, historical storage를 별개 체크. **Yahoo/CNN/Google Maps의 화면 표시 자체는 수집 권리 보장이 아니다.**
-- 신뢰성: 알람은 `last_success`, source lag, 결측률, 429율, 값 이상치, cron drift, 이벤트 변경에 걸고 실패 시 최신 공개일·stale 시점을 UI에 표시.
-
-## 7. 지표별 보강 피처 (권장)
-
-| 원천 | 가공 피처 | 모형 사용시 유의 |
+| 어댑터 | 권장 실행 | 변동 시 |
 |---|---|---|
-| DGS10, DGS2 | 10Y-2Y 커브차, 5거래일 수익률 변화(bp) | 발표일·시차·휴장 처리 |
-| DFEDTARL/U, ECB DFR | 정책금리 변경 이벤트와 서프라이즈 | 결정 이전 예상 컨센서스 별도 공급원 |
-| EIA Brent/WTI | Brent-WTI spread, 1개월/3개월 변화 | 일별 현물 동일 날짜에만 계산 |
-| IMF Dubai | 월간 Dubai-Brent 평균 차이 | 일별/월별 혼합 금지 |
-| Cboe VIX | level, 5일 변화, term structure(추가 공급 필요) | VIX 자체와 VX 선물 차이 |
-| BTC | 24h 수익률·변동성·거래량 | 주말/주식 휴장 별도 계산 |
-| SEC 가이던스 | 상향/하향, 신규/철회, guidance vs estimates | 최초 공개와 실제 거래가능 시간을 보수적으로 |
-| 경제 캘린더 | 발표까지 남은 시간, 발표 후 위험 완화 | 실제 발표/지연/취소 확인 |
-| 만기일 | DTE, 만기 주간/월말, 상품 결제 위험 | 상품·휴장일·AM/PM 정산 반영 |
-| CNN/Pizza | 실험 대시보드 관찰 | 계약/통계 검증 전 자동 매매 입력 배제 |
+| Coinbase/Binance WS | 상시 스트리밍 | heartbeat/sequence gap 확인 → 백오프 후 재연결; 허용 REST 백필 |
+| Gold API | 30~60초 폴링 | `updatedAt` 변경 시만 저장 |
+| SEC 신규 8-K/기업 IR RSS | 평시 60~120초 (정책 허용 범위) | 링크 신규→공시 첨부 파싱·검수 |
+| BLS ICS/BEA/Fed 일정 | 일 1~4회, 발표 전 추가 확인 | 변경된 이벤트 UID 버전 저장 |
+| BLS/BEA 실제 발표 | 평소 공식 발표 주기에 맞춰; 발표 예정 전후 단기 집중 | 무료 API 호출량 제한·429 준수 |
+| Treasury/EIA/Cboe | 게시 완료 후 일별 | 늦은 수정/빈값 탐지 |
+| World Bank Dubai/금 월간 | 매월 새 자료 게시 후 | 월평균 발표 시각 보존 |
+| Fed/BOJ/ECB RSS, BoE 결정 | 평시 수분~시간 간격, 발표 시 집중 | headline → 결정문 본문 → 수치/발효일 검증 |
+| OCC/CME 만기/휴장 | 주간, 긴급 변경 공지 | 계약별 명목 만기·처리일 변경 검증 |
+| CNN/Pizza/장중 VIX·국채·원유 | 자동 수집 금지/불명확 시 수동 | 수동 기록 레지스트리로 입력 |
 
-## 8. 개발 티켓과 검증 단계
+구독이 없는 정적 원본을 매초 호출하지 않는다. 공식 무료 API의 권리·요금·호출량과 문서화를 주기적으로 재검토한다.
 
-### Milestone 1 — 공식 피드 MVP
-- EIA `PET.RWTC.D`, `PET.RBRTE.D`; FRED `DGS2/DGS10/DFEDTARL/DFEDTARU/DFF`; Cboe VIX CSV; BTC 공개 거래소 캔들.
-- BLS ICS + FOMC 예정 캘린더 및 ECB DFR + BoE IUDBEDR + BOJ 실효 콜금리 데이터.
-- 첫 샘플 수집 시 HTTP 응답·원본 필드·발표 시각·빈값 처리·약관 검토 로그 남김.
+## 4. 무료 스크래핑 어댑터
 
-### Milestone 2 — 이벤트 통합 및 수정 이력
-- BEA/Census, OCC/Cboe/CME 만기 및 JP/UK/ECB 정책회의.
-- 수집 후 이벤트 스케줄 변경 감지 및 정정 이력, 거래소별 holiday override.
-- Gold API spot / World Bank Gold, Dubai 월간 시리즈: 갱신일 측정 후 전개.
+1. **공식 기계 판독 링크가 있으면 먼저 사용**: SEC Atom, 회사 IR RSS, 연준/ECB/BOJ RSS, BLS ICS, Treasury XML, Cboe EOD CSV.
+2. HTML 외에는 없는 공공발표/회사 IR 페이지에서 사이트 이용약관·robots 등 허용 여부 확인 후 `requests + BeautifulSoup`, `ETag/If-Modified-Since`, 429 backoff, 셀렉터 테스트 적용.
+3. 페이지에서 기준시각이 빠진 경우 임의 추정하지 않고 `source_time_unknown`/수동 검수.
+4. robots가 허용해도 이용약관·콘텐츠 재사용 권리가 금지하면 수집 중단. CAPTCHA/403 로그인·유료벽을 우회하지 않는다.
+5. HTML DOM 변경으로 선택자가 0개를 반환하면 **성공 처리 금지**, `manual_required` 로 남겨 원문을 확인.
+6. 원문 링크·시각·해시를 남기고 SEC는 식별 UA·10req/s 이하, BLS 무료 일일 호출량 준수.
 
-### Milestone 3 — 비정형 고급 지표
-- SEC EDGAR 8-K 첨부 자료 구문 분석과 인간 검수, issuer guidance PIT 저장.
-- 컨센서스·실시간 금/VIX·Dubai 일별 벤더 계약 검토.
-- CNN/피자지수는 **데이터 권리·안정성·역사 재현성 승인 이후** 별도 모듈 여부 결정.
+## 5. 장애·정정·시간대
 
-### 릴리즈 수용 기준
-- 공급자마다 10개 이상 샘플 및 휴장·수정·빈응답·429 회복 테스트.
-- 누락·중복 없는 멱등 증분 수집, 운영 로그에 비밀키 비노출.
-- 표준 스키마의 시간대와 빈도가 일관되며 **미래값 참조 방지 PIT 쿼리** 통과.
-- UI에서 단위/출처/최종 공개시각/지연시간/검증상태 표시.
-- 가격 수집기 장애가 주문 동작에 영향을 주지 않는 독립성 검증.
+- `429`은 Retry-After, `5xx` 지수 백오프. 인증/403 차단은 회피하지 않고 수동 경로로 전환.
+- WS 재연결 후 갭 범위 REST 재요청, 거래 시퀀스/타임스탬프 중복 제거.
+- `UTC` 저장, `America/New_York` (EST/EDT), `Europe/London`, `Asia/Tokyo`, `Asia/Seoul` 렌더링. 주요 정책 발표시간 고정 UTC 오인 금지.
+- first-release 값과 revised 값 분리해 point-in-time 백테스트 수행; 전망치와 결과값, 월평균과 일별, 원상품과 파생상품 가격을 섞지 않는다.
+- API에서 값이 비어있거나 지연되면 `missing|stale`로 명시하고 자동 주문에 연결할 때 `stale` 방지 규칙을 먼저 구현.
 
-## 9. 공식 문서
+## 6. 실행 경로
 
-- [EIA API](https://www.eia.gov/opendata/documentation.php) · [FRED API](https://fred.stlouisfed.org/docs/api/fred/) · [Treasury yield curve](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics)
-- [Cboe VIX historical](https://www.cboe.com/tradable_products/vix/vix_historical_data) · [SEC EDGAR](https://www.sec.gov/search-filings/edgar-application-programming-interfaces)
-- [ECB SDMX](https://data.ecb.europa.eu/help/api/data) · [BOJ API manual](https://www.stat-search.boj.or.jp/info/api_manual_en.pdf) · [BoE database](https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp)
-- [BLS schedule](https://www.bls.gov/schedule/news_release/) · [FOMC schedules](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm) · [OCC/OIC expiry](https://www.optionseducation.org/referencelibrary/expiration-calendar)
-- [Coinbase Exchange candles](https://docs.cdp.coinbase.com/exchange/reference/exchangerestapi_getproductcandles) · [Binance Spot REST](https://developers.binance.com/en/docs/products/spot/rest-api)
+- [무료 지표 전수 명세](./Free_Data_Collection.md)
+- [무료 실행 가이드](./Realtime_Quickstart.md)
+- [수동 입력 정책·CSV](./Manual_Collection.md)
+- [Python 수집기](./examples/realtime_collector.py), [환경변수](./examples/.env.example)
