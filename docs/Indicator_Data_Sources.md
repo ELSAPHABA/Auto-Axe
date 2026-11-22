@@ -120,7 +120,7 @@
 - **일본 BOJ 호출 예 (실효 콜금리):** `GET https://www.stat-search.boj.or.jp/api/v1/getDataCode?format=json&lang=en&db=FM01&code=STRDCLUCON,STRDCLUCONH,STRDCLUCONL&startDate=202501` (API 매뉴얼에 따라 코드·기간을 검증). **목표금리는 별도 정책 결정문에서 이벤트 추출**.
 - **ECB API 호출 예:** `GET https://data-api.ecb.europa.eu/service/data/FM/D.U2.EUR.4F.KR.DFR.LEV?lastNObservations=5&format=csvdata` ([시계열 설명](https://data.ecb.europa.eu/data/datasets/FM/FM.D.U2.EUR.4F.KR.DFR.LEV)).
 - **필드:** `jurisdiction`, `bank`, `rate_type=target_lower|target_upper|effective|deposit_facility|bank_rate`, `rate_pct`, `valid_from`, `announced_at`, `effective_date`; 각국 정책회의 일정은 9절 경제달력에 통합한다.
-- **EU 표현:** ECB는 **유로존 20개국(2026 기준 해당 시점 회원국 확인 필수)**의 통화정책을 담당. 비유로 EU 회원국에는 별도 중앙은행 정책금리가 존재할 수 있다. 국가별 EU 전체 비교는 범위를 명시.
+- **EU 표현:** ECB는 **유로존 21개국(불가리아 2026-01-01 가입; [ECB 공식 발표](https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.pr260101~c830245e42.en.html))**의 통화정책을 담당. 비유로 EU 회원국에는 별도 중앙은행 정책금리가 존재할 수 있다. 국가별 EU 전체 비교는 범위를 명시.
 
 ## 12. 비트코인
 
