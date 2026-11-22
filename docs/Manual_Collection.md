@@ -6,8 +6,8 @@
 
 | series_id | 화면/공식 출처 | 입력 항목 | 기록 시기 | 구별해야 할 것 |
 |---|---|---|---|---|
-| `CNN_FEAR_GREED` | [CNN Fear & Greed](https://www.cnn.com/markets/fear-and-greed) | `score` (0~100), `category`, 화면 기준시각·조회시각 | 정기 점검(예: 미국 장 중/종료 후) | CNN 제공 점수 vs 자체 심리지표 |
-| `PENTAGON_PIZZA` | [pentagon.pizza](https://pentagon.pizza/) | 화면의 활동 상태/공개 지수(있는 경우), 측정시각·관찰 메모 | 필요시 | Google Maps 외부 축적 금지; 독립·검증된 경제지표 아님 |
+| `CNN_FEAR_GREED` | [CNN Fear & Greed](https://edition.cnn.com/markets/fear-and-greed) | `score` (0~100), `category`, 화면 기준시각·조회시각 | 정기 점검(예: 미국 장 중/종료 후) | CNN 제공 점수 vs 자체 심리지표 |
+| `PENTAGON_PIZZA` | [pentagon.pizza](https://www.pizzint.watch/) | 화면의 활동 상태/공개 지수(있는 경우), 측정시각·관찰 메모 | 필요시 | Google Maps 외부 축적 금지; 독립·검증된 경제지표 아님 |
 | `VIX_INTRADAY` | [Cboe VIX](https://www.cboe.com/tradable_products/vix/) | 표기된 VIX 수준, 사이트 시각·지연표시 | 장중값이 꼭 필요할 때 | 공식 Cboe **일별 CSV**와 별도 |
 | `UST_10Y_INTRADAY` | [Treasury 공식 일별](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics) 외 수동 장중 수익률 출처 | 원본 출처, 현물/지표형, 10Y %, 화면 지연 | 장중 추적 필요 시 | 국채 현물 수익률 vs 선물 가격 |
 | `WTI_FUTURES_INTRADAY` | 공개적으로 열람 가능한 거래소/상품 페이지 | 가격 USD/bbl, 거래소·선물 월물, 지연표시 | 장중값이 필요할 때 | EIA WTI 현물 **일별**과 별도 |
@@ -32,7 +32,7 @@ series_id,instrument_type,source_url,as_of_utc,collected_at_utc,frequency,value,
 
 ```csv
 series_id,instrument_type,source_url,as_of_utc,collected_at_utc,frequency,value,unit,category,quote_currency,exchange,contract,source_delay_minutes,operator,note,verification_status
-CNN_FEAR_GREED,SENTIMENT,https://www.cnn.com/markets/fear-and-greed,,2026-11-22T12:00:00Z,snapshot,65,index,greed,,,,,manual-user,Source had no explicit as-of,unverified
+CNN_FEAR_GREED,SENTIMENT,https://edition.cnn.com/markets/fear-and-greed,,2026-11-22T12:00:00Z,snapshot,65,index,greed,,,,,manual-user,Source had no explicit as-of,unverified
 ```
 
 - 화면에 데이터 기준시각이 없으면 `as_of_utc`는 **비워 둔다**. 현재 시각으로 추정해 넣지 않는다.
