@@ -52,3 +52,15 @@ python docs/examples/realtime_collector.py gold --interval 60
 - [examples/realtime_collector.py](./examples/realtime_collector.py): 수집기 · [examples/yfinance_probe.py](./examples/yfinance_probe.py): 테스트 전용 · [examples/manual_record.py](./examples/manual_record.py): 수동 기록
 
 > **실제 사용 유의:** Yahoo의 분봉/WS 지원은 해당 심볼의 무지연 실시간성과 자동매매·재배포 권한을 입증하지 않는다. 무료/개인 연구용 데이터의 라이선스 조건을 확인하고 운영 경계를 정한다. 이 저장소의 예제는 데이터 수집 PoC이며 매매 주문 기능을 변경하지 않는다.
+
+
+## Binance API 커버리지 (2026-11-23 직접 검사)
+
+- **Binance 공개 시장 API의 Auto-Axe 직접/관련 시세 범위: 4개 분야** — BTC Spot `BTCUSDT` / `BTCUSDC`, 금 관련 `PAXGUSDT`·`XAUTUSDT` 및 `XAUUSDT`, WTI 관련 영구선물 `CLUSDT`, Brent 관련 영구선물 `BZUSDT`.
+- **2개 분야는 간접 ETF 연동 상품만** — VIX 관련 `UVXYUSDT`, 미국 장기국채 ETF 관련 `TMFUSDT`·`TBTUSDT`. **원본 VIX 지수·미국 국채 3M/2Y/5Y/10Y/30Y 수익률은 Binance가 직접 제공하지 않음.**
+- **1개 분야 부분 지원** — Binance 자체 암호화폐·금 옵션의 계약·만기정보 `eapi/v1/exchangeInfo`; 미국 주식·옵션 거래소 전체 만기정보가 아님.
+- 나머지 기업 가이던스·경제지표·중앙은행 금리·CNN 공탐·PizzINT 피자 수치는 Binance 시세 API 지원 대상이 아님.
+
+[Binance API 실제 조사](./Binance_API_Coverage.md) · [Binance 무료 공개 API 검증 코드](./examples/binance_coverage_probe.py)
+
+**수집 공급원 우선순위는 변경하지 않는다:** 기존 yfinance, 원기관 공공 데이터, 승인된 출처를 유지하며 Binance 자산 연동 영구선물은 별도 참고 시계열로만 사용한다.
