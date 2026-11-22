@@ -119,6 +119,37 @@ def sec_8k():
 
 seen_sec = set()
 seen_calendar = {}
+seen_rss = set()
+
+# Official publicly published feeds; verify each issuer's terms before production use.
+OFFICIAL_FEEDS = {
+    "fed": "https://www.federalreserve.gov/feeds/press_monetary.xml",
+    "boj": "https://www.boj.or.jp/en/rss/whatsnew.xml",
+    "ecb": "https://www.ecb.europa.eu/rss/press.html",
+    "nvidia-pr": "https://nvidianews.nvidia.com/cats/press_release.xml",
+    "nvidia-ir-events": "https://investor.nvidia.com/rss/event.aspx",
+}
+
+
+def rss(name):
+    url = OFFICIAL_FEEDS[name]
+    response = request("GET", url, headers={"Accept": "application/rss+xml,application/atom+xml,application/xml"})
+    feed = feedparser.parse(response.content)
+    if feed.bozo and not feed.entries:
+        raise RuntimeError(f"invalid RSS/Atom: {feed.bozo_exception}")
+    if not feed.entries:
+        raise RuntimeError("RSS/Atom returned no entries; manually verify source")
+    for entry in feed.entries:
+        uid = entry.get("id") or entry.get("link") or ""
+        if not uid or (name, uid) in seen_rss:
+            continue
+        seen_rss.add((name, uid))
+        emit(name, "official_rss.new_entry", entry.get("title", ""),
+             entry.get("published") or entry.get("updated"),
+             uid=uid, link=entry.get("link"), summary=entry.get("summary", "")[:180],
+             note="Announcement headline, verify official article for numeric rate/guidance")
+    if len(seen_rss) > 20000:
+        seen_rss.clear()
 
 
 def bls_calendar():
@@ -270,8 +301,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", choices=[
         "gold", "sec-8k", "bls-calendar", "bls-actual", "fred", "eia",
-        "vix-eod", "coinbase", "binance"])
+        "vix-eod", "coinbase", "binance", "rss"])
     parser.add_argument("--series", default="", help="FRED or EIA series ID")
+    parser.add_argument("--feed", choices=sorted(OFFICIAL_FEEDS), help="official RSS name for rss command")
     parser.add_argument("--interval", type=int, default=0,
                         help="poll seconds; 0=one-shot; SEC >=60, BLS actual >=900 recommended")
     args = parser.parse_args()
@@ -283,10 +315,13 @@ def main():
         parser.error("fred requires --series (example: DGS10)")
     if args.source == "eia" and not args.series:
         parser.error("eia requires --series (example: PET.RWTC.D)")
+    if args.source == "rss" and not args.feed:
+        parser.error("rss requires --feed (e.g. fed, boj, ecb, nvidia-pr)")
     cb = {
         "gold": gold, "sec-8k": sec_8k, "bls-calendar": bls_calendar,
         "bls-actual": bls_actual, "fred": lambda: fred(args.series),
-        "eia": lambda: eia(args.series), "vix-eod": vix_eod
+        "eia": lambda: eia(args.series), "vix-eod": vix_eod,
+        "rss": lambda: rss(args.feed)
     }[args.source]
     if args.interval > 0:
         poll(args.source, args.interval, cb)
