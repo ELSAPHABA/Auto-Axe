@@ -65,3 +65,12 @@ python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
 - [`^TYX` Treasury Yield 30 Years](https://finance.yahoo.com/quote/%5ETYX/)
 - [`CL=F` WTI crude](https://finance.yahoo.com/quote/CL%3DF/)
 - [`BZ=F` Brent Last Day Financial](https://finance.yahoo.com/quote/BZ%3DF/)
+
+
+## 최신 기본 수집 설정: 국채 5개 만기 및 시장가격
+
+최신 Auto-Axe 기본값은 [YFinance_First_Collection.md](./YFinance_First_Collection.md)가 정의한다. **3개월 `^IRX`, 2년 Treasury `BC_2YEAR`, 5년 `^FVX`, 10년 `^TNX`, 30년 `^TYX`**가 대상이다. 2년 선물 `2YY=F`·`ZT=F`는 현물 파 수익률과 다른 상품이며 직접 대체하지 않는다. 2026-11-22 Yahoo chart 실조회에서 `^UST2Y`, `^US2Y`, `US2Y`는 404; `2YY=F`는 2-Year Yield Futures로 조회됨을 확인했다.
+
+VIX `^VIX`, WTI 선물 `CL=F`, Brent 선물 `BZ=F`, COMEX 금 선물 `GC=F`, Bitcoin `BTC-USD`는 기본 yfinance 가격/캔들 대상이다. **금 현물가격은 yfinance 금 선물과 다르기 때문에 Gold API가 기본**이며 Dubai 일별 현물은 동일한 Yahoo 심볼이 검증되지 않았다. 새로운 [realtime_collector.py](./examples/realtime_collector.py) `yf-market` 및 `treasury-five` 명령 참조.
+
+2026-11-22 Yahoo chart 직접 조회에서 `^IRX`, `^FVX`, `^TNX`, `^TYX`, `CL=F`, `BZ=F`, `GC=F`, `BTC-USD`는 HTTP 200과 Yahoo 시계열 메타데이터를 반환했다. **모든 심볼에 대해 yfinance 1분봉, WS 실시간 수신, 무지연 보장을 검증했다는 의미는 아니다.** 실시간이 아니라 최신 제공봉 조회임을 UI·DB에 표시한다.
