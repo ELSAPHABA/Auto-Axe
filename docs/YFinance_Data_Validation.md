@@ -13,11 +13,9 @@
 | 미국 30년 국채금리 지표 | `^TYX` | Yahoo 30Y yield 지표 | 미보증 | 미보증 | 비교용/지연 가능 |
 | WTI 원유 | `CL=F` | Yahoo에 상품 존재, 일중/일별 조회 시도 가능 | 심볼 구독 성패 시험 필요 | **아님: Yahoo에서 Delayed Quote 표시** | **NYMEX WTI 선물**, EIA WTI 현물과 다름 |
 | Brent 원유 | `BZ=F` | Yahoo에 상품 존재, 일중/일별 조회 시도 가능 | 심볼 구독 성패 시험 필요 | **아님: Yahoo에서 Delayed Quote 표시** | **NYMEX Brent Last Day Financial Futures**, ICE 원유선물/현물과 다름 |
-| Dubai 원유의 일별 현물 평가 | **검증된 Yahoo/yfinance 티커 없음** | **미지원으로 판단** (확증 가능한 티커 미발견) | 불가 | 불가 | **World Bank/IMF 월간 무료값 + 실제 일별 Dubai 필요하면 수동** |
 
 - Yahoo의 `^TNX`, `^FVX`, `^IRX`, `^TYX`는 **CBOE/시장 수익률 지표**이며 미국 재무부가 하루 한 번 발표하는 [Daily Treasury Par Yield Curve](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics)의 값이나 현물국채 실시간 체결 수익률을 직접 보장하지 않는다. **단위·스케일은 Yahoo 메타데이터와 Treasury 값으로 검증**하고 모든 때에 임의로 10을 곱하거나 나누지 않는다.
 - `CL=F`의 원유 계약 월물은 시장이 롤오버할 때 바뀔 수 있다. `BZ=F`는 Yahoo에서 **NY Mercantile - Delayed Quote**, `Brent Crude Oil Last Day Financial Futures`라고 표시된다. ICE Brent 원계약과 혼용하지 않는다.
-- Dubai/Oman 선물, UAE Dubai Crude/Platts 정산 파생상품, 상용 사이트의 연속기호를 **실제 Dubai 현물 일별 평가가격**이라고 표기하지 않는다. 유료를 제외한 현 단계에서는 월간 공개값을 채택한다.
 
 ## 1. 공식 라이브러리가 실제 지원하는 기능
 
@@ -52,7 +50,6 @@ python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
 | VIX | [Cboe EOD CSV](https://www.cboe.com/tradable_products/vix/vix_historical_data) | 지연 가능 실험 조회·대조 (`^VIX`) | 장중 수동 |
 | 미 국채 수익률 | [Treasury 일별](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) | 장중 수익률 지표 관찰 (`^TNX` 등) | 장중 수동 |
 | WTI·Brent | [EIA 현물 일별](https://www.eia.gov/opendata/documentation.php) | 선물 동향 별도 관찰 (`CL=F`, `BZ=F`) | 선물/현물 분리해 수동 |
-| Dubai | [World Bank Pink Sheet 월간](https://www.worldbank.org/en/research/commodity-markets) | 확인된 동일한 일간 상품 없음 | 무료 월평균, 일간 Dubai는 수동 |
 
 `source=Yahoo`, `method=yfinance`, `quote_delay_minutes`(실제 알려질 때만), `instrument_type`, `contract`, `last_bar_at`, `downloaded_at`, `data_license_status`, `validated_against`를 기록한다. **플랫폼의 무료 필수 생산 수집원이 아니라 권한·지연 확인을 전제로 한 보조 도구**로 제한한다.
 
@@ -71,6 +68,6 @@ python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
 
 최신 Auto-Axe 기본값은 [YFinance_First_Collection.md](./YFinance_First_Collection.md)가 정의한다. **3개월 `^IRX`, 2년 Treasury `BC_2YEAR`, 5년 `^FVX`, 10년 `^TNX`, 30년 `^TYX`**가 대상이다. 2년 선물 `2YY=F`·`ZT=F`는 현물 파 수익률과 다른 상품이며 직접 대체하지 않는다. 2026-11-22 Yahoo chart 실조회에서 `^UST2Y`, `^US2Y`, `US2Y`는 404; `2YY=F`는 2-Year Yield Futures로 조회됨을 확인했다.
 
-VIX `^VIX`, WTI 선물 `CL=F`, Brent 선물 `BZ=F`, COMEX 금 선물 `GC=F`, Bitcoin `BTC-USD`는 기본 yfinance 가격/캔들 대상이다. **금 현물가격은 yfinance 금 선물과 다르기 때문에 Gold API가 기본**이며 Dubai 일별 현물은 동일한 Yahoo 심볼이 검증되지 않았다. 새로운 [realtime_collector.py](./examples/realtime_collector.py) `yf-market` 및 `treasury-five` 명령 참조.
+VIX `^VIX`, WTI 선물 `CL=F`, Brent 선물 `BZ=F`, COMEX 금 선물 `GC=F`, Bitcoin `BTC-USD`는 기본 yfinance 가격/캔들 대상이다. **금 현물가격은 yfinance 금 선물과 다르기 때문에 Gold API가 기본**.
 
 2026-11-22 Yahoo chart 직접 조회에서 `^IRX`, `^FVX`, `^TNX`, `^TYX`, `CL=F`, `BZ=F`, `GC=F`, `BTC-USD`는 HTTP 200과 Yahoo 시계열 메타데이터를 반환했다. **모든 심볼에 대해 yfinance 1분봉, WS 실시간 수신, 무지연 보장을 검증했다는 의미는 아니다.** 실시간이 아니라 최신 제공봉 조회임을 UI·DB에 표시한다.
