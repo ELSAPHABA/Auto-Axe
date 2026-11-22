@@ -185,3 +185,18 @@ python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit 
 ```
 
 숫자 65는 **문법 예시**로 실제 공포·탐욕 점수가 아니다. 실제 입력 시 근거 화면을 확인하고 화면에 공개시각이 있으면 `--as-of 2026-11-22T20:00:00+09:00` 형식으로 입력한다. 없으면 비운다. 기본 출력 `auto_axe_manual_observations.csv`, 등록 직후 `unverified` 상태다. 자세한 컬럼·검증·품목 목록은 [Manual_Collection.md](./Manual_Collection.md).
+
+
+## 11. PizzINT·CNN 지정 출처와 yfinance 시험
+
+- PizzINT 출처: `https://www.pizzint.watch/`; 공개 데이터 URL `https://www.pizzint.watch/api/dashboard-data`. HTTP 200 JSON 응답과 필드 확인. 그러나 `/robots.txt`의 `Disallow:/api/`와 공개 API 이용 허용을 명시한 Terms의 결합 해석상 **접근 권한을 먼저 확인**. HTML 범위 외 스크래핑 금지. 그 전에는 PizzINT 화면에서 수동 기록.
+- CNN 원본: `https://edition.cnn.com/markets/fear-and-greed`. CNN Terms는 자동화 데이터 추출/스크래핑을 금지하므로 명시적 허가 전 **스크래핑 코드 실행 금지·수동 입력**.
+- Yahoo 시장 심볼 무료 검증 스크립트 (개인 연구용, 상용/재배포 권한은 별도):
+
+```bash
+python -m pip install yfinance
+python docs/examples/yfinance_probe.py --period 5d --interval 1m
+python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
+```
+
+`^VIX`/`^TNX`/`CL=F`/`BZ=F`의 일봉·분봉 응답 확인. 2026-11-22 실험 결과는 [YFinance_Data_Validation.md](./YFinance_Data_Validation.md)에 기록. 장 마감·시간대·지연 메타데이터를 확인해야 하며 실제 수익률·현물·선물상품은 혼합하지 않는다. Dubai 현물 일별 심볼은 확인되지 않아 수동+월간 공식 무료값을 유지.
