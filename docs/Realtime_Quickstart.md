@@ -181,7 +181,7 @@ HTML DOM 구조나 공표 제목이 바뀌면 **manual_review_required**로 전�
 ## 10. 무료 API를 못 쓰는 경우: 수동 입력 명령
 
 ```bash
-python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit index --source-url https://www.cnn.com/markets/fear-and-greed --operator researcher --note "EXAMPLE only"
+python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit index --source-url https://edition.cnn.com/markets/fear-and-greed --operator researcher --note "EXAMPLE only"
 ```
 
 숫자 65는 **문법 예시**로 실제 공포·탐욕 점수가 아니다. 실제 입력 시 근거 화면을 확인하고 화면에 공개시각이 있으면 `--as-of 2026-11-22T20:00:00+09:00` 형식으로 입력한다. 없으면 비운다. 기본 출력 `auto_axe_manual_observations.csv`, 등록 직후 `unverified` 상태다. 자세한 컬럼·검증·품목 목록은 [Manual_Collection.md](./Manual_Collection.md).
