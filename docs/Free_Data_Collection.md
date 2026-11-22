@@ -19,7 +19,6 @@
 | 금 현물·선물 | **현물: Gold API `/price/XAU`**, **선물: yfinance `GC=F`** | 현물·선물은 별도 시리즈 | 장애 시 수동 | 현물 spot estimate / COMEX 선물 분봉, 선물 지연 가능 |
 | WTI 원유 선물 | **yfinance `CL=F`** (우선) / EIA `PET.RWTC.D` (일별 현물 확인용) | yfinance 지연·권한 문제 시 현물 EIA | 실제 선물 장중값은 수동 | **NYMEX 선물 분봉 가능, 지연 가능**. 현물 EIA와 분리 |
 | Brent 원유 선물 | **yfinance `BZ=F`** (우선) / EIA `PET.RBRTE.D` (일별 현물 확인용) | yfinance 지연·권한 문제 시 현물 EIA | 선물 장중값 수동 | **NYMEX Brent Financial 선물**, 현물/ICE 원계약과 다름 |
-| Dubai 원유 | [World Bank Pink Sheet](https://www.worldbank.org/en/research/commodity-markets) **월간**; [FRED POILDUBUSDM](https://fred.stlouisfed.org/series/POILDUBUSDM) 개인 조회용 | 출처가 허락하는 게시 자료만; GME Oman 보고서는 **Dubai spot 아님** | Dubai 평가가격의 최신 공개 표·날짜·정의 수동 기록 | **MONTHLY** / 장중 Dubai 원값 자동 수집 불가 |
 | VIX | **yfinance `^VIX`** (우선) / Cboe 무료 일별 CSV 검증 | Cboe Quote Dashboard 자동 추출 금지 | 데이터 권한·지연 문제 시 장중 수동 | **yfinance 분봉 수신 검증, 무지연 보장 없음** |
 | 미국 국채 금리 3M·2Y·5Y·10Y·30Y | **yfinance `^IRX`, Treasury XML `BC_2YEAR`, yfinance `^FVX`, `^TNX`, `^TYX`** | [Treasury 공식 무료 XML](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) 5개 전부 일별 확인 | 2Y 공식 XML 갱신 실패 시 결측·수동 | Yahoo 지표 vs Treasury 파 수익률 별도 |
 | 펜타곤 피자지수 | 공개 JSON **/api/dashboard-data** 확인 (robots/Terms 권한 확인 필요) | Google Maps Popular Times 외부 추출·축적은 정책상 제한 → 기본 제외 | [pentagon.pizza](https://www.pizzint.watch/) 상태·관찰시각·분류를 수동 기록 | 실험적 `MANUAL`; 시장 신호로 자동 주문 금지 |
@@ -32,7 +31,7 @@
 | 유로존(ECB) 기준금리 | [ECB SDMX 공개 API](https://data.ecb.europa.eu/help/api/data) DFR | [ECB 공식 결정 RSS](https://www.ecb.europa.eu/home/html/rss.en.html) / 보도자료 (허용 시) | 원문 결정금리 수동 확인 | `EVENT` / 일별 DFR; **EU 전체 단일금리 아님** |
 | 비트코인 | **yfinance `BTC-USD`** (기본 시장 요약값), Coinbase/Binance 무료 WS (거래소 체결 데이터용) | 거래소 공식 WS | 서비스 중단 시 수동 | yfinance 시차 가능, 개별 거래소 WS는 체결 푸시 |
 
-**무료 동적 시장 가격:** yfinance `^VIX`, `^IRX`, `^FVX`, `^TNX`, `^TYX`, `CL=F`, `BZ=F`, `GC=F`, `BTC-USD`를 가격·수익률지표의 **기본 봉 조회**에 사용한다. **2년물 현물 수익률**은 Treasury 공식 XML(일별). yfinance 분봉은 **거래소 승인 무지연 실시간이 아니며** Yahoo 약관·시차·시장 휴장을 관리한다. **Dubai 실제 일별 현물**은 지원 심볼이 확인되지 않아 무료 월간/수동.
+**무료 동적 시장 가격:** yfinance `^VIX`, `^IRX`, `^FVX`, `^TNX`, `^TYX`, `CL=F`, `BZ=F`, `GC=F`, `BTC-USD`를 조회한다. 2년물 공식 국채 수익률은 Treasury 일별 XML로 조회한다. 분봉 데이터가 거래소 무지연 실시간 시세를 의미하지는 않는다.
 
 ## 지표별 적용 상세
 
@@ -53,12 +52,11 @@
 
 `curl https://api.gold-api.com/price/XAU`, [공식 무료 API](https://gold-api.com/docs), [업데이트 시각 의미](https://gold-api.com/faqs). `price`, `updatedAt` 파싱. 30~60초 추천 폴링(제안값), 갱신 없으면 같은 값 중복 기록하지 않음. spot 추정가격과 금 선물/런던 벤치마크를 혼합하지 않는다. API 장애 시 Gold API 홈페이지 수동 확인.
 
-### 4. WTI / Brent / Dubai 원유
+### 4. WTI / Brent 원유
 
 - **기본 동적 가격:** WTI는 yfinance `CL=F` (NYMEX 선물), Brent는 `BZ=F` (NYMEX Brent Financial 선물). EIA 현물 일별 값은 동일 가격의 대체가 아니라 별도 교차검증.
 
 - EIA 무료 API 키: `https://api.eia.gov/v2/seriesid/PET.RWTC.D?api_key=YOUR_KEY` 및 `.../PET.RBRTE.D` — **WTI/Brent 일별 현물**; 갱신이 완료된 일별값만 사용.
-- 두바이 원유: [World Bank Pink Sheet 월간](https://www.worldbank.org/en/research/commodity-markets) 파일 또는 [FRED POILDUBUSDM](https://fred.stlouisfed.org/series/POILDUBUSDM) **월평균**. 별도의 Oman 관련 선물 표시가격은 Dubai 현물 평가값과 별도 상품이며 대체하지 않는다.
 - 특정 거래소/시세 사이트의 브라우저 화면은 장중 참고할 수 있어도 무료 **기계적 수집 허용**이 확인되지 않으면 자동 크롤러를 만들지 않는다. 공식 보고서 파일만 허용 범위에서 다운받는다.
 - 장중 관측이 꼭 필요한 경우 `value_source=manual`, `source_market=spot|futures`, `exchange`, `contract_month`, `delayed_minutes`(표시된 경우)을 입력. **일별 현물 vs 월별 평가 vs 장중 선물 차이**를 반드시 분리.
 
@@ -136,4 +134,4 @@
 
 **CNN 공포·탐욕 공식 수집 대상:** [CNN International Fear & Greed](https://edition.cnn.com/markets/fear-and-greed), `source_url=https://edition.cnn.com/markets/fear-and-greed`. HTML 페이지의 `span.market-data-poller[data-data-url]`는 비공식 `https://production.dataviz.cnn.io/index/fearandgreed/graphdata`를 가리키는 것이 확인되었으나 공식 공개 개발자 API가 아니며 **[CNN Terms](https://www.cnn.com/terms)는 자동화된 데이터 수집·스크래핑을 금지**한다. 따라서 소스 URL을 지정·문서화하되 **실제 스크래핑 구현/자동 호출은 CNN의 명시적 허가 후에만**, 그 전에는 지정된 CNN URL에서 수동으로 `score`, `rating`, `as_of` 입력.
 
-**yfinance 조사 결과:** [YFinance_Data_Validation.md](./YFinance_Data_Validation.md) 참고. 2026-11-22 Python `yfinance 1.8.0` 실제 조회: `^VIX`, `^TNX`, `CL=F`, `BZ=F`의 최근 5거래일 일봉·1분봉 수신 성공. 각각 1분봉 개수: 3,875 / 2,000 / 5,080 / 4,141. 미국 시장이 종료된 날 테스트한 것이므로 무지연 실시간성은 **검증되지 않음**; `CL=F`/`BZ=F`는 Yahoo 페이지에 *Delayed Quote*로 표시. `^TNX`는 미국 국채 현물 직접 거래수익률이 아닌 CBOE 지표. **Dubai유의 실제 일별 spot을 나타내는 검증된 yfinance 심볼은 없음**. yfinance는 Yahoo 비공식 접근 도구이므로 자동 저장/상용 이용권은 별도 확인; 확인되지 않은 경우 무료 공식 일별/월간 자료와 수동 수집을 유지한다.
+**yfinance 조사 결과:** [YFinance_Data_Validation.md](./YFinance_Data_Validation.md) 참고. 2026-11-22 Python `yfinance 1.8.0` 실측에서 `^VIX`, `^TNX`, `CL=F`, `BZ=F`의 일봉·1분봉 수신 성공. 분봉 수신은 무지연 실시간 데이터 보장이 아니며 원유 선물과 현물은 분리한다.
