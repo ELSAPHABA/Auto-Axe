@@ -147,7 +147,6 @@ python docs/examples/realtime_collector.py fred --series DGS10
 python docs/examples/realtime_collector.py fred --series DFEDTARU
 ```
 
-Dubai 원유는 월별 공개 출처 [World Bank Pink Sheet](https://www.worldbank.org/en/research/commodity-markets) / [IMF/FRED POILDUBUSDM](https://fred.stlouisfed.org/series/POILDUBUSDM)를 사용. **EIA 일별 WTI/Brent와 Dubai 월평균을 동일 거래일 가격으로 사용하지 않는다.**
 
 ## 7. 중앙은행 결정 및 파생상품 만기
 
@@ -220,4 +219,3 @@ python docs/examples/yfinance_probe.py --period 5d --interval 1m
 python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
 ```
 
-`^VIX`/`^TNX`/`CL=F`/`BZ=F`의 일봉·분봉 응답 확인. 2026-11-22 실험 결과는 [YFinance_Data_Validation.md](./YFinance_Data_Validation.md)에 기록. 장 마감·시간대·지연 메타데이터를 확인해야 하며 실제 수익률·현물·선물상품은 혼합하지 않는다. Dubai 현물 일별 심볼은 확인되지 않아 수동+월간 공식 무료값을 유지.
