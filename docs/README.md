@@ -33,7 +33,7 @@ python docs/examples/realtime_collector.py gold --interval 60
 수동 입력 예시(값은 예시이며 실제 관측 아님):
 
 ```bash
-python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit index --source-url https://www.cnn.com/markets/fear-and-greed --operator researcher --note "EXAMPLE only"
+python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit index --source-url https://edition.cnn.com/markets/fear-and-greed --operator researcher --note "EXAMPLE only"
 ```
 
 ## 데이터 가용성 요약
