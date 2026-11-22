@@ -122,3 +122,12 @@
 - [Realtime_Quickstart.md](./Realtime_Quickstart.md): 복사해서 실행할 명령·예제·폴링 권장값.
 - [Manual_Collection.md](./Manual_Collection.md): 최종 수동 분류 항목 및 CSV 포맷.
 - [Collector_Design.md](./Collector_Design.md): 소스 단계별 failover, 이벤트·시각·백테스트 설계.
+
+
+## 사용자 지정 수집 대상 및 yfinance 검증 (2026-11-22)
+
+**피자지수 공식 수집 대상:** [PizzINT](https://www.pizzint.watch/), `source_url=https://www.pizzint.watch/`. 이전 `pentagon.pizza`는 대상에서 제외한다. 수집 순서: PizzINT 측에 공개 JSON API의 자동 호출 권한·robots 정책을 확인 → **허가 확인 시** `GET https://www.pizzint.watch/api/dashboard-data` → API 사용 불가능할 때 사이트가 **별도로 스크래핑을 승인한 경우에만** HTML → 그 외에는 PizzINT 화면 수동 관찰. 2026-11-22 직접 요청에서 이 API는 HTTP 200 JSON (`overall_index`, `defcon_level`, `active_spikes`, `timestamp`, `data[].current_popularity`, `data[].is_spike`, `data[].recorded_at`)을 반환했으며 일부 식당 값이 `null`. **단, `/robots.txt`는 `/api/`를 Disallow하고 [Terms](https://www.pizzint.watch/terms)는 합리적인 공개 API 이용은 허용하되 API 범위 밖 스크래핑을 금지하므로, URL이 응답한다고 무조건 자동화를 활성화하지 않는다.** 현재 정책 충돌/권한 확인 전 운영 상태는 `permission_required`, `manual`. Google Maps 원자료 직접 스크래핑은 하지 않는다.
+
+**CNN 공포·탐욕 공식 수집 대상:** [CNN International Fear & Greed](https://edition.cnn.com/markets/fear-and-greed), `source_url=https://edition.cnn.com/markets/fear-and-greed`. HTML 페이지의 `span.market-data-poller[data-data-url]`는 비공식 `https://production.dataviz.cnn.io/index/fearandgreed/graphdata`를 가리키는 것이 확인되었으나 공식 공개 개발자 API가 아니며 **[CNN Terms](https://www.cnn.com/terms)는 자동화된 데이터 수집·스크래핑을 금지**한다. 따라서 소스 URL을 지정·문서화하되 **실제 스크래핑 구현/자동 호출은 CNN의 명시적 허가 후에만**, 그 전에는 지정된 CNN URL에서 수동으로 `score`, `rating`, `as_of` 입력.
+
+**yfinance 조사 결과:** [YFinance_Data_Validation.md](./YFinance_Data_Validation.md) 참고. 2026-11-22 Python `yfinance 1.8.0` 실제 조회: `^VIX`, `^TNX`, `CL=F`, `BZ=F`의 최근 5거래일 일봉·1분봉 수신 성공. 각각 1분봉 개수: 3,875 / 2,000 / 5,080 / 4,141. 미국 시장이 종료된 날 테스트한 것이므로 무지연 실시간성은 **검증되지 않음**; `CL=F`/`BZ=F`는 Yahoo 페이지에 *Delayed Quote*로 표시. `^TNX`는 미국 국채 현물 직접 거래수익률이 아닌 CBOE 지표. **Dubai유의 실제 일별 spot을 나타내는 검증된 yfinance 심볼은 없음**. yfinance는 Yahoo 비공식 접근 도구이므로 자동 저장/상용 이용권은 별도 확인; 확인되지 않은 경우 무료 공식 일별/월간 자료와 수동 수집을 유지한다.
