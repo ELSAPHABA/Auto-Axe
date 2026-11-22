@@ -2,6 +2,27 @@
 
 > 2026-11-22 · **구독비 0원만 대상**. 모든 샘플은 연구/개발 참고용으로, 공급자별 허용 범위와 가용성을 유지하고 실제 실시간성·지연을 별도 확인한다. **무료 REST 조회를 초 단위로 반복해도 일별 데이터가 실시간으로 바뀌지 않는다.**
 
+## 0. 기본 수집 명령: yfinance + 미국 국채 5종
+
+**요청한 채권 만기: 3개월(`^IRX`), 2년(Treasury `BC_2YEAR`), 5년(`^FVX`), 10년(`^TNX`), 30년(`^TYX`)**.
+
+```bash
+# 이하 1. 설치 단계 수행 후 실행
+python docs/examples/realtime_collector.py yf-market --period 1d --bar-interval 1m
+
+# 3M/2Y/5Y/10Y/30Y 공식 일별 채권금리 전체 조회 (2Y는 여기서)
+python docs/examples/realtime_collector.py treasury-five
+
+# 개별 yfinance 시장 지표
+python docs/examples/realtime_collector.py yf-market --symbols VIX UST_3M UST_5Y UST_10Y UST_30Y
+python docs/examples/realtime_collector.py yf-market --symbols WTI_FUTURE BRENT_FUTURE GOLD_FUTURE BITCOIN
+
+# 금 현물은 COMEX 금 선물 GC=F와 달라 Gold API 유지
+python docs/examples/realtime_collector.py gold --interval 60
+```
+
+기본 yfinance 대상: VIX `^VIX`, WTI 선물 `CL=F`, Brent 선물 `BZ=F`, COMEX 금 선물 `GC=F`, Bitcoin `BTC-USD`, 미국 금리지표 3M `^IRX`·5Y `^FVX`·10Y `^TNX`·30Y `^TYX`. **2Y 현물 국채 수익률은 지원 심볼을 검증하지 못해 Treasury 무료 XML을 사용**한다. `yfinance` 데이터는 Yahoo 지연·개인 연구 이용약관을 따르며 무지연 실시간성은 보장하지 않는다. [yfinance 우선 명세](./YFinance_First_Collection.md).
+
 ## 1. 설치
 
 Python 3.11 이상:
@@ -17,7 +38,7 @@ Copy-Item docs/examples/.env.example .env
 
 Linux/macOS에서는 `source .venv/bin/activate` 후 `cp docs/examples/.env.example .env`. .env의 SEC 연락처/선택 키는 본인의 것으로 바꾼다. Git에 비밀키를 업로드하지 않는다.
 
-## 2. 실시간 무료 WebSocket
+## 2. 별도 거래소 실시간 체결이 필요한 경우: 무료 WebSocket (기본 BTC 요약시세는 yfinance)
 
 Coinbase BTC-USD 체결 기반 ticker:
 
@@ -98,7 +119,7 @@ python docs/examples/realtime_collector.py bls-actual
 
 발표 일정은 `scheduled_at`, 실제 발표는 `released_at`, API 관측은 `received_at`으로 구분. 미국 `America/New_York` DST 변환 필요.
 
-## 6. 원유·국채·VIX 무료 **일별** API
+## 6. 공식 일별/월간 데이터 — yfinance 시장가격의 교차검증 및 2년물 보완
 
 무료 EIA API 키를 받아 `.env`에 추가:
 
@@ -107,7 +128,7 @@ python docs/examples/realtime_collector.py eia --series PET.RWTC.D
 python docs/examples/realtime_collector.py eia --series PET.RBRTE.D
 ```
 
-VIX 공식 **EOD**:
+yfinance VIX `^VIX`의 공식 과거 검증용 Cboe **EOD**:
 
 ```bash
 python docs/examples/realtime_collector.py vix-eod
@@ -187,7 +208,7 @@ python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit 
 숫자 65는 **문법 예시**로 실제 공포·탐욕 점수가 아니다. 실제 입력 시 근거 화면을 확인하고 화면에 공개시각이 있으면 `--as-of 2026-11-22T20:00:00+09:00` 형식으로 입력한다. 없으면 비운다. 기본 출력 `auto_axe_manual_observations.csv`, 등록 직후 `unverified` 상태다. 자세한 컬럼·검증·품목 목록은 [Manual_Collection.md](./Manual_Collection.md).
 
 
-## 11. PizzINT·CNN 지정 출처와 yfinance 시험
+## 11. PizzINT·CNN 지정 출처와 yfinance 보조 검증
 
 - PizzINT 출처: `https://www.pizzint.watch/`; 공개 데이터 URL `https://www.pizzint.watch/api/dashboard-data`. HTTP 200 JSON 응답과 필드 확인. 그러나 `/robots.txt`의 `Disallow:/api/`와 공개 API 이용 허용을 명시한 Terms의 결합 해석상 **접근 권한을 먼저 확인**. HTML 범위 외 스크래핑 금지. 그 전에는 PizzINT 화면에서 수동 기록.
 - CNN 원본: `https://edition.cnn.com/markets/fear-and-greed`. CNN Terms는 자동화 데이터 추출/스크래핑을 금지하므로 명시적 허가 전 **스크래핑 코드 실행 금지·수동 입력**.
