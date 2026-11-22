@@ -65,6 +65,15 @@ python docs/examples/realtime_collector.py sec-8k --interval 90
 - 일본은행 What's New: `https://www.boj.or.jp/en/rss/whatsnew.xml`
 - ECB 보도자료: `https://www.ecb.europa.eu/rss/press.html`
 
+위 공식 RSS는 다음 명령으로 직접 감시할 수 있다.
+
+```bash
+python docs/examples/realtime_collector.py rss --feed fed --interval 300
+python docs/examples/realtime_collector.py rss --feed boj --interval 300
+python docs/examples/realtime_collector.py rss --feed ecb --interval 300
+python docs/examples/realtime_collector.py rss --feed nvidia-pr --interval 600
+```
+
 각 피드는 RSS 제공 사이트 공식 링크에서 확인된 예이다. [RSS 허용 수집 예제](#8-api가-없을-때-허용된-스크래핑)를 이용해 신규 글의 `guid`·`url`·게시시각을 보관한다. PDF/본문 가이던스 수치의 문맥 검증은 별도 작업이다.
 
 SEC는 식별 가능한 `User-Agent`, 전체 IP 기준 초당 10요청 이하 및 공정접근 정책 준수. [SEC 공식 API](https://www.sec.gov/search-filings/edgar-application-programming-interfaces).
@@ -168,3 +177,11 @@ HTML DOM 구조나 공표 제목이 바뀌면 **manual_review_required**로 전�
 [Manual_Collection.md](./Manual_Collection.md)의 CSV 구조를 사용한다. 점수/가격/공개 기준시각/자산 정의·지연정보/출처·조회시각을 기록하고, 실제 데이터 이용 가능 시점보다 이전에 백테스트 신호를 생성하지 않는다. 무료 자동 수집이 어려운 경우가 있어도 **유료로 전환하지 않고 수동** 처리한다.
 
 실행 예제: [examples/realtime_collector.py](./examples/realtime_collector.py) · [환경설정](./examples/.env.example).
+
+## 10. 무료 API를 못 쓰는 경우: 수동 입력 명령
+
+```bash
+python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit index --source-url https://www.cnn.com/markets/fear-and-greed --operator researcher --note "EXAMPLE only"
+```
+
+숫자 65는 **문법 예시**로 실제 공포·탐욕 점수가 아니다. 실제 입력 시 근거 화면을 확인하고 화면에 공개시각이 있으면 `--as-of 2026-11-22T20:00:00+09:00` 형식으로 입력한다. 없으면 비운다. 기본 출력 `auto_axe_manual_observations.csv`, 등록 직후 `unverified` 상태다. 자세한 컬럼·검증·품목 목록은 [Manual_Collection.md](./Manual_Collection.md).
