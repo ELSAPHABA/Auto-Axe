@@ -71,7 +71,6 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 | BLS ICS/BEA/Fed 일정 | 일 1~4회, 발표 전 추가 확인 | 변경된 이벤트 UID 버전 저장 |
 | BLS/BEA 실제 발표 | 평소 공식 발표 주기에 맞춰; 발표 예정 전후 단기 집중 | 무료 API 호출량 제한·429 준수 |
 | Treasury/EIA/Cboe | 게시 완료 후 일별 | 늦은 수정/빈값 탐지 |
-| World Bank Dubai/금 월간 | 매월 새 자료 게시 후 | 월평균 발표 시각 보존 |
 | Fed/BOJ/ECB RSS, BoE 결정 | 평시 수분~시간 간격, 발표 시 집중 | headline → 결정문 본문 → 수치/발효일 검증 |
 | OCC/CME 만기/휴장 | 주간, 긴급 변경 공지 | 계약별 명목 만기·처리일 변경 검증 |
 | CNN/Pizza/권한 미확인 시세 및 2Y 일중 | 자동 수집 불가 시 수동 | Yahoo 지연·권리 문제 또는 공식 2Y 미게시 시 수동 기록 |
