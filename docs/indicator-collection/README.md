@@ -71,3 +71,9 @@ python docs/examples/realtime_collector.py naver-2y
 - `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
 - `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
 - [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](../examples/realtime_collector.py).
+
+## 신규 지표 — 서학개미 해외주식 매수·매도 결제 통계
+
+[한국예탁결제원 SEIBro 해외주식 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921)을 수집 대상에 추가했다. **미국 등 국가별·기간별 매수결제, 매도결제, 순매수결제(USD)**를 추적하는 결제 기반 통계다. **WebSquare 브라우저 스크래핑 대상으로 지정**했으며 서비스 이용권·수집 허용 여부 및 실제 데이터 파싱은 아직 미검증이므로 **코드 실행은 미구현**, 그 전에는 수동 관찰한다. TOP50를 전체 서학개미 투자 총액으로 해석하지 않는다.
+
+- [SEIBro 수집 필드·조회 옵션·권한 확인 명세](./SEIBro_Overseas_Stock_Flows.md)
