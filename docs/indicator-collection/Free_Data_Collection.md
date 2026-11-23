@@ -21,6 +21,7 @@
 | 구리 가격 동향 | **Binance Futures `COPPERUSDT` 실시간 WS** | Spot copper 원본은 별도 | 시세 불가 시 결측·수동 | 구리 연동 영구선물, 현물/COMEX 선물 아님 |
 | WTI 가격 동향 | **Binance Futures `CLUSDT` 영구선물 실시간 WS** | EIA `PET.RWTC.D` (일별 현물 참고) | 서비스 장애 시 결측·수동 | Binance 영구선물과 NYMEX `CL=F` 선물은 다름 |
 | Brent 가격 동향 | **Binance Futures `BZUSDT` 영구선물 실시간 WS** | EIA `PET.RBRTE.D` (일별 현물 참고) | 서비스 장애 시 결측·수동 | Binance 영구선물과 NYMEX `BZ=F` 선물은 다름 |
+| 나스닥 100 선물·연동 신호 | **MEXC NAS100_USDT 공개 Futures WS/REST** (실시간 저지연 후보, 실제 메시지 검증 전) | Binance QQQUSDT 영구선물(다른 기초상품), Yahoo `NQ=F` 1분봉(실제 CME NQ이나 지연 시세) | 공식 CME 실시간 데이터는 권한/비용 필요; 무료 시 지연 비교 데이터 사용 | **MEXC Protobuf WS 전환 2026-12-01**, 심볼/시간/지연 테스트 필요. 지수 연동 영구선물과 NQ 실제 선물 혼동 금지. [명세](./Nasdaq100_Futures_Data_Sources.md) |
 | VIX | **yfinance `^VIX`** (우선) / Cboe 무료 일별 CSV 검증 | Cboe Quote Dashboard 자동 추출 금지 | 데이터 권한·지연 문제 시 장중 수동 | **yfinance 분봉 수신 검증, 무지연 보장 없음** |
 | 미국 국채 금리 3M·2Y·5Y·10Y·30Y | **3M/5Y/10Y/30Y: yfinance `^IRX/^FVX/^TNX/^TYX`; 2Y: 네이버 `US2YT=RR` (승인 시)** | 네이버 robots 차단으로 무허가 시 [Treasury 공식 XML `BC_2YEAR`](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) 일별 대체 | 2Y 일중값 수동 기록 | Yahoo 지표·네이버 게시 수익률·Treasury 일별값을 별도 표기 |
 | 해외주식 매수·매도 결제 통계 (서학개미 동향) | **[한국예탁결제원 SEIBro 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921)**; 화면 로더·XML 확인, 공식 공개 자동 API 미확인 | WebSquare UI의 기간·국가·매수/매도/순매수 결제금액 **허가된 스크래핑 예정**; 권리 검토 전 비활성 | **SEIBro 화면 수동 기록** | **결제 기준, TOP50, USD; 실시간 체결·개인계정 원장 아님**. [필드·제약](./SEIBro_Overseas_Stock_Flows.md) |
