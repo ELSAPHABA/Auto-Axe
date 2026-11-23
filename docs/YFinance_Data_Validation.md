@@ -1,3 +1,5 @@
+> **2026-11-23 변경:** 이하 Yahoo/yfinance 지원 여부는 **이전 실측 조사 기록**이며 현재 금·WTI·Brent·비트코인 **기본 수집 소스는 Binance Spot/TradFi 선물 WS**입니다. 2Y 목표 출처는 네이버 `US2YT=RR`이나 수집 허가가 없으면 Treasury 공식 일별로 운영합니다. [최신 정책](./Market_Source_Policy_20261123.md).
+
 # yfinance 무료 시장지표 지원 검증
 
 > 검증 기준: 2026-11-22 (한국시간). 사용자 제공 [yfinance API Reference](https://ranaroussi.github.io/yfinance/reference/index.html) 및 개별 Yahoo Finance 종목 페이지를 대조했다. **Yahoo Finance 웹 가격의 실제 수신 여부와 무지연 실시간성은 개별 심볼·거래소·지역·장 상태마다 다르다.** 사용 전 개인용 연구/자동수집 권한을 [yfinance 법적 안내](https://ranaroussi.github.io/yfinance/)에서 확인한다.
