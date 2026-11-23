@@ -596,3 +596,6 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         sys.exit(0)
+    except (RuntimeError, requests.RequestException, ValueError, KeyError) as exc:
+        logging.error("Collector stopped: %s", exc)
+        sys.exit(2)
