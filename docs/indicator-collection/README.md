@@ -84,3 +84,9 @@ python docs/examples/realtime_collector.py naver-2y
 - **Binance `QQQUSDT`**: QQQ ETF 연동 영구선물로 별도 참고 시계열.
 - **Yahoo Finance `NQ=F`**: 실제 CME NQ 선물의 무료 **지연** 1분봉 비교값. 유료 CME 직접 실시간 피드는 기본 범위에서 제외.
 - **문서 조사만 완료**, 실제 NAS100/QQQ WS 연결 및 Auto-Axe 수집기 구현은 아직 수행하지 않음. [데이터 소스·API·상세 검증 계획](./Nasdaq100_Futures_Data_Sources.md).
+
+## 미국 주식·ETF 누적 거래량 1초 수집
+
+**NVDA·QLD 등 미국 주식·ETF**는 `yfinance.AsyncWebSocket`의 `day_volume`(당일 누적 거래량)을 이용한다. WebSocket 메시지 수신 시 최신 누적값을 갱신하고, **로컬 스케줄러가 매초 그 값을 스냅샷**으로 기록한다. **Yahoo의 원본 메시지가 정확히 1초마다 도착하는 것은 아니며, 업데이트가 없을 때는 `stale/no_update` 표시**가 필요하다. 장중 실측 및 수집기 구현은 아직 수행하지 않았다.
+
+- [yfinance WebSocket 1초 누적 거래량 상세 설계 및 Python 예제](./YFinance_1s_Stock_Cumulative_Volume.md)
