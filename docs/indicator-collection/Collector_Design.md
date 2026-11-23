@@ -2,6 +2,13 @@
 
 > **2026-11-23 현재:** Binance 무료 실시간 시세는 BTC 현물·금/WTI/Brent 연동 영구선물 기본, yfinance는 VIX·국채 3M/5Y/10Y/30Y만 담당. 2년 국채는 네이버 승인형 데이터 수집 목표이며 허가 전 Treasury 공식 일별값을 사용한다. [최신 소스 정책](./Market_Source_Policy_20261123.md).
 
+## yfinance 기업 재무지표 조회와 이동평균선 산출 (추가 설계)
+
+- **PER 후행·예상, PBR, ROE**는 개별 기업 종목의 `Ticker.info`에서 조회해 값·조회시각·재무기준시점·후행/예상 여부를 보존한다. 필드가 누락되면 결측 처리하고 **QLD 같은 ETF의 기업 ROE**를 강제로 생성하지 않는다.
+- **SMA·EMA**는 yfinance `Ticker.history`의 조정 여부가 명시된 OHLCV로 로컬 계산한다. 일봉 SMA 5·20·60·120·200, EMA 12·26 등을 지원하며, 일봉/분봉, 확정/진행 봉을 구분한다.
+- 기업 재무지표는 일별 조회·실적 발표 후 갱신을 기본으로, 기술적 지표는 봉 확정 후 계산한다. 과거 백테스트에 현재 `Ticker.info`를 소급 적용하면 미래정보 누수가 발생한다.
+- [필드·계산식·Python 예제](./YFinance_Valuation_and_Moving_Averages.md). 현재 운영 수집기에는 미구현.
+
 ## 미국 주식·ETF 누적 거래량 1초 스냅샷 (추가 설계)
 
 - NVDA·QLD 등 미국 주식/ETF는 **yfinance WebSocket `day_volume` 이벤트 수신**을 별도 피드로 운영한다.
