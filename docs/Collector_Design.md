@@ -1,16 +1,16 @@
 # Auto-Axe 무료 수집기 설계 및 운영 표준
 
-> **시장가격 및 금리지표는 yfinance 우선 → 나머지는 무료 API/WS → 허용된 RSS/HTML → 수동 기록**. 이전의 데이터 구독/거래소 유료 피드 관련 설계·계약·어댑터는 폐기한다. 기준일: 2026-11-22.
+> **2026-11-23 현재:** Binance 무료 실시간 시세는 BTC 현물·금/WTI/Brent 연동 영구선물 기본, yfinance는 VIX·국채 3M/5Y/10Y/30Y만 담당. 2년 국채는 네이버 승인형 데이터 수집 목표이며 허가 전 Treasury 공식 일별값을 사용한다. [최신 소스 정책](./Market_Source_Policy_20261123.md).
 
 ## 1. 모듈 구성
 
 ```mermaid
 flowchart LR
-  A[yfinance 시장 지표/시세] --> N
-  X[무료 WS Coinbase/Binance 선택] --> N[normalize UTC / event & observed time]
-  B[공식 무료 REST EIA/BLS/Treasury/ECB/BOJ/Gold] --> N
+  A[Binance BTC Spot / 금·WTI·Brent 연동 선물 WS] --> N
+  X[yfinance VIX·3M·5Y·10Y·30Y 최신봉] --> N[normalize UTC / event & observed time]
+  B[미 재무부 공식 2Y 일별 등 무료 REST] --> N
   C[공식 RSS/Atom/ICS Fed/SEC/IR/BLS] --> N
-  D[약관 허용된 공개 HTML/CSV] --> N
+  D[네이버 2Y 승인형 스크래핑 / 허용 공개 HTML·CSV] --> N
   E[수동 입력 CSV] --> N
   N --> Q[검증/빈도/중복/권한/데이터 지연]
   Q --> DB[(시계열·이벤트·수동 레코드 DB)]
@@ -19,7 +19,7 @@ flowchart LR
 
 - 수집기의 `provider`, `collection_method=API|WEBSOCKET|SCRAPE|MANUAL`, `source_url`, `frequency`, `cost=0`, `terms_check_at`, `quality_status` 고정 기록.
 - 무료 공개 브라우저 시세가 해당 서비스에서 **자동 수집·보관 허가**된다는 가정을 하지 않는다. CNN, Google Maps Popular Times, Cboe Quote Dashboard, TradingView/Yahoo 내부 시세 역공학은 승인 소스로 자동 등록하지 않음.
-- VIX·3M/5Y/10Y/30Y 금리지표·WTI/Brent/금 선물·BTC/USD 시장 요약 시세는 **yfinance가 기본**. 국채 **2Y**는 무료 Treasury XML 일별; 금 **현물**은 Gold API. EIA 유가 현물과 Cboe VIX EOD 및 Treasury 전체 공식 곡선은 보조 검증용. **정확한 지연과 빈도**를 표시.
+- **Binance 실시간:** `BTCUSDT` Spot과 `XAUUSDT`·`CLUSDT`·`BZUSDT` 영구선물은 별도 `series_id`, 시장 종류, USDT 호가통화, 원본 시각을 보존한다. VIX·국채 3M/5Y/10Y/30Y만 yfinance(지연 가능). **2Y 국채:** 지정 네이버 `US2YT=RR`는 승인받은 경우에만 자동수집, 권한 없으면 공식 Treasury `BC_2YEAR` 일별 fallback. `Gold API`는 별도의 현물 참고 값이다.
 - API 장애 → 동일 정의의 허용된 무료 데이터가 있을 때만 fallback → 정책 허용 스크래핑 → **수동**. 같은 자산이라도 선물과 현물처럼 `instrument_type`이 다르면 서로 fallback으로 섞지 않는다.
 
 ## 2. 저장 스키마
@@ -63,17 +63,19 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 
 | 어댑터 | 권장 실행 | 변동 시 |
 |---|---|---|
-| yfinance 시세·지수 | 요청/표시 주기에 맞춰 1~5분(제안) 최신봉 조회 | Yahoo 수신 시점/장시간/지연·약관 확인 |
-| Treasury 공식 국채 2년물 + 5종 교차검증 | 게시 후 일 1회 | 파 수익률 공식값과 Yahoo 지수 비교 |
-| Coinbase/Binance WS (선택) | 상시 스트리밍 | heartbeat/sequence gap 확인 → 백오프 후 재연결; 허용 REST 백필 |
-| Gold API | 30~60초 폴링 | `updatedAt` 변경 시만 저장 |
+| Binance Spot·TradFi Futures WS (기본 시장가격) | 거래 발생 시 이벤트 기반 | 체결시각/연결 상태/휴장·유동성 확인, 백오프·누락 보완 | 
+| yfinance VIX·3M/5Y/10Y/30Y | 1~5분(제안) 최신봉 조회 | Yahoo 지연·장시간 및 라이선스 확인 |
+| 네이버 2Y (자동 수집 허가 시에만) | 승인된 수집 주기 | `US2YT=RR` 원본 시각·지연·권한 검증 |
+| Treasury 공식 국채 2년물 + 5종 교차검증 | 게시 후 일 1회 | 네이버 무허가 기본 2Y 일별값, 공식 5종 별도 검증 |
+| Coinbase BTC/USD WS (보조) | 필요할 때 스트리밍 | USD와 USDT 혼합 금지, 누락·재연결 관리 |
+| Gold API 현물 참고 | 필요할 때만 폴링 | Binance 금 연동 선물과 별도 저장 |
 | SEC 신규 8-K/기업 IR RSS | 평시 60~120초 (정책 허용 범위) | 링크 신규→공시 첨부 파싱·검수 |
 | BLS ICS/BEA/Fed 일정 | 일 1~4회, 발표 전 추가 확인 | 변경된 이벤트 UID 버전 저장 |
 | BLS/BEA 실제 발표 | 평소 공식 발표 주기에 맞춰; 발표 예정 전후 단기 집중 | 무료 API 호출량 제한·429 준수 |
 | Treasury/EIA/Cboe | 게시 완료 후 일별 | 늦은 수정/빈값 탐지 |
 | Fed/BOJ/ECB RSS, BoE 결정 | 평시 수분~시간 간격, 발표 시 집중 | headline → 결정문 본문 → 수치/발효일 검증 |
 | OCC/CME 만기/휴장 | 주간, 긴급 변경 공지 | 계약별 명목 만기·처리일 변경 검증 |
-| CNN/Pizza/권한 미확인 시세 및 2Y 일중 | 자동 수집 불가 시 수동 | Yahoo 지연·권리 문제 또는 공식 2Y 미게시 시 수동 기록 |
+| CNN/Pizza/권한 미확인 2Y 장중 | 자동 수집 불가 시 수동 | Naver robots/이용권 검증 전 불활성화 |
 
 구독이 없는 정적 원본을 매초 호출하지 않는다. 공식 무료 API의 권리·요금·호출량과 문서화를 주기적으로 재검토한다.
 
@@ -107,9 +109,9 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 | 만기 | 우선 소스 | 보조 공식 일별 |
 |---|---|---|
 | 3개월 | yfinance `^IRX` | Treasury `BC_3MONTH` |
-| 2년 | **Treasury `BC_2YEAR`** | 동일 원본, Yahoo 2년 현물 티커 미검증 |
+| 2년 | **네이버 `US2YT=RR` 승인 시** | 무허가 시 Treasury `BC_2YEAR` 일별 |
 | 5년 | yfinance `^FVX` | Treasury `BC_5YEAR` |
 | 10년 | yfinance `^TNX` | Treasury `BC_10YEAR` |
 | 30년 | yfinance `^TYX` | Treasury `BC_30YEAR` |
 
-[최신 기본 수집 명세](./YFinance_First_Collection.md). 국채 금리선물과 현물 수익률을 같은 컬럼에 기록하지 말 것.
+[최신 기본 수집 명세](./Market_Source_Policy_20261123.md). 국채 금리선물과 현물 수익률을 같은 컬럼에 기록하지 말 것.
