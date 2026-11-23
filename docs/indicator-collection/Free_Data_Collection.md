@@ -35,6 +35,7 @@
 | 유로존(ECB) 기준금리 | [ECB SDMX 공개 API](https://data.ecb.europa.eu/help/api/data) DFR | [ECB 공식 결정 RSS](https://www.ecb.europa.eu/home/html/rss.en.html) / 보도자료 (허용 시) | 원문 결정금리 수동 확인 | `EVENT` / 일별 DFR; **EU 전체 단일금리 아님** |
 | 미국 개별주식 PER·PBR·ROE | **yfinance `Ticker.info`: `trailingPE`/`forwardPE`/`priceToBook`/`returnOnEquity`** | 공개 기업 재무제표와 해당 시점 주가로 직접 재산출·검증 가능 | 수집 제한/결측 시 원자료 확인 | 원본 ROE는 ratio, forward PER은 예상 EPS 기반. ETF QLD를 기업 지표로 혼용하지 않음. [설계](./YFinance_Valuation_and_Moving_Averages.md) |
 | 이동평균선(SMA·EMA) | **yfinance `Ticker.history`의 OHLCV** | SMA/EMA 직접 계산 (5·20·60·120·200일 등) | 봉 또는 가격 원본 부재 시 결측 | 종가 기준·배당/분할 조정·확정봉/진행봉을 구별. [설계](./YFinance_Valuation_and_Moving_Averages.md) |
+| 최근 5·10·20거래일 최고·최저가 (미국 주식·ETF) | **yfinance 일봉 `High`/`Low` → rolling max/min 로컬 계산** | 주말·휴장일 제외한 실제 거래일 N개 기준, 일봉 확정 후 저장 | 일봉 미확정·누락 시 결측 처리 | **총 6개 지표** (`HIGH/LOW_5D/10D/20D`). 장중 돌파는 전일 이전 N개 확정봉 기준. [산출 명세](./YFinance_Valuation_and_Moving_Averages.md) |
 | 미국 주식·ETF 1초 주기 누적 거래량 | **yfinance `AsyncWebSocket` → `day_volume`** (NVDA·QLD 등) | 이벤트별 원본 갱신 후 로컬 1Hz 스냅샷; 별도 공식 무지연 SIP 권한 미확인 | Yahoo 메시지 지연/라이선스 문제 시 미수집·수동 검증 | **로컬 1초 기록만 보장, Yahoo 1초 WS 업데이트·무지연·체결별 거래량은 미보장.** [기술 명세](./YFinance_1s_Stock_Cumulative_Volume.md) |
 | 비트코인 | **Binance Spot `BTCUSDT` 무료 WS 실시간 체결** | Coinbase `BTC-USD` 공개 WS (별도 호가/거래소) | 장애 시 수동 | BTC/USDT와 BTC/USD, Yahoo 집계 시세는 별도 시계열 |
 
