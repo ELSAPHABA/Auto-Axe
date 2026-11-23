@@ -76,6 +76,6 @@ curl 'https://fapi.binance.com/fapi/v1/klines?symbol=BZUSDT&interval=1m&limit=2'
 
 실제 수집 전 `exchangeInfo`의 `TRADING`·거래 세션 및 거주지역 상품 제공 여부를 확인. Binance USDⓈ-M Futures는 [REST·WebSocket 공개 API](https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/Introduction)를 지원하며, Spot 공개 market-data 사용법은 [Binance 공식 개발자 문서](https://developers.binance.com/en/docs/products/spot/rest-api). WebSocket 예: `wss://fstream.binance.com/stream?streams=btcusdt@aggTrade/xauusdt@kline_1m/clusdt@kline_1m/bzusdt@kline_1m` — **공식 스트림 문법을 기반으로 한 예시이며 본 조사에서 장시간 WS 실제 이벤트 수신은 별도 시험하지 않았다**.
 
-현행 Auto-Axe 수집의 **기본 소스(yfinance 시장 데이터/원기관 공식 발표 자료)는 변경하지 않는다.** Binance는 BTC 원천 거래소와 금·원유 관련 **추가 교차검증/보조 시계열**의 후보이며, Binance 옵션 만기는 시장 전반의 파생 만기 달력과 구별한다.
+**2026-11-23 변경:** Binance Spot BTC/USDT 및 Binance TradFi 금·WTI·Brent 영구선물 실시간 거래 스트림은 기본 시장가격 공급원으로 전환되었다. yfinance는 VIX 및 국채 3M/5Y/10Y/30Y에 사용한다. 2Y는 네이버 원본의 수집 허가 전 Treasury 공식 일별값을 사용한다. 거래소 연결의 시장 시세를 기존 원유·금 현물/선물과 동일하다고 표시하지 않는다. 자세한 사항은 [최신 소스 정책](./Market_Source_Policy_20261123.md).
 
 무료 실증 재실행: `python docs/examples/binance_coverage_probe.py`. 수집기·시장지표 구별: [YFinance_First_Collection.md](./YFinance_First_Collection.md).
