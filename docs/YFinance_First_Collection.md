@@ -1,4 +1,6 @@
-# Auto-Axe yfinance 우선 시장지표 수집 명세
+> **변경 공지 (2026-11-23): 이 문서의 yfinance 우선 가격 수집 전략은 이전 설계 이력입니다.** 최신 기본은 [Binance 실시간·네이버 2Y 소스 정책](./Market_Source_Policy_20261123.md)입니다. 금·WTI·Brent·BTC의 yfinance 가격 기본 수집은 중단되고, yfinance는 VIX 및 국채 3M/5Y/10Y/30Y만 담당합니다. 미국 국채 2Y는 네이버 원본을 목표로 하나 수집 허가 전에는 Treasury 공식 일별 데이터만 사용합니다.
+
+# Auto-Axe yfinance 우선 시장지표 수집 명세 (2026-11-22 이전 설계 기록)
 
 > 2026-11-22 기준. **시세·지수·채권금리지표 중 Yahoo Finance/yfinance에서 제공하는 것은 yfinance가 우선**이다. **무료** 수집만 사용하며, 공식 원본 값/경제 이벤트/정책금리는 해당 기관의 무료 API를 유지한다. 단, Yahoo Finance·yfinance는 거래소 승인 **무지연 실시간 데이터/상업적 자동 저장 권리**를 보증하지 않는다.
 
