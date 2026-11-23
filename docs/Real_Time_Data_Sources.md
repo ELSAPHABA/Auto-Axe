@@ -4,9 +4,9 @@
 
 | 항목 | 기본 스트림 | 데이터 정의 |
 |---|---|---|
-| 금 연동 가격 | `wss://fstream.binance.com/stream?streams=xauusdt@aggTrade` | Binance `XAUUSDT` TradFi 영구선물 체결 |
-| WTI 연동 가격 | `wss://fstream.binance.com/stream?streams=clusdt@aggTrade` | Binance `CLUSDT` 영구선물 체결 |
-| Brent 연동 가격 | `wss://fstream.binance.com/stream?streams=bzusdt@aggTrade` | Binance `BZUSDT` 영구선물 체결 |
+| 금 연동 가격 | `wss://fstream.binance.com/market/stream?streams=xauusdt@aggTrade` | Binance `XAUUSDT` TradFi 영구선물 체결 |
+| WTI 연동 가격 | `wss://fstream.binance.com/market/stream?streams=clusdt@aggTrade` | Binance `CLUSDT` 영구선물 체결 |
+| Brent 연동 가격 | `wss://fstream.binance.com/market/stream?streams=bzusdt@aggTrade` | Binance `BZUSDT` 영구선물 체결 |
 | 비트코인 | `wss://data-stream.binance.vision/stream?streams=btcusdt@trade` | Binance Spot BTC/USDT 체결 |
 | VIX 원지수 | yfinance `^VIX` | 지연 가능한 최신 봉, **미검증 WebSocket 사용 안 함** |
 | 미국 국채 3M/5Y/10Y/30Y | yfinance `^IRX/^FVX/^TNX/^TYX` | 지연 가능한 금리지표 |
