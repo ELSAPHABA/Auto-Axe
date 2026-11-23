@@ -16,6 +16,7 @@
 | 비트코인 | yfinance `BTC-USD` | **Binance Spot WS** `BTCUSDT@trade` | `BITCOIN_BINANCE_SPOT` | Binance BTC/USDT 현물 **USDT 기준** |
 | 미국 개별주식 PER·PBR·ROE | 신규 지표 | **yfinance `Ticker.info` 후행/예상 PER·PBR·ROE 스냅샷** | `EQUITY_PER_TTM`, `EQUITY_PER_FORWARD`, `EQUITY_PBR`, `EQUITY_ROE` | 일별/실적 갱신시점 분리, ETF 결측 기본. [명세](./YFinance_Valuation_and_Moving_Averages.md) |
 | 이동평균선(SMA·EMA) | 신규 지표 | **yfinance OHLCV로 로컬 산출** | `SMA_N`, `EMA_N` + interval | 확정 일봉/분봉 기준, 조정종가·워밍업 및 백테스트 시점 보존. [명세](./YFinance_Valuation_and_Moving_Averages.md) |
+| 최근 5·10·20거래일 최고·최저가 | 신규 기술지표 | **yfinance `High`·`Low` 일봉 → rolling 최댓값·최솟값 로컬 계산** | `HIGH_5D/10D/20D`, `LOW_5D/10D/20D` | 실제 거래 세션 N개 기준. 일봉 확정 후 당일 포함, 장중 비교는 직전 N개 확정봉 기준. [명세](./YFinance_Valuation_and_Moving_Averages.md) |
 | 미국 주식·ETF 초단위 누적 거래량 (NVDA·QLD 등) | 신규 수집 요구 | **yfinance WebSocket `day_volume` + 로컬 1초 주기 스냅샷** | `US_STOCK_DAILY_CUM_VOLUME_1S` + symbol | 원본 WS 이벤트 주기는 불규칙, 새 값 없으면 `stale/no_update`로 직전 값 표시; 진정한 무지연 초봉 또는 SIP 통합 체결량 아님. [명세](./YFinance_1s_Stock_Cumulative_Volume.md) |
 | 나스닥 100 선물·연동 신호 | 신규 지표 | **MEXC `NAS100_USDT` 무료 Futures WebSocket(개발/검증 후보)**; Binance `QQQUSDT` 별도 보조, yfinance `NQ=F` 지연 CME 기준 | `NASDAQ100_MEXC_PERP_USDT` / 별도 2시리즈 | MEXC는 지수 연동 영구선물, Binance는 QQQ ETF 연동 계약, Yahoo는 CME 실제 NQ 지연 시세. WS 수신 미검증; [조사 문서](./Nasdaq100_Futures_Data_Sources.md) |
 | VIX | yfinance `^VIX` | yfinance `^VIX` 유지 | `VIX` | Cboe VIX 지수 (지연 가능) |
