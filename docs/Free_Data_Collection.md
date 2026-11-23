@@ -17,6 +17,8 @@
 | 미국 주식 CNN 공포·탐욕 | **공식 무료 API 미확인**; CNN 비문서화 JSON은 권한 확인 전 운영 제외 | CNN 원본 화면 자동 추출도 사용권 미확인 → 기본 비활성 | CNN [Fear & Greed](https://edition.cnn.com/markets/fear-and-greed) 화면의 `score/category/as_of` 기록 | 수동 스냅샷. CNN 수치가 실시간 틱인지 미보장 |
 | 기업 실적 가이던스 | **SEC EDGAR** submissions JSON + 8-K Atom/RSS, 문서/Exhibit 원문 | 회사 공식 IR 보도자료 및 허용된 HTML, RSS 없는 경우 | PDF·콜에서 매출/EPS 전망을 근거 링크와 함께 입력 | `EVENT`: 신규 공시/보도자료 |
 | 금 가격 동향 | **Binance Futures `XAUUSDT` 영구선물 실시간 WS** | Gold API 현물 추정은 별도 참고 | 장애·장시간 제약 시 결측/수동 | Binance 금 연동 영구선물은 현물 XAU/USD·COMEX `GC=F`와 별개 |
+| 은 가격 동향 | **Binance Futures `XAGUSDT` 실시간 WS** | Spot silver 원본은 별도 | 시세 불가 시 결측·수동 | 은 연동 영구선물, 현물/COMEX 선물 아님 |
+| 구리 가격 동향 | **Binance Futures `COPPERUSDT` 실시간 WS** | Spot copper 원본은 별도 | 시세 불가 시 결측·수동 | 구리 연동 영구선물, 현물/COMEX 선물 아님 |
 | WTI 가격 동향 | **Binance Futures `CLUSDT` 영구선물 실시간 WS** | EIA `PET.RWTC.D` (일별 현물 참고) | 서비스 장애 시 결측·수동 | Binance 영구선물과 NYMEX `CL=F` 선물은 다름 |
 | Brent 가격 동향 | **Binance Futures `BZUSDT` 영구선물 실시간 WS** | EIA `PET.RBRTE.D` (일별 현물 참고) | 서비스 장애 시 결측·수동 | Binance 영구선물과 NYMEX `BZ=F` 선물은 다름 |
 | VIX | **yfinance `^VIX`** (우선) / Cboe 무료 일별 CSV 검증 | Cboe Quote Dashboard 자동 추출 금지 | 데이터 권한·지연 문제 시 장중 수동 | **yfinance 분봉 수신 검증, 무지연 보장 없음** |
@@ -135,3 +137,11 @@
 **CNN 공포·탐욕 공식 수집 대상:** [CNN International Fear & Greed](https://edition.cnn.com/markets/fear-and-greed), `source_url=https://edition.cnn.com/markets/fear-and-greed`. HTML 페이지의 `span.market-data-poller[data-data-url]`는 비공식 `https://production.dataviz.cnn.io/index/fearandgreed/graphdata`를 가리키는 것이 확인되었으나 공식 공개 개발자 API가 아니며 **[CNN Terms](https://www.cnn.com/terms)는 자동화된 데이터 수집·스크래핑을 금지**한다. 따라서 소스 URL을 지정·문서화하되 **실제 스크래핑 구현/자동 호출은 CNN의 명시적 허가 후에만**, 그 전에는 지정된 CNN URL에서 수동으로 `score`, `rating`, `as_of` 입력.
 
 **이전 yfinance 조사 기록:** [YFinance_Data_Validation.md](./YFinance_Data_Validation.md) 참고. 2026-11-22 `^VIX`, `^TNX`, `CL=F`, `BZ=F`의 일봉·1분봉 수신을 확인했으나 **2026-11-23부터 원유·금·BTC의 기본 가격은 Binance로 전환**했다.
+
+## 구리·은 및 Binance 롱숏 비율 추가 (2026-11-23)
+
+- **구리:** Binance Futures `COPPERUSDT`, 내부 `COPPER_BINANCE_PERP`; **은:** `XAGUSDT`, 내부 `SILVER_BINANCE_PERP`. 두 종목 모두 실측 `TRADING / TRADIFI_PERPETUAL`, REST 1분봉 지원. 기존 Binance Futures `@aggTrade` 실시간 스트림의 구독 목록에 추가했다. USDT 표시 영구선물은 원자재 현물 또는 거래소 만기선물과 다르다.
+- **공식 롱숏 비율 4종:** 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율. Binance `/futures/data/*` 무료 공개 REST의 **최소 5분 집계**로 수집한다. 실시간 WS 틱이 아니며, Taker 매수·매도 비율은 포지션 롱숏 비율과 다르다.
+- `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
+- `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
+- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](./examples/realtime_collector.py).
