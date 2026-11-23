@@ -1,3 +1,5 @@
+> **2026-11-23 최신 전환:** 금/WTI/Brent/비트코인의 가격 동향은 Binance 무료 실시간 Spot/TradFi 계약을 기본으로 사용합니다. VIX·국채 3M/5Y/10Y/30Y는 yfinance(지연 가능)이고 2Y는 [네이버 지정 페이지](https://m.stock.naver.com/marketindex/bond/US2YT=RR)의 **승인받은 자동 수집**이 목표입니다. 네이버 `robots.txt`가 차단하므로 허가 전에는 Treasury 일별 `BC_2YEAR`만 자동 수집합니다. 아래의 이전 yfinance fallback 설명은 변경 이력입니다. [최신 명세](./Market_Source_Policy_20261123.md).
+
 # Auto-Axe 수동 수집 레지스트리 및 입력 절차
 
 > 기준일 2026-11-22. **무료 공식 API/WS 또는 허용된 웹 수집으로 같은 정의와 시각의 값을 확보할 수 없을 때만** 수동 기록한다. 값 입력이 자동 수집으로 허위 표시되면 안 된다.
