@@ -101,7 +101,7 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 - [무료 지표 전수 명세](./Free_Data_Collection.md)
 - [무료 실행 가이드](./Realtime_Quickstart.md)
 - [수동 입력 정책·CSV](./Manual_Collection.md)
-- [Python 수집기](./examples/realtime_collector.py), [환경변수](./examples/.env.example)
+- [Python 수집기](../examples/realtime_collector.py), [환경변수](../examples/.env.example)
 
 
 ## 미국 국채 만기 구성
@@ -122,4 +122,4 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 - **공식 롱숏 비율 4종:** 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율. Binance `/futures/data/*` 무료 공개 REST의 **최소 5분 집계**로 수집한다. 실시간 WS 틱이 아니며, Taker 매수·매도 비율은 포지션 롱숏 비율과 다르다.
 - `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
 - `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
-- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](./examples/realtime_collector.py).
+- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](../examples/realtime_collector.py).

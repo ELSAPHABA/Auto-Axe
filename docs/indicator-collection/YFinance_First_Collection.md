@@ -68,7 +68,7 @@ python docs/examples/realtime_collector.py gold --interval 60
 
 1. yfinance가 지원하는 시계열도 각 종목별 **시장 운영시간, 최신바 시각, 제공 지연, 빈봉, 서머타임**을 측정한다.
 2. **금 현물(spot)과 선물, 원유 현물과 선물, Treasury 공식 par yield와 Yahoo Cboe 금리지표는 서로 다른 시리즈**로 유지한다.
-3. yfinance 공식 WebSocket 클래스는 있지만 실제 `^IRX,^FVX,^TNX,^TYX,^VIX,CL=F,BZ=F`의 WS 이벤트 전달 및 무지연 업데이트를 확인하지 못했다. **기본은 `Ticker.history` 폴링**, WebSocket은 [진단 예제](./examples/yfinance_probe.py)로만 검증한다.
+3. yfinance 공식 WebSocket 클래스는 있지만 실제 `^IRX,^FVX,^TNX,^TYX,^VIX,CL=F,BZ=F`의 WS 이벤트 전달 및 무지연 업데이트를 확인하지 못했다. **기본은 `Ticker.history` 폴링**, WebSocket은 [진단 예제](../examples/yfinance_probe.py)로만 검증한다.
 4. Yahoo/yfinance는 [개인·연구용 이용 제한](https://github.com/ranaroussi/yfinance)과 Yahoo의 콘텐츠 이용권 문제가 있어 **자동매매와 외부 재배포**에 사용하기 전 관련 약관을 반드시 확인한다.
 5. **2년물 fallback 없음**: 무료 Treasury feed 장애 시 결측·지연으로 표시한다. 2년 금리 선물을 공식 현물 수익률로 위장하지 않는다.
 

@@ -203,7 +203,7 @@ HTML DOM 구조나 공표 제목이 바뀌면 **manual_review_required**로 전�
 
 [Manual_Collection.md](./Manual_Collection.md)의 CSV 구조를 사용한다. 점수/가격/공개 기준시각/자산 정의·지연정보/출처·조회시각을 기록하고, 실제 데이터 이용 가능 시점보다 이전에 백테스트 신호를 생성하지 않는다. 무료 자동 수집이 어려운 경우가 있어도 **유료로 전환하지 않고 수동** 처리한다.
 
-실행 예제: [examples/realtime_collector.py](./examples/realtime_collector.py) · [환경설정](./examples/.env.example).
+실행 예제: [examples/realtime_collector.py](../examples/realtime_collector.py) · [환경설정](../examples/.env.example).
 
 ## 10. 무료 API를 못 쓰는 경우: 수동 입력 명령
 
@@ -233,4 +233,4 @@ python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
 - **공식 롱숏 비율 4종:** 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율. Binance `/futures/data/*` 무료 공개 REST의 **최소 5분 집계**로 수집한다. 실시간 WS 틱이 아니며, Taker 매수·매도 비율은 포지션 롱숏 비율과 다르다.
 - `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
 - `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
-- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](./examples/realtime_collector.py).
+- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](../examples/realtime_collector.py).
