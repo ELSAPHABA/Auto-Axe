@@ -8,6 +8,7 @@
 | WTI 가격 동향 | Binance Futures `CLUSDT` | 원유 연동 영구선물 라이브 틱. NYMEX 선물 아님 |
 | Brent 가격 동향 | Binance Futures `BZUSDT` | 원유 연동 영구선물 라이브 틱. ICE/NYMEX 선물 아님 |
 | 비트코인 | Binance Spot `BTCUSDT` | Spot 실시간 체결, USD가 아닌 USDT 호가 |
+| 나스닥 100 선물·연동 가격 | **MEXC Futures `NAS100_USDT` WebSocket 후보(지수 연동 영구선물)**; Binance Futures `QQQUSDT`(QQQ ETF 연동 영구선물) 참고; yfinance `NQ=F`(CME 실제 선물 지연 1분봉) 비교 | **MEXC 직접 실시간 수신 미검증**, WebSocket Protobuf 전환 2026-12-01 예정. 서로 다른 계약 가격이며 NQ=F 무지연 아님. [수집 방안](./Nasdaq100_Futures_Data_Sources.md) |
 | VIX | yfinance `^VIX` | Cboe 원지수 후보, 지연 가능. `UVXYUSDT`는 대체 불가 |
 | 미국 국채 3개월 | yfinance `^IRX` | 13-week Bill 지표, 지연 가능 |
 | 미국 국채 2년 | Naver `US2YT=RR` **승인 후에만 수집** | [원본 페이지](https://m.stock.naver.com/marketindex/bond/US2YT=RR). `robots.txt` 차단으로 현재 기본은 Treasury `BC_2YEAR` 공식 일별 |
