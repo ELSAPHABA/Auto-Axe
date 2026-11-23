@@ -1,0 +1,77 @@
+# Auto-Axe 최신 데이터 소스 정책 (2026-11-23)
+
+## 1. 변경 범위
+
+2026-11-23 사용자 요청에 따라 yfinance의 **지연 가능 가격 시세** 수집을 Binance의 공개 체결 스트림으로 전환한다. 미국 국채 2년물의 목표 출처는 사용자가 지정한 [네이버 증권 2년물 `US2YT=RR`](https://m.stock.naver.com/marketindex/bond/US2YT=RR)이다.
+
+**실제 자동화 현황:** 네이버 robots.txt는 2026-11-23 현재 `User-agent: * / Disallow: /`이다. 따라서 기술적으로 데이터 필드를 확인했더라도 무허가 자동 스크래핑은 실행하지 않는다. `naver-2y` 명령은 환경변수 `AUTO_AXE_NAVER_SCRAPE_AUTHORIZED=1`이 설정되어 있고 적법한 수집 권한을 확보한 경우에만 실행된다. 기본 동작은 미국 재무부 공식 무료 일별 `BC_2YEAR`를 사용하는 `treasury-five`이다.
+
+## 2. 대상별 기본 데이터 소스
+
+| 지표 | 기존 기본 | 새 기본 | 새 내부 식별자 | 정확한 상품 정의 |
+|---|---|---|---|---|
+| 금 가격 동향 | yfinance `GC=F` (금 선물), Gold API 현물 추정 | **Binance Futures WS** `XAUUSDT@aggTrade` | `GOLD_BINANCE_PERP` | Binance TradFi 금 연동 영구선물 **USDT 기준** |
+| WTI 가격 동향 | yfinance `CL=F` | **Binance Futures WS** `CLUSDT@aggTrade` | `WTI_BINANCE_PERP` | Binance 원유 연동 영구선물 **USDT 기준** |
+| Brent 가격 동향 | yfinance `BZ=F` | **Binance Futures WS** `BZUSDT@aggTrade` | `BRENT_BINANCE_PERP` | Binance Brent 연동 영구선물 **USDT 기준** |
+| 비트코인 | yfinance `BTC-USD` | **Binance Spot WS** `BTCUSDT@trade` | `BITCOIN_BINANCE_SPOT` | Binance BTC/USDT 현물 **USDT 기준** |
+| VIX | yfinance `^VIX` | yfinance `^VIX` 유지 | `VIX` | Cboe VIX 지수 (지연 가능) |
+| 미국 국채 3개월 | yfinance `^IRX` | 변경 없음 | `UST_3M` | Yahoo 13주물 금리지표 |
+| 미국 국채 2년 | Treasury `BC_2YEAR` | **네이버 증권 `US2YT=RR`** *(승인 시에만)* | `UST_2Y` | 네이버 게시 2년물 수익률(%) |
+| 미국 국채 5년 | yfinance `^FVX` | 변경 없음 | `UST_5Y` | Yahoo 5년물 금리지표 |
+| 미국 국채 10년 | yfinance `^TNX` | 변경 없음 | `UST_10Y` | Yahoo 10년물 금리지표 |
+| 미국 국채 30년 | yfinance `^TYX` | 변경 없음 | `UST_30Y` | Yahoo 30년물 금리지표 |
+
+- Binance **실시간**은 **해당 Binance 계약/현물 시장의 최신 거래 이벤트**라는 뜻이다. 현물 금(XAU/USD)이나 CME 금·원유 선물 자체의 틱을 대체할 수 없다. 스트림 연결 성공 ≠ 지연 0 검증.
+- Binance 원유·금 TradFi 계약은 거래시간·휴장·유동성 제한이 있을 수 있다. 이벤트 수신이 없을 때는 최신 시각만으로 시장이 열렸다고 간주하지 않는다.
+- Binance `USDT` 호가를 `USD` 호가나 USD 현물 벤치마크로 환산 없이 합치지 않는다.
+- 기존 현물 원본값이 필요한 경우 **Gold API 현물 참고값**(별도 `gold-spot-reference`), **EIA WTI/Brent 일별 현물**, **Treasury 공식 5개 만기 일별**, **Cboe VIX EOD**를 원본 시계열로 *분리*한다.
+- **두바이유는 수집 대상에서 제외**되어 있다.
+
+## 3. 네이버 2년물 실증과 수집 권한
+
+원본 페이지: [m.stock.naver.com/marketindex/bond/US2YT=RR](https://m.stock.naver.com/marketindex/bond/US2YT=RR).
+
+2026-11-23 HTTP 실증:
+- 원본 HTML: HTTP 200.
+- 실제 화면 데이터 공급 엔드포인트: `GET https://m.stock.naver.com/front-api/marketIndex/bondList?countryCode=USA` → HTTP 200 JSON.
+- 해당 레코드 선택: `result[].reutersCode == "US2YT=RR"`.
+- 주요 필드: `closePrice`(수익률 숫자 문자열), `localTradedAt`(타임존 포함 관측시각), `priceDataType`, `delayTime`, `marketStatus`, `name`.
+- 실측 응답 예시는 `closePrice="4.6490"`, `localTradedAt="2026-11-20T17:05:00-05:00"`, `priceDataType="REALTIME"`, `delayTime=0`이었다. 이는 **응답에 표시된 메타데이터**이지 수집자에 대한 무지연 전송 권리·실시간 보장이 아니다.
+- **권한**: `https://m.stock.naver.com/robots.txt` 에서 `User-agent: *` 및 `Disallow: /` 확인. 자동 데이터 추출은 금지/미승인 상태로 취급하고 **기본 비활성화**. 서면 승인·권리 검토 시 활성화하며, 403·429·요청 제한을 우회하지 않는다.
+
+네이버 수집 권한이 없으면 `treasury-five` (공식 일별 값)로 기록하고 `NAVER_US2Y_UNAVAILABLE`을 상태로 남긴다. 두 출처의 거래 시각·출처·정의를 섞거나, 공식 일별값을 네이버 실시간 데이터로 표기하지 않는다.
+
+## 4. 코드 구현
+
+```bash
+python -m pip install -r docs/examples/requirements.txt
+# Binance 시장에서 실제 틱이 발생하면 즉시 출력, 끊어지면 백오프 재연결
+python docs/examples/realtime_collector.py binance-live
+# Binance 선물 REST 마지막 가격 단발 조회
+python docs/examples/realtime_collector.py binance-futures
+# 금 연동 영구선물 단발 조회(기존 gold 명령 호환)
+python docs/examples/realtime_collector.py gold
+# 금 현물 참고 지표는 별도이며 기본 실시간 시세로 사용하지 않음
+python docs/examples/realtime_collector.py gold-spot-reference
+# Binance가 해당 원본을 제공하지 않는 지표만 yfinance
+python docs/examples/realtime_collector.py yf-market
+# Naver 수집 허가 없을 때는 오류 메시지와 함께 자동 수집 중단
+python docs/examples/realtime_collector.py naver-2y
+# 허가를 취득했다면 (예: PowerShell) :
+# $env:AUTO_AXE_NAVER_SCRAPE_AUTHORIZED='1'
+# python docs/examples/realtime_collector.py naver-2y --interval 60
+# 공식 2년물 일별 fallback/5개 만기 전체 검증
+python docs/examples/realtime_collector.py treasury-five
+```
+
+`binance-live`는 Binance Spot `BTCUSDT@trade` 및 Futures `XAUUSDT/CLUSDT/BZUSDT@aggTrade`를 **동시 처리**, WebSocket 재연결 및 트레이드 ID·거래량·타임스탬프 보존. 실운영에는 거래 시간 정책 확인, 누락 구간 REST 백필, 연결 상태 감지, 레이트 리밋 준수가 추가 필요하다.
+
+## 5. 출처
+
+- [Binance Spot market-data documentation](https://developers.binance.com/en/docs/products/spot/web-socket-streams)
+- [Binance USDⓈ-M Futures market streams](https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/Introduction)
+- [Binance API 검증 및 관련 계약 차이](./Binance_API_Coverage.md)
+- [네이버 원본 2년물](https://m.stock.naver.com/marketindex/bond/US2YT=RR) · [네이버 robots](https://m.stock.naver.com/robots.txt)
+- [U.S. Treasury 공식 일별 수익률 XML](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed)
+
+이 프로젝트는 무상·허가된 데이터 수집을 원칙으로 하며, 유료·허가되지 않은 실시간 데이터의 무단 재배포와 스크래핑을 포함하지 않는다.
