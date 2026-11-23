@@ -8,6 +8,8 @@
 | WTI 가격 동향 | Binance Futures `CLUSDT` | 원유 연동 영구선물 라이브 틱. NYMEX 선물 아님 |
 | Brent 가격 동향 | Binance Futures `BZUSDT` | 원유 연동 영구선물 라이브 틱. ICE/NYMEX 선물 아님 |
 | 비트코인 | Binance Spot `BTCUSDT` | Spot 실시간 체결, USD가 아닌 USDT 호가 |
+| 미국 개별주식 PER·PBR·ROE | **yfinance `Ticker.info`: `trailingPE`, `forwardPE`, `priceToBook`, `returnOnEquity`** | 기업별 필드 누락 가능, 후행/예상 PER 구분; ROE 원본은 비율. ETF QLD는 기업 재무비율로 취급하지 않음. [상세](./YFinance_Valuation_and_Moving_Averages.md) |
+| 이동평균선 SMA·EMA | **yfinance `Ticker.history` OHLCV 조회 → 로컬 계산** | 일봉 SMA 5·20·60·120·200 및 EMA, 분봉도 자체 계산. Yahoo `fiftyDayAverage`/`twoHundredDayAverage`는 참고. [상세](./YFinance_Valuation_and_Moving_Averages.md) |
 | 미국 주식·ETF 당일 누적 거래량 (1초 스냅샷) | **yfinance WebSocket `day_volume`**; NVDA·QLD 등 | WebSocket 신규 메시지마다 누적 거래량 갱신, **로컬 1초 스케줄러가 최신값 기록**. Yahoo 메시지의 1초 주기 도착·무지연·통합시장 거래량 보장 없음. 구현 전 실측 필요. [상세 명세](./YFinance_1s_Stock_Cumulative_Volume.md) |
 | 나스닥 100 선물·연동 가격 | **MEXC Futures `NAS100_USDT` WebSocket 후보(지수 연동 영구선물)**; Binance Futures `QQQUSDT`(QQQ ETF 연동 영구선물) 참고; yfinance `NQ=F`(CME 실제 선물 지연 1분봉) 비교 | **MEXC 직접 실시간 수신 미검증**, WebSocket Protobuf 전환 2026-12-01 예정. 서로 다른 계약 가격이며 NQ=F 무지연 아님. [수집 방안](./Nasdaq100_Futures_Data_Sources.md) |
 | VIX | yfinance `^VIX` | Cboe 원지수 후보, 지연 가능. `UVXYUSDT`는 대체 불가 |
