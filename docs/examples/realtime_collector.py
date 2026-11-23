@@ -113,7 +113,7 @@ BINANCE_SPOT_SYMBOLS = {
     "BITCOIN_BINANCE_SPOT": ("BTCUSDT", "spot_crypto", "USDT/BTC"),
 }
 BINANCE_FUTURES_REST = "https://fapi.binance.com/fapi/v1"
-BINANCE_FUTURES_WS = "wss://fstream.binance.com/stream?streams="
+BINANCE_FUTURES_WS = "wss://fstream.binance.com/market/stream?streams="
 BINANCE_SPOT_WS = "wss://data-stream.binance.vision/stream?streams="
 NAVER_2Y_PAGE = "https://m.stock.naver.com/marketindex/bond/US2YT=RR"
 NAVER_BOND_LIST = "https://m.stock.naver.com/front-api/marketIndex/bondList"
