@@ -123,7 +123,7 @@ BINANCE_LONGSHORT_TYPES = {
     "taker_volume": ("/takerlongshortRatio", "taker_buy_sell_volume_ratio"),
 }
 BINANCE_LONGSHORT_PERIODS = ("5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d")
-BINANCE_LONGSHORT_SYMBOLS = ("BTCUSDT",) + tuple(value[0] for value in BINANCE_TRADIFI_SYMBOLS.values())
+BINANCE_LONGSHORT_SYMBOLS = ("BTCUSDT",) + tuple(value[0] for value in BINANCE_TRADFI_SYMBOLS.values())
 BINANCE_RATIO_SEEN = {}  # In-process dedup; durable storage must also key on period end.
 BINANCE_FUTURES_WS = "wss://fstream.binance.com/market/stream?streams="
 BINANCE_SPOT_WS = "wss://data-stream.binance.vision/stream?streams="
