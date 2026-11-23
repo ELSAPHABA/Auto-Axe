@@ -11,6 +11,8 @@
 | 지표 | 기존 기본 | 새 기본 | 새 내부 식별자 | 정확한 상품 정의 |
 |---|---|---|---|---|
 | 금 가격 동향 | yfinance `GC=F` (금 선물), Gold API 현물 추정 | **Binance Futures WS** `XAUUSDT@aggTrade` | `GOLD_BINANCE_PERP` | Binance TradFi 금 연동 영구선물 **USDT 기준** |
+| 은 가격 동향 | 해당 지표 미수집 | **Binance Futures WS** `XAGUSDT@aggTrade` | `SILVER_BINANCE_PERP` | 은 연동 USDT 영구선물 |
+| 구리 가격 동향 | 해당 지표 미수집 | **Binance Futures WS** `COPPERUSDT@aggTrade` | `COPPER_BINANCE_PERP` | 구리 연동 USDT 영구선물 |
 | WTI 가격 동향 | yfinance `CL=F` | **Binance Futures WS** `CLUSDT@aggTrade` | `WTI_BINANCE_PERP` | Binance 원유 연동 영구선물 **USDT 기준** |
 | Brent 가격 동향 | yfinance `BZ=F` | **Binance Futures WS** `BZUSDT@aggTrade` | `BRENT_BINANCE_PERP` | Binance Brent 연동 영구선물 **USDT 기준** |
 | 비트코인 | yfinance `BTC-USD` | **Binance Spot WS** `BTCUSDT@trade` | `BITCOIN_BINANCE_SPOT` | Binance BTC/USDT 현물 **USDT 기준** |
@@ -75,3 +77,11 @@ python docs/examples/realtime_collector.py treasury-five
 - [U.S. Treasury 공식 일별 수익률 XML](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed)
 
 이 프로젝트는 무상·허가된 데이터 수집을 원칙으로 하며, 유료·허가되지 않은 실시간 데이터의 무단 재배포와 스크래핑을 포함하지 않는다.
+
+## 구리·은 및 Binance 롱숏 비율 추가 (2026-11-23)
+
+- **구리:** Binance Futures `COPPERUSDT`, 내부 `COPPER_BINANCE_PERP`; **은:** `XAGUSDT`, 내부 `SILVER_BINANCE_PERP`. 두 종목 모두 실측 `TRADING / TRADIFI_PERPETUAL`, REST 1분봉 지원. 기존 Binance Futures `@aggTrade` 실시간 스트림의 구독 목록에 추가했다. USDT 표시 영구선물은 원자재 현물 또는 거래소 만기선물과 다르다.
+- **공식 롱숏 비율 4종:** 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율. Binance `/futures/data/*` 무료 공개 REST의 **최소 5분 집계**로 수집한다. 실시간 WS 틱이 아니며, Taker 매수·매도 비율은 포지션 롱숏 비율과 다르다.
+- `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
+- `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
+- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](./examples/realtime_collector.py).
