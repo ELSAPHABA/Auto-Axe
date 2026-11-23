@@ -97,3 +97,9 @@ python docs/examples/realtime_collector.py naver-2y
 - **SMA·EMA:** `Ticker.history`의 가격 OHLCV를 사용해 **5·20·60·120·200일 SMA** 및 원하는 EMA/분봉 이동평균을 직접 계산한다. Yahoo 50일·200일 평균 필드는 보조 참고 값이다.
 - **백테스트 주의:** 당일 조회된 기업 비율을 과거에 소급 적용하지 않고 당시 공시된 재무 데이터에만 접근하도록 설계한다. **문서화만 완료**.
 - [PER·PBR·ROE 및 이동평균선 상세 명세/예제](./YFinance_Valuation_and_Moving_Averages.md).
+
+## 최근 5·10·20거래일 최고가·최저가
+
+- **NVDA·QLD 등 미국 주식/ETF**의 yfinance 일봉 `High`·`Low`를 사용해 최근 5·10·20개 **확정 거래일** 최고가/최저가를 직접 계산한다. **총 6개 지표**: `HIGH_5D`, `HIGH_10D`, `HIGH_20D`, `LOW_5D`, `LOW_10D`, `LOW_20D`.
+- 일봉 마감 후에는 당일 완성봉을 포함하고, 장중 돌파 기준으로 사용할 때는 **직전 N개 완료 일봉**만 반영한다. 주말·휴장일을 세지 않으며 미완성 일봉과 결측을 구별한다.
+- [계산식·Python 예제·가격 조정/백테스트 주의사항](./YFinance_Valuation_and_Moving_Averages.md). **수집기 코드는 변경하지 않음.**
