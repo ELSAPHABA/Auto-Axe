@@ -4,8 +4,6 @@
 
 2026-11-23 사용자 요청에 따라 yfinance의 **지연 가능 가격 시세** 수집을 Binance의 공개 체결 스트림으로 전환한다. 미국 국채 2년물의 목표 출처는 사용자가 지정한 [네이버 증권 2년물 `US2YT=RR`](https://m.stock.naver.com/marketindex/bond/US2YT=RR)이다.
 
-**실제 자동화 현황:** 네이버 robots.txt는 2026-11-23 현재 `User-agent: * / Disallow: /`이다. 따라서 기술적으로 데이터 필드를 확인했더라도 무허가 자동 스크래핑은 실행하지 않는다. `naver-2y` 명령은 환경변수 `AUTO_AXE_NAVER_SCRAPE_AUTHORIZED=1`이 설정되어 있고 적법한 수집 권한을 확보한 경우에만 실행된다. 기본 동작은 미국 재무부 공식 무료 일별 `BC_2YEAR`를 사용하는 `treasury-five`이다.
-
 ## 2. 대상별 기본 데이터 소스
 
 | 지표 | 기존 기본 | 새 기본 | 새 내부 식별자 | 정확한 상품 정의 |
@@ -29,7 +27,7 @@
 - 기존 현물 원본값이 필요한 경우 **Gold API 현물 참고값**(별도 `gold-spot-reference`), **EIA WTI/Brent 일별 현물**, **Treasury 공식 5개 만기 일별**, **Cboe VIX EOD**를 원본 시계열로 *분리*한다.
 - **두바이유는 수집 대상에서 제외**되어 있다.
 
-## 3. 네이버 2년물 실증과 수집 권한
+## 3. 네이버 2년물 실증
 
 원본 페이지: [m.stock.naver.com/marketindex/bond/US2YT=RR](https://m.stock.naver.com/marketindex/bond/US2YT=RR).
 
@@ -38,10 +36,7 @@
 - 실제 화면 데이터 공급 엔드포인트: `GET https://m.stock.naver.com/front-api/marketIndex/bondList?countryCode=USA` → HTTP 200 JSON.
 - 해당 레코드 선택: `result[].reutersCode == "US2YT=RR"`.
 - 주요 필드: `closePrice`(수익률 숫자 문자열), `localTradedAt`(타임존 포함 관측시각), `priceDataType`, `delayTime`, `marketStatus`, `name`.
-- 실측 응답 예시는 `closePrice="4.6490"`, `localTradedAt="2026-11-20T17:05:00-05:00"`, `priceDataType="REALTIME"`, `delayTime=0`이었다. 이는 **응답에 표시된 메타데이터**이지 수집자에 대한 무지연 전송 권리·실시간 보장이 아니다.
-- **권한**: `https://m.stock.naver.com/robots.txt` 에서 `User-agent: *` 및 `Disallow: /` 확인. 자동 데이터 추출은 금지/미승인 상태로 취급하고 **기본 비활성화**. 서면 승인·권리 검토 시 활성화하며, 403·429·요청 제한을 우회하지 않는다.
-
-네이버 수집 권한이 없으면 `treasury-five` (공식 일별 값)로 기록하고 `NAVER_US2Y_UNAVAILABLE`을 상태로 남긴다. 두 출처의 거래 시각·출처·정의를 섞거나, 공식 일별값을 네이버 실시간 데이터로 표기하지 않는다.
+- 실측 응답 예시는 `closePrice="4.6490"`, `localTradedAt="2026-11-20T17:05:00-05:00"`, `priceDataType="REALTIME"`, `delayTime=0`이었다.
 
 ## 4. 코드 구현
 
@@ -57,11 +52,6 @@ python docs/examples/realtime_collector.py gold
 python docs/examples/realtime_collector.py gold-spot-reference
 # Binance가 해당 원본을 제공하지 않는 지표만 yfinance
 python docs/examples/realtime_collector.py yf-market
-# Naver 수집 허가 없을 때는 오류 메시지와 함께 자동 수집 중단
-python docs/examples/realtime_collector.py naver-2y
-# 허가를 취득했다면 (예: PowerShell) :
-# $env:AUTO_AXE_NAVER_SCRAPE_AUTHORIZED='1'
-# python docs/examples/realtime_collector.py naver-2y --interval 60
 # 공식 2년물 일별 fallback/5개 만기 전체 검증
 python docs/examples/realtime_collector.py treasury-five
 ```
@@ -73,10 +63,8 @@ python docs/examples/realtime_collector.py treasury-five
 - [Binance Spot market-data documentation](https://developers.binance.com/en/docs/products/spot/web-socket-streams)
 - [Binance USDⓈ-M Futures market streams](https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/Introduction)
 - [Binance API 검증 및 관련 계약 차이](./Binance_API_Coverage.md)
-- [네이버 원본 2년물](https://m.stock.naver.com/marketindex/bond/US2YT=RR) · [네이버 robots](https://m.stock.naver.com/robots.txt)
+- [네이버 원본 2년물](https://m.stock.naver.com/marketindex/bond/US2YT=RR)
 - [U.S. Treasury 공식 일별 수익률 XML](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed)
-
-이 프로젝트는 무상·허가된 데이터 수집을 원칙으로 하며, 유료·허가되지 않은 실시간 데이터의 무단 재배포와 스크래핑을 포함하지 않는다.
 
 ## 구리·은 및 Binance 롱숏 비율 추가 (2026-11-23)
 
