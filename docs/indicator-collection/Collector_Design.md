@@ -2,6 +2,13 @@
 
 > **2026-11-23 현재:** Binance 무료 실시간 시세는 BTC 현물·금/WTI/Brent 연동 영구선물 기본, yfinance는 VIX·국채 3M/5Y/10Y/30Y만 담당. 2년 국채는 네이버 승인형 데이터 수집 목표이며 허가 전 Treasury 공식 일별값을 사용한다. [최신 소스 정책](./Market_Source_Policy_20261123.md).
 
+## 미국 주식·ETF 누적 거래량 1초 스냅샷 (추가 설계)
+
+- NVDA·QLD 등 미국 주식/ETF는 **yfinance WebSocket `day_volume` 이벤트 수신**을 별도 피드로 운영한다.
+- 1초 기록은 **로컬 샘플러**가 담당한다. 새로운 WebSocket 업데이트가 없으면 원본 누적값과 원본 타임스탬프를 유지하고 `no_update/stale`로 표기한다. **Yahoo 1Hz 데이터 전송이나 무지연 시세를 보장하지 않는다.**
+- `[symbol, source_event_at, received_at, sampled_at, day_volume, status]`를 보존하며 거래량 리셋·역순 메시지·휴장·재연결을 별도 검증한다.
+- [yfinance 주식·ETF 누적 거래량 1Hz 수집 명세](./YFinance_1s_Stock_Cumulative_Volume.md). **현재 운영 코드 미구현**.
+
 ## 1. 모듈 구성
 
 ```mermaid
