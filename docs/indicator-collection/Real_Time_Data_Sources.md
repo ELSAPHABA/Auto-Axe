@@ -4,6 +4,7 @@
 
 | 항목 | 기본 스트림 | 데이터 정의 |
 |---|---|---|
+| 미국 주식·ETF 누적 거래량 (NVDA·QLD 등) | yfinance `AsyncWebSocket` 수신 `day_volume` → 로컬 1Hz 스냅샷 | 1초마다 최근 누적값 또는 `stale/no_update` 기록; WS 원본 갱신 매초·무지연 보장 없음. [상세](./YFinance_1s_Stock_Cumulative_Volume.md) |
 | 금 연동 가격 | `wss://fstream.binance.com/market/stream?streams=xauusdt@aggTrade` | Binance `XAUUSDT` TradFi 영구선물 체결 |
 | 은 연동 가격 | `wss://fstream.binance.com/market/stream?streams=xagusdt@aggTrade` | Binance 은 연동 영구선물 체결 |
 | 구리 연동 가격 | `wss://fstream.binance.com/market/stream?streams=copperusdt@aggTrade` | Binance 구리 연동 영구선물 체결 |
