@@ -1,35 +1,24 @@
-# Auto-Axe 무료 지표 데이터 소스 요약
+# Auto-Axe 수집 지표별 기본 소스 — 2026-11-23
 
-> 최신 수집 정책: **yfinance가 지원하는 시장가격·수익률 지표는 yfinance 우선**. 미지원/비해당 자료는 기관 무료 API·RSS·ICS·CSV → 허용된 스크래핑 → 수동 입력. 유료 피드 제외. 정확한 근거는 [YFinance_First_Collection.md](./YFinance_First_Collection.md).
-
-## 국채 — 고정 5종
-
-| 만기 | Auto-Axe 식별자 | 기본 소스 |
+| 지표 | 기본 공급원 | 갱신 / 주의 |
 |---|---|---|
-| 3개월 | `UST_3M` | yfinance `^IRX` |
-| 2년 | `UST_2Y` | US Treasury 무료 XML `BC_2YEAR` |
-| 5년 | `UST_5Y` | yfinance `^FVX` |
-| 10년 | `UST_10Y` | yfinance `^TNX` |
-| 30년 | `UST_30Y` | yfinance `^TYX` |
+| 금 가격 동향 | Binance Futures `XAUUSDT` | 금 연동 영구선물 라이브 틱. 금 현물/COMEX 선물 아님 |
+| WTI 가격 동향 | Binance Futures `CLUSDT` | 원유 연동 영구선물 라이브 틱. NYMEX 선물 아님 |
+| Brent 가격 동향 | Binance Futures `BZUSDT` | 원유 연동 영구선물 라이브 틱. ICE/NYMEX 선물 아님 |
+| 비트코인 | Binance Spot `BTCUSDT` | Spot 실시간 체결, USD가 아닌 USDT 호가 |
+| VIX | yfinance `^VIX` | Cboe 원지수 후보, 지연 가능. `UVXYUSDT`는 대체 불가 |
+| 미국 국채 3개월 | yfinance `^IRX` | 13-week Bill 지표, 지연 가능 |
+| 미국 국채 2년 | Naver `US2YT=RR` **승인 후에만 수집** | [원본 페이지](https://m.stock.naver.com/marketindex/bond/US2YT=RR). `robots.txt` 차단으로 현재 기본은 Treasury `BC_2YEAR` 공식 일별 |
+| 미국 국채 5년 | yfinance `^FVX` | 지연 가능 |
+| 미국 국채 10년 | yfinance `^TNX` | 지연 가능 |
+| 미국 국채 30년 | yfinance `^TYX` | 지연 가능 |
+| CNN 공포·탐욕 | [CNN](https://edition.cnn.com/markets/fear-and-greed) | 자동 스크래핑 허가 전 수동 |
+| 펜타곤 피자지수 | [PizzINT](https://www.pizzint.watch/) | 수집 권한 확인 전 수동 |
+| 기업 가이던스 | SEC EDGAR/기업 IR | 원문과 추출 수치 구분 |
+| 미국 경제지표 일정·실제값 | BLS·BEA·Census 공개 자료 | 발표와 수정 이력 구분 |
+| 파생 만기 캘린더 | OCC·CME·Binance Options (각 상품별) | 거래소/계약마다 다름 |
+| 중앙은행 금리 (Fed·BoJ·BoE·ECB) | 각 중앙은행 공식 발표/공개 시계열 | 실시간 시장 금리와 다름 |
 
-참고: `2YY=F`와 `ZT=F`는 2년물 **선물**로 현물 파 수익률에 대응하지 않는다. Treasury XML에서는 5개 만기의 공식 일별 수익률을 모두 별도로 교차검증할 수 있다.
+**두바이유는 수집 대상에 포함하지 않는다.** 시장가격은 Binance 공개 시세, VIX·3M/5Y/10Y/30Y 수익률은 yfinance, 2Y는 네이버 원본 허가 시 스크래핑 / 무허가 동안 Treasury 공식 데이터가 기준이다.
 
-## 나머지 요청 지표
-
-| 지표 | 우선 무료 소스 | 비고 |
-|---|---|---|
-| VIX | **yfinance `^VIX`** | 무지연 미보증; Cboe CSV는 일별 확인용 |
-| WTI | **yfinance `CL=F`** | NYMEX 원유선물; EIA 일별 WTI 현물과 별개 |
-| Brent | **yfinance `BZ=F`** | NYMEX Brent Financial 선물; EIA 현물과 별개 |
-| 금 선물 | **yfinance `GC=F`** | COMEX 금선물; 금 현물가격은 Gold API 유지 |
-| 비트코인 | **yfinance `BTC-USD`** | Coinbase/Binance 공개 WS는 개별 거래소 체결값 보조 |
-| CNN 공탐 | [edition.cnn.com](https://edition.cnn.com/markets/fear-and-greed) | 허가 전 자동 스크래핑 불가 → 수동 |
-| PizzINT 피자 | [pizzint.watch](https://www.pizzint.watch/) | JSON 존재, robots·약관 권한 확인 전 수동 |
-| 기업 가이던스 | SEC EDGAR·기업 공식 IR RSS | 이벤트 원본 |
-| 경제지표·발표일정 | BLS·BEA·FOMC·Census | 원기관 공식 |
-| 파생상품 만기 | OCC/OIC·CME 공식 일정 | 계약별 최종 거래/처리일 별개 |
-| 미국·일본·영국·유로존 정책금리 | Fed·BOJ·BoE·ECB 공식 발표/API | 시장 금리지표로 정책금리 대체 금지 |
-
-**yfinance는 공식 데이터 라이선스의 대체가 아니다.** 무료·지연·개인연구 조건과 `source_event_at`, `received_at`을 기록한다.
-
-더 자세한 문서: [무료 전체 카탈로그](./Free_Data_Collection.md) · [시장 데이터 기본 설계](./YFinance_First_Collection.md) · [실행 명령](./Realtime_Quickstart.md).
+[최신 소스 정책](./Market_Source_Policy_20261123.md) · [수집기](./examples/realtime_collector.py).
