@@ -14,6 +14,7 @@
 | WTI 가격 동향 | yfinance `CL=F` | **Binance Futures WS** `CLUSDT@aggTrade` | `WTI_BINANCE_PERP` | Binance 원유 연동 영구선물 **USDT 기준** |
 | Brent 가격 동향 | yfinance `BZ=F` | **Binance Futures WS** `BZUSDT@aggTrade` | `BRENT_BINANCE_PERP` | Binance Brent 연동 영구선물 **USDT 기준** |
 | 비트코인 | yfinance `BTC-USD` | **Binance Spot WS** `BTCUSDT@trade` | `BITCOIN_BINANCE_SPOT` | Binance BTC/USDT 현물 **USDT 기준** |
+| 나스닥 100 선물·연동 신호 | 신규 지표 | **MEXC `NAS100_USDT` 무료 Futures WebSocket(개발/검증 후보)**; Binance `QQQUSDT` 별도 보조, yfinance `NQ=F` 지연 CME 기준 | `NASDAQ100_MEXC_PERP_USDT` / 별도 2시리즈 | MEXC는 지수 연동 영구선물, Binance는 QQQ ETF 연동 계약, Yahoo는 CME 실제 NQ 지연 시세. WS 수신 미검증; [조사 문서](./Nasdaq100_Futures_Data_Sources.md) |
 | VIX | yfinance `^VIX` | yfinance `^VIX` 유지 | `VIX` | Cboe VIX 지수 (지연 가능) |
 | 미국 국채 3개월 | yfinance `^IRX` | 변경 없음 | `UST_3M` | Yahoo 13주물 금리지표 |
 | 미국 국채 2년 | Treasury `BC_2YEAR` | **네이버 증권 `US2YT=RR`** *(승인 시에만)* | `UST_2Y` | 네이버 게시 2년물 수익률(%) |
