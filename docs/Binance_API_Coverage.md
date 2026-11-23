@@ -23,6 +23,8 @@
 |---|---|---|---|---|
 | 비트코인 | `BTCUSDT`, `BTCUSDC` | `BTCUSDT` | **TRADING** / 최근 1분봉 확인 | Binance Spot BTC/USDT는 yfinance `BTC-USD`의 USD 집계가 아니라 **USDT 가격** |
 | 금 | `PAXGUSDT`, `XAUTUSDT` (금 연계 토큰) | `XAUUSDT` TradFi 영구선물 | **TRADING** / 최근 1분봉 확인 | 금 토큰·영구선물은 Gold API XAU 현물가 및 COMEX `GC=F`와 다른 자산·계약 |
+| 은 | 직접 은 현물 없음 | `XAGUSDT` TradFi 영구선물 **TRADING**, REST 1분봉 성공 | 은 연동 선물, 현물/COMEX와 다름 |
+| 구리 | 직접 구리 현물 없음 | `COPPERUSDT` TradFi 영구선물 **TRADING**, REST 1분봉 성공 | 구리 연동 선물, 현물/COMEX와 다름 |
 | WTI | 직접 Spot 없음 | `CLUSDT` TradFi 영구선물 | **TRADING** / 최근 1분봉 확인 | Binance 영구선물은 EIA WTI 현물·NYMEX `CL=F` 선물이 아님 |
 | Brent | 직접 Spot 없음 | `BZUSDT` TradFi 영구선물 | **TRADING** / 최근 1분봉 확인 | Binance 영구선물은 EIA Brent 현물·NYMEX `BZ=F` 선물이 아님 |
 
@@ -79,3 +81,11 @@ curl 'https://fapi.binance.com/fapi/v1/klines?symbol=BZUSDT&interval=1m&limit=2'
 **2026-11-23 변경:** Binance Spot BTC/USDT 및 Binance TradFi 금·WTI·Brent 영구선물 실시간 거래 스트림은 기본 시장가격 공급원으로 전환되었다. yfinance는 VIX 및 국채 3M/5Y/10Y/30Y에 사용한다. 2Y는 네이버 원본의 수집 허가 전 Treasury 공식 일별값을 사용한다. 거래소 연결의 시장 시세를 기존 원유·금 현물/선물과 동일하다고 표시하지 않는다. 자세한 사항은 [최신 소스 정책](./Market_Source_Policy_20261123.md).
 
 무료 실증 재실행: `python docs/examples/binance_coverage_probe.py`. 수집기·시장지표 구별: [YFinance_First_Collection.md](./YFinance_First_Collection.md).
+
+## 구리·은 및 Binance 롱숏 비율 추가 (2026-11-23)
+
+- **구리:** Binance Futures `COPPERUSDT`, 내부 `COPPER_BINANCE_PERP`; **은:** `XAGUSDT`, 내부 `SILVER_BINANCE_PERP`. 두 종목 모두 실측 `TRADING / TRADIFI_PERPETUAL`, REST 1분봉 지원. 기존 Binance Futures `@aggTrade` 실시간 스트림의 구독 목록에 추가했다. USDT 표시 영구선물은 원자재 현물 또는 거래소 만기선물과 다르다.
+- **공식 롱숏 비율 4종:** 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율. Binance `/futures/data/*` 무료 공개 REST의 **최소 5분 집계**로 수집한다. 실시간 WS 틱이 아니며, Taker 매수·매도 비율은 포지션 롱숏 비율과 다르다.
+- `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
+- `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
+- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](./examples/realtime_collector.py).
