@@ -9,6 +9,7 @@
 | series_id | 화면/공식 출처 | 입력 항목 | 기록 시기 | 구별해야 할 것 |
 |---|---|---|---|---|
 | `CNN_FEAR_GREED` | [CNN Fear & Greed](https://edition.cnn.com/markets/fear-and-greed) | `score` (0~100), `category`, 화면 기준시각·조회시각 | 정기 점검(예: 미국 장 중/종료 후) | CNN 제공 점수 vs 자체 심리지표 |
+| `SEIBRO_OVS_STOCK_TOP50_SETTLEMENT` | [SEIBro 해외주식 종목별내역 TOP50](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921) | 국가·조회기간·조회기준일·매수결제/매도결제/순매수결제(USD), 종목코드·종목명·순위 | 결제 결과 게시 후 수동 조회 | **전체 시장 합계나 실시간 체결 데이터 아님.** 자동 스크래핑은 허용 조건 확인 전 비활성. [상세](./SEIBro_Overseas_Stock_Flows.md) |
 | `PENTAGON_PIZZA` | [pentagon.pizza](https://www.pizzint.watch/) | 화면의 활동 상태/공개 지수(있는 경우), 측정시각·관찰 메모 | 필요시 | Google Maps 외부 축적 금지; 독립·검증된 경제지표 아님 |
 | `VIX_INTRADAY` | [Cboe VIX](https://www.cboe.com/tradable_products/vix/) | 표기된 VIX 수준, 사이트 시각·지연표시 | 장중값이 꼭 필요할 때 | 공식 Cboe **일별 CSV**와 별도 |
 | `UST_10Y_INTRADAY` | [Treasury 공식 일별](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics) 외 수동 장중 수익률 출처 | 원본 출처, 현물/지표형, 10Y %, 화면 지연 | 장중 추적 필요 시 | 국채 현물 수익률 vs 선물 가격 |
