@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Auto-Axe reference collector (stdout JSON Lines, no orders).
-Commands: yf-market, treasury-five, gold, coinbase, binance, sec-8k, bls-calendar, bls-actual, fred, eia, vix-eod
+Commands: binance-live, binance-futures, gold, naver-2y, yf-market, treasury-five, coinbase, binance, sec-8k, bls-calendar, bls-actual, fred, eia, vix-eod
 Set env vars in docs/examples/.env.example. Respect source terms and credentials.
 """
 import argparse
@@ -82,8 +82,8 @@ def poll(name, interval, callback):
         time.sleep(max(interval, 1))
 
 
-# The five requested government bond yield tenors; Yahoo has no verified
-# official 2-year cash-yield ticker, so US Treasury XML supplies the 2Y value.
+# The five bond tenor definitions. US 2Y is the official Treasury daily fallback,
+# with an opt-in Naver page extraction only after written scraping authorization.
 TENORS = {
     "3M": ("^IRX", "BC_3MONTH"),
     "2Y": (None, "BC_2YEAR"),
@@ -99,12 +99,25 @@ YF_MARKET_SYMBOLS = {
     "UST_5Y": ("^FVX", "treasury_yield_index", "percent"),
     "UST_10Y": ("^TNX", "treasury_yield_index", "percent"),
     "UST_30Y": ("^TYX", "treasury_yield_index", "percent"),
-    "WTI_FUTURE": ("CL=F", "nymex_crude_futures_continuous", "USD/bbl"),
-    "BRENT_FUTURE": ("BZ=F", "nymex_brent_last_day_financial_futures", "USD/bbl"),
-    "GOLD_FUTURE": ("GC=F", "comex_gold_futures_continuous", "USD/troy_oz"),
-    "BITCOIN": ("BTC-USD", "crypto_usd_quote", "USD/BTC"),
 }
 YF_CHOICES = list(YF_MARKET_SYMBOLS)
+
+# Prices are BINANCE contracts, not Yahoo front-month futures or OTC spot.
+# USDT denomination is NOT the same as a USD settlement quote.
+BINANCE_TRADFI_SYMBOLS = {
+    "GOLD_BINANCE_PERP": ("XAUUSDT", "commodity_gold_linked_perpetual", "USDT/gold_contract_unit"),
+    "WTI_BINANCE_PERP": ("CLUSDT", "commodity_wti_linked_perpetual", "USDT/oil_contract_unit"),
+    "BRENT_BINANCE_PERP": ("BZUSDT", "commodity_brent_linked_perpetual", "USDT/oil_contract_unit"),
+}
+BINANCE_SPOT_SYMBOLS = {
+    "BITCOIN_BINANCE_SPOT": ("BTCUSDT", "spot_crypto", "USDT/BTC"),
+}
+BINANCE_FUTURES_REST = "https://fapi.binance.com/fapi/v1"
+BINANCE_FUTURES_WS = "wss://fstream.binance.com/stream?streams="
+BINANCE_SPOT_WS = "wss://data-stream.binance.vision/stream?streams="
+NAVER_2Y_PAGE = "https://m.stock.naver.com/marketindex/bond/US2YT=RR"
+NAVER_BOND_LIST = "https://m.stock.naver.com/front-api/marketIndex/bondList"
+
 
 
 def yf_market(selected, bar_interval="1m", period="1d"):
@@ -174,11 +187,82 @@ def treasury_five():
     raise RuntimeError("No Treasury daily yield curve entries found for current/previous month")
 
 
+def binance_futures_snapshot(selected=None):
+    """Read-only latest Binance TradFi perpetual prices, NOT spot/fixed futures."""
+    selected = selected or list(BINANCE_TRADFI_SYMBOLS)
+    for series in selected:
+        symbol, instrument_type, unit = BINANCE_TRADFI_SYMBOLS[series]
+        response = request("GET", BINANCE_FUTURES_REST + "/ticker/price",
+                           params={"symbol": symbol}).json()
+        if response.get("symbol") != symbol or response.get("price") is None:
+            raise RuntimeError(f"Unexpected Binance futures price response for {symbol}")
+        emit("binance_futures", series, float(response["price"]),
+             millis(response["time"]) if response.get("time") is not None else None,
+             symbol=symbol, instrument_type=instrument_type, unit=unit,
+             quote_currency="USDT", data_kind="perpetual_last_price",
+             market_status="unverified_session",
+             source_url=BINANCE_FUTURES_REST + "/ticker/price",
+             note="Exchange contract last trade; not gold spot or NYMEX/ICE dated futures")
+
+
 def gold():
+    """Legacy 'gold' command now uses Binance real-time-source XAU perp snapshot."""
+    binance_futures_snapshot(["GOLD_BINANCE_PERP"])
+
+
+def gold_spot_reference():
+    """Optional third-party gold spot *reference*: NOT Binance, NOT live."""
     data = request("GET", "https://api.gold-api.com/price/XAU").json()
-    emit("gold-api", "XAUUSD.spot_estimate", data.get("price"),
+    if data.get("price") is None:
+        raise RuntimeError("Gold API returned no numeric reference price")
+    emit("gold-api", "XAUUSD.spot_reference", float(data["price"]),
          data.get("updatedAt") or data.get("updated_at"), unit="USD/troy_oz",
-         price_type="third_party_spot_estimate", raw_timestamp=data.get("updatedAt"))
+         instrument_type="third_party_spot_estimate", raw_timestamp=data.get("updatedAt"),
+         note="Separate reference; never merge with Binance XAUUSDT perp quotes")
+
+
+def naver_2y():
+    """Source: Naver US2YT=RR page's public backing JSON; ONLY with consent.
+
+    Naver robots.txt currently says 'Disallow: /' for all user agents and
+    NAVER policy restricts unauthorized automated collection. No evasion.
+    """
+    if os.getenv("AUTO_AXE_NAVER_SCRAPE_AUTHORIZED") != "1":
+        raise RuntimeError(
+            "Naver automated scraping is disabled: m.stock.naver.com/robots.txt "
+            "Disallow: / and Naver policies restrict collection. Only set "
+            "AUTO_AXE_NAVER_SCRAPE_AUTHORIZED=1 after obtaining authorization; "
+            "until then run 'treasury-five' for official daily UST_2Y."
+        )
+    data = request("GET", NAVER_BOND_LIST, params={"countryCode": "USA"}).json()
+    if data.get("isSuccess") is not True or not isinstance(data.get("result"), list):
+        raise RuntimeError("Naver bond list schema changed or returned unsuccessful status")
+    rows = [x for x in data["result"] if x.get("reutersCode") == "US2YT=RR"]
+    if len(rows) != 1:
+        raise RuntimeError(f"Expected one US2YT=RR row, got {len(rows)}")
+    row = rows[0]
+    price = row.get("closePrice")
+    time_string = row.get("localTradedAt")
+    if not price or not time_string:
+        raise RuntimeError("Naver US 2Y returned no price or source timestamp")
+    stamp = dt.datetime.fromisoformat(time_string)
+    if stamp.tzinfo is None:
+        raise RuntimeError("Naver source timestamp lacks timezone information")
+    age_minutes = (dt.datetime.now(UTC) - stamp.astimezone(UTC)).total_seconds() / 60
+    if age_minutes < -5:
+        raise RuntimeError("Naver source timestamp is in the future")
+    emit("naver_page", "UST_2Y", float(str(price).replace(",", "")),
+         stamp.isoformat(), unit="percent", reuters_code="US2YT=RR",
+         instrument_type="us_two_year_treasury_yield",
+         source_url=NAVER_2Y_PAGE, data_endpoint=NAVER_BOND_LIST,
+         scraping_authorization_required=True,
+         source_market_status=row.get("marketStatus"),
+         declared_delay_minutes=row.get("delayTime"),
+         source_price_type=row.get("priceDataType"),
+         age_minutes=round(age_minutes, 2),
+         status="stale" if age_minutes > 30 else "recent_observation",
+         note="Naver page data, not a licensed exchange direct feed; verify publisher permission")
+
 
 
 def sec_8k():
@@ -332,6 +416,75 @@ def vix_eod():
              note="Daily close; never label this as real-time")
 
 
+async def binance_futures_live():
+    """Aggregate trade ticks from Binance's *tradfi perpetual contracts*."""
+    symbols = [item[0].lower() for item in BINANCE_TRADFI_SYMBOLS.values()]
+    stream_names = [f"{sym}@aggTrade" for sym in symbols]
+    uri = BINANCE_FUTURES_WS + "/".join(stream_names)
+    by_symbol = {value[0]: (key, value[1], value[2])
+                 for key, value in BINANCE_TRADFI_SYMBOLS.items()}
+    backoff = 1
+    while True:
+        try:
+            async with connect(uri, ping_interval=20, ping_timeout=20,
+                               open_timeout=15, max_size=2**20) as ws:
+                backoff = 1
+                async for raw in ws:
+                    obj = json.loads(raw)
+                    msg = obj.get("data", obj)
+                    if msg.get("e") != "aggTrade":
+                        continue
+                    symbol = msg.get("s")
+                    if symbol not in by_symbol or not msg.get("p"):
+                        continue
+                    series, instrument_type, unit = by_symbol[symbol]
+                    emit("binance_futures", series, float(msg["p"]),
+                         millis(msg["T"]) if msg.get("T") is not None else None,
+                         symbol=symbol, quote_currency="USDT",
+                         instrument_type=instrument_type, unit=unit,
+                         data_kind="live_aggregate_perpetual_trade",
+                         aggregate_trade_id=msg.get("a"), qty=msg.get("q"),
+                         market_status="underlying_may_be_closed",
+                         source_url="https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures",
+                         note="Binance contract tick, NOT physical spot or CME/ICE futures")
+        except Exception as exc:
+            logging.warning("Binance Futures WS disconnected: %s; retry in %ss", exc, backoff)
+            await asyncio.sleep(backoff + random.random())
+            backoff = min(backoff * 2, 60)
+
+
+async def binance_spot_btc_live():
+    """Public Binance SPOT BTCUSDT trade ticks; USDT/BTC, not USD/BTC."""
+    uri = BINANCE_SPOT_WS + "btcusdt@trade"
+    backoff = 1
+    while True:
+        try:
+            async with connect(uri, ping_interval=20, ping_timeout=20,
+                               open_timeout=15, max_size=2**20) as ws:
+                backoff = 1
+                async for raw in ws:
+                    obj = json.loads(raw)
+                    msg = obj.get("data", obj)
+                    if msg.get("e") != "trade" or msg.get("s") != "BTCUSDT":
+                        continue
+                    emit("binance_spot", "BITCOIN_BINANCE_SPOT",
+                         float(msg["p"]), millis(msg["T"]),
+                         symbol="BTCUSDT", unit="USDT/BTC",
+                         instrument_type="spot_crypto",
+                         data_kind="exchange_trade",
+                         trade_id=msg.get("t"), qty=msg.get("q"),
+                         source_url="https://data-api.binance.vision",
+                         note="Actual exchange BTC/USDT trade, not Yahoo BTC/USD index")
+        except Exception as exc:
+            logging.warning("Binance spot BTC WS disconnected: %s; retry in %ss", exc, backoff)
+            await asyncio.sleep(backoff + random.random())
+            backoff = min(backoff * 2, 60)
+
+
+async def binance_market_live():
+    await asyncio.gather(binance_futures_live(), binance_spot_btc_live())
+
+
 async def coinbase():
     uri = "wss://ws-feed.exchange.coinbase.com"
     subscription = {"type": "subscribe", "product_ids": ["BTC-USD"],
@@ -393,7 +546,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", choices=[
         "gold", "sec-8k", "bls-calendar", "bls-actual", "fred", "eia",
-        "vix-eod", "coinbase", "binance", "rss", "yf-market", "treasury-five"])
+        "vix-eod", "coinbase", "binance", "rss", "yf-market", "treasury-five",
+        "binance-live", "binance-futures", "naver-2y", "gold-spot-reference"])
     parser.add_argument("--symbols", nargs="+", default=YF_CHOICES,
                         choices=YF_CHOICES,
                         help="market indicators for yfinance (2Y is official Treasury only)")
@@ -406,8 +560,13 @@ def main():
                         help="poll seconds; 0=one-shot; SEC >=60, BLS actual >=900 recommended")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    if args.source in ("coinbase", "binance"):
-        asyncio.run(coinbase() if args.source == "coinbase" else binance())
+    if args.source in ("coinbase", "binance", "binance-live"):
+        if args.source == "coinbase":
+            asyncio.run(coinbase())
+        elif args.source == "binance":
+            asyncio.run(binance())
+        else:
+            asyncio.run(binance_market_live())
         return
     if args.source == "fred" and not args.series:
         parser.error("fred requires --series (example: DGS10)")
@@ -416,7 +575,10 @@ def main():
     if args.source == "rss" and not args.feed:
         parser.error("rss requires --feed (e.g. fed, boj, ecb, nvidia-pr)")
     cb = {
-        "gold": gold, "sec-8k": sec_8k, "bls-calendar": bls_calendar,
+        "gold": gold, "binance-futures": binance_futures_snapshot,
+        "gold-spot-reference": gold_spot_reference,
+        "naver-2y": naver_2y,
+        "sec-8k": sec_8k, "bls-calendar": bls_calendar,
         "bls-actual": bls_actual, "fred": lambda: fred(args.series),
         "eia": lambda: eia(args.series), "vix-eod": vix_eod,
         "rss": lambda: rss(args.feed),
