@@ -90,3 +90,10 @@ python docs/examples/realtime_collector.py naver-2y
 **NVDA·QLD 등 미국 주식·ETF**는 `yfinance.AsyncWebSocket`의 `day_volume`(당일 누적 거래량)을 이용한다. WebSocket 메시지 수신 시 최신 누적값을 갱신하고, **로컬 스케줄러가 매초 그 값을 스냅샷**으로 기록한다. **Yahoo의 원본 메시지가 정확히 1초마다 도착하는 것은 아니며, 업데이트가 없을 때는 `stale/no_update` 표시**가 필요하다. 장중 실측 및 수집기 구현은 아직 수행하지 않았다.
 
 - [yfinance WebSocket 1초 누적 거래량 상세 설계 및 Python 예제](./YFinance_1s_Stock_Cumulative_Volume.md)
+
+## 기업 재무비율(PER·PBR·ROE)과 이동평균선
+
+- **PER 후행/예상·PBR·ROE:** yfinance `Ticker.info`에서 `trailingPE`·`forwardPE`·`priceToBook`·`returnOnEquity`를 우선 수집. 값의 회계기간·조회시각·ETF 예외를 보존한다.
+- **SMA·EMA:** `Ticker.history`의 가격 OHLCV를 사용해 **5·20·60·120·200일 SMA** 및 원하는 EMA/분봉 이동평균을 직접 계산한다. Yahoo 50일·200일 평균 필드는 보조 참고 값이다.
+- **백테스트 주의:** 당일 조회된 기업 비율을 과거에 소급 적용하지 않고 당시 공시된 재무 데이터에만 접근하도록 설계한다. **문서화만 완료**.
+- [PER·PBR·ROE 및 이동평균선 상세 명세/예제](./YFinance_Valuation_and_Moving_Averages.md).
