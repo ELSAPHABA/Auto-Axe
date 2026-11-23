@@ -1,8 +1,8 @@
-# Auto-Axe 무료 데이터 수집 소스 명세 (2026-11-22)
+# Auto-Axe 무료 데이터 수집 소스 명세 (2026-11-23)
 
 ## 정책 및 판정 기준
 
-이 문서는 무료 데이터 수집 카탈로그다. **시장 가격·수익률지표의 최신 기본 공급원은 [YFinance_First_Collection.md](./YFinance_First_Collection.md)**를 따른다. 월 구독·사용량 과금·거래소 유료 피드는 범위에서 제외한다. 시세/금리지표에서 **yfinance 지원 → 그 외 무료 공식 API/WS → 허용 스크래핑 → 수동** 순으로 선택한다. 가이던스·정책·경제 이벤트는 원 발행기관 공식 자료를 우선한다.
+이 문서는 무료 데이터 수집 카탈로그다. 최신 기본 소스는 [2026-11-23 시장 소스 정책](./Market_Source_Policy_20261123.md)을 따른다. **금·WTI·Brent 연동 영구선물과 BTC 현물은 Binance 무료 실시간 스트림 우선**, VIX·국채 3M/5Y/10Y/30Y는 yfinance, **2Y는 네이버 `US2YT=RR` (승인받은 경우만)**, 허가 전에는 미국 재무부 공식 일별 XML을 사용한다. 유료 피드는 제외하고 경제 발표·기업 가이던스·정책금리는 원기관 공식 자료를 우선한다.
 
 - `API`: 문서화된 공공기관 REST/JSON/CSV, 공개·무료 WS. 제3자 무료 키가 필요한 API도 포함하되 API 이용권·데이터 저작권을 별도 검토.
 - `SCRAPE`: 제공자의 약관·robots·사용량·저작권 범위에서 **허용될 때만** 공개 HTML/RSS 파싱. 로그인 우회·API 역공학·차단 우회·캡차·프록시 회전은 하지 않는다.
@@ -16,12 +16,12 @@
 |---|---|---|---|---|
 | 미국 주식 CNN 공포·탐욕 | **공식 무료 API 미확인**; CNN 비문서화 JSON은 권한 확인 전 운영 제외 | CNN 원본 화면 자동 추출도 사용권 미확인 → 기본 비활성 | CNN [Fear & Greed](https://edition.cnn.com/markets/fear-and-greed) 화면의 `score/category/as_of` 기록 | 수동 스냅샷. CNN 수치가 실시간 틱인지 미보장 |
 | 기업 실적 가이던스 | **SEC EDGAR** submissions JSON + 8-K Atom/RSS, 문서/Exhibit 원문 | 회사 공식 IR 보도자료 및 허용된 HTML, RSS 없는 경우 | PDF·콜에서 매출/EPS 전망을 근거 링크와 함께 입력 | `EVENT`: 신규 공시/보도자료 |
-| 금 현물·선물 | **현물: Gold API `/price/XAU`**, **선물: yfinance `GC=F`** | 현물·선물은 별도 시리즈 | 장애 시 수동 | 현물 spot estimate / COMEX 선물 분봉, 선물 지연 가능 |
-| WTI 원유 선물 | **yfinance `CL=F`** (우선) / EIA `PET.RWTC.D` (일별 현물 확인용) | yfinance 지연·권한 문제 시 현물 EIA | 실제 선물 장중값은 수동 | **NYMEX 선물 분봉 가능, 지연 가능**. 현물 EIA와 분리 |
-| Brent 원유 선물 | **yfinance `BZ=F`** (우선) / EIA `PET.RBRTE.D` (일별 현물 확인용) | yfinance 지연·권한 문제 시 현물 EIA | 선물 장중값 수동 | **NYMEX Brent Financial 선물**, 현물/ICE 원계약과 다름 |
+| 금 가격 동향 | **Binance Futures `XAUUSDT` 영구선물 실시간 WS** | Gold API 현물 추정은 별도 참고 | 장애·장시간 제약 시 결측/수동 | Binance 금 연동 영구선물은 현물 XAU/USD·COMEX `GC=F`와 별개 |
+| WTI 가격 동향 | **Binance Futures `CLUSDT` 영구선물 실시간 WS** | EIA `PET.RWTC.D` (일별 현물 참고) | 서비스 장애 시 결측·수동 | Binance 영구선물과 NYMEX `CL=F` 선물은 다름 |
+| Brent 가격 동향 | **Binance Futures `BZUSDT` 영구선물 실시간 WS** | EIA `PET.RBRTE.D` (일별 현물 참고) | 서비스 장애 시 결측·수동 | Binance 영구선물과 NYMEX `BZ=F` 선물은 다름 |
 | VIX | **yfinance `^VIX`** (우선) / Cboe 무료 일별 CSV 검증 | Cboe Quote Dashboard 자동 추출 금지 | 데이터 권한·지연 문제 시 장중 수동 | **yfinance 분봉 수신 검증, 무지연 보장 없음** |
-| 미국 국채 금리 3M·2Y·5Y·10Y·30Y | **yfinance `^IRX`, Treasury XML `BC_2YEAR`, yfinance `^FVX`, `^TNX`, `^TYX`** | [Treasury 공식 무료 XML](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) 5개 전부 일별 확인 | 2Y 공식 XML 갱신 실패 시 결측·수동 | Yahoo 지표 vs Treasury 파 수익률 별도 |
-| 펜타곤 피자지수 | 공개 JSON **/api/dashboard-data** 확인 (robots/Terms 권한 확인 필요) | Google Maps Popular Times 외부 추출·축적은 정책상 제한 → 기본 제외 | [pentagon.pizza](https://www.pizzint.watch/) 상태·관찰시각·분류를 수동 기록 | 실험적 `MANUAL`; 시장 신호로 자동 주문 금지 |
+| 미국 국채 금리 3M·2Y·5Y·10Y·30Y | **3M/5Y/10Y/30Y: yfinance `^IRX/^FVX/^TNX/^TYX`; 2Y: 네이버 `US2YT=RR` (승인 시)** | 네이버 robots 차단으로 무허가 시 [Treasury 공식 XML `BC_2YEAR`](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) 일별 대체 | 2Y 일중값 수동 기록 | Yahoo 지표·네이버 게시 수익률·Treasury 일별값을 별도 표기 |
+| 펜타곤 피자지수 | 공개 JSON **/api/dashboard-data** 확인 (robots/Terms 권한 확인 필요) | Google Maps Popular Times 외부 추출·축적은 정책상 제한 → 기본 제외 | [PizzINT](https://www.pizzint.watch/) 상태·관찰시각·분류를 수동 기록 | 실험적 `MANUAL`; 시장 신호로 자동 주문 금지 |
 | 미국 지표·금리 발표 일정 | [BLS 일정 ICS](https://www.bls.gov/schedule/news_release/bls.ics), FOMC 일정, BEA 발표 일정 | BEA/FOMC/Census 등 공식 HTML/RSS/ICS | 일정 변경·공식 문서 PDF를 수동 입력 | `EVENT`: 공고 즉시 또는 변경시 |
 | 미국 지표 실제 발표값 | [BLS v2 API](https://www.bls.gov/developers/api_signature_v2.htm), BEA API, Census API | BLS [CPI 보도자료](https://www.bls.gov/news.release/cpi.htm), [고용보고서](https://www.bls.gov/news.release/empsit.htm), BEA 공식 발표 HTML (허용 범위) | 원문 확인 후 수치·최초 발표·수정여부 수동 입력 | `EVENT`; API가 원문보다 늦을 수 있음 |
 | 파생상품 만기 | [OCC/OIC Expiration Calendar](https://www.optionseducation.org/referencelibrary/expiration-calendar) 공식 공개 자료, CME 상품 계약 사양 | 거래소 공개 이벤트 표/캘린더의 허용된 자동 파싱 | 예외·휴장·AM/PM 결제 등 수동 교차검증 | **예정 이벤트**; 실시간 DTE는 자체 계산 |
@@ -29,9 +29,9 @@
 | 일본 기준금리 | [BOJ 무료 2026 통계 API](https://www.stat-search.boj.or.jp/info/api_manual_en.pdf) 실효콜금리 + 정책 결정문 | [BOJ 통화정책 성명](https://www.boj.or.jp/en/mopo/mpmdeci/) 공개 HTML/PDF (허용 시) | PDF 성명 정책 목표금리 수동 확인 | `EVENT` 목표치 / 통계는 일별 실효치 |
 | 영국 기준금리 | [BoE 공개 Bank Rate CSV](https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp) `IUDBEDR` | BoE 공식 MPC 성명 HTML (허용 시) | 정책 결정·발효시점 확인 | `EVENT` / 일별 Bank Rate |
 | 유로존(ECB) 기준금리 | [ECB SDMX 공개 API](https://data.ecb.europa.eu/help/api/data) DFR | [ECB 공식 결정 RSS](https://www.ecb.europa.eu/home/html/rss.en.html) / 보도자료 (허용 시) | 원문 결정금리 수동 확인 | `EVENT` / 일별 DFR; **EU 전체 단일금리 아님** |
-| 비트코인 | **yfinance `BTC-USD`** (기본 시장 요약값), Coinbase/Binance 무료 WS (거래소 체결 데이터용) | 거래소 공식 WS | 서비스 중단 시 수동 | yfinance 시차 가능, 개별 거래소 WS는 체결 푸시 |
+| 비트코인 | **Binance Spot `BTCUSDT` 무료 WS 실시간 체결** | Coinbase `BTC-USD` 공개 WS (별도 호가/거래소) | 장애 시 수동 | BTC/USDT와 BTC/USD, Yahoo 집계 시세는 별도 시계열 |
 
-**무료 동적 시장 가격:** yfinance `^VIX`, `^IRX`, `^FVX`, `^TNX`, `^TYX`, `CL=F`, `BZ=F`, `GC=F`, `BTC-USD`를 조회한다. 2년물 공식 국채 수익률은 Treasury 일별 XML로 조회한다. 분봉 데이터가 거래소 무지연 실시간 시세를 의미하지는 않는다.
+**무료 동적 시장 가격:** Binance Spot `BTCUSDT`와 Binance TradFi 영구선물 `XAUUSDT`, `CLUSDT`, `BZUSDT`는 거래 발생 시 WS로 시세를 받는다. VIX `^VIX`와 국채 `^IRX/^FVX/^TNX/^TYX`는 yfinance 최신봉(지연 가능)을 유지한다. 2Y `US2YT=RR`는 허가받은 네이버 자동수집에서만 사용하며 현재 기본은 Treasury 공식 일별이다.
 
 ## 지표별 적용 상세
 
@@ -50,11 +50,11 @@
 
 ### 3. 금
 
-`curl https://api.gold-api.com/price/XAU`, [공식 무료 API](https://gold-api.com/docs), [업데이트 시각 의미](https://gold-api.com/faqs). `price`, `updatedAt` 파싱. 30~60초 추천 폴링(제안값), 갱신 없으면 같은 값 중복 기록하지 않음. spot 추정가격과 금 선물/런던 벤치마크를 혼합하지 않는다. API 장애 시 Gold API 홈페이지 수동 확인.
+**기본:** Binance Futures `XAUUSDT@aggTrade` 금 연동 영구선물 실시간 체결 스트림. `python docs/examples/realtime_collector.py binance-live`로 수집. 금 현물 추정값이 별도로 필요한 경우에만 [Gold API](https://gold-api.com/docs)를 `gold-spot-reference` 보조 참고로 사용한다. Binance 영구선물의 USDT 호가를 금 현물 XAU/USD나 COMEX 금 선물로 표기하지 않는다.
 
 ### 4. WTI / Brent 원유
 
-- **기본 동적 가격:** WTI는 yfinance `CL=F` (NYMEX 선물), Brent는 `BZ=F` (NYMEX Brent Financial 선물). EIA 현물 일별 값은 동일 가격의 대체가 아니라 별도 교차검증.
+- **기본 동적 가격:** Binance Futures `CLUSDT@aggTrade` (WTI 연동) 및 `BZUSDT@aggTrade` (Brent 연동) 영구선물 실시간 체결 스트림. 해당 계약은 NYMEX `CL=F`·`BZ=F` 및 EIA 현물 일별과 서로 다르다.
 
 - EIA 무료 API 키: `https://api.eia.gov/v2/seriesid/PET.RWTC.D?api_key=YOUR_KEY` 및 `.../PET.RBRTE.D` — **WTI/Brent 일별 현물**; 갱신이 완료된 일별값만 사용.
 - 특정 거래소/시세 사이트의 브라우저 화면은 장중 참고할 수 있어도 무료 **기계적 수집 허용**이 확인되지 않으면 자동 크롤러를 만들지 않는다. 공식 보고서 파일만 허용 범위에서 다운받는다.
@@ -62,16 +62,16 @@
 
 ### 5. VIX / 미국 국채 3개월·2년·5년·10년·30년
 
-- **기본:** VIX `yfinance ^VIX`; 미국 국채 금리지표 3M `^IRX`, 5Y `^FVX`, 10Y `^TNX`, 30Y `^TYX`; 2Y는 Treasury 공식 `BC_2YEAR`. 정확한 필드·명령은 [yfinance 우선 명세](./YFinance_First_Collection.md).
+- **기본:** VIX `yfinance ^VIX`, 국채 3M `^IRX`, 5Y `^FVX`, 10Y `^TNX`, 30Y `^TYX`. **2Y 지정 출처:** [네이버 `US2YT=RR`](https://m.stock.naver.com/marketindex/bond/US2YT=RR). 실측 JSON의 `closePrice`·`localTradedAt`는 확인했으나 `robots.txt` 전체 차단으로 무허가 스크래핑은 비활성화. 허가 전에는 Treasury `BC_2YEAR` 공식 일별값 사용. [최신 정책](./Market_Source_Policy_20261123.md).
 
 - VIX [Cboe 공식 EOD CSV](https://www.cboe.com/tradable_products/vix/vix_historical_data): `https://cdn-api.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv`. 시장 운영시간의 실제 스트리밍이 아니다. Cboe Quotes Dashboard에 명시된 **자동화 추출 금지**를 준수한다.
 - Treasury [일별 공식 파 수익률](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics), [XML 제공 안내](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed): 2Y/10Y 등 단위 `percent`. [FRED DGS2/DGS10](https://fred.stlouisfed.org/series/DGS10)은 무료 개인 조회 참고만. 국채 현물 수익률과 국채 선물 가격은 전혀 다른 값.
-- VIX 및 국채 3M·5Y·10Y·30Y **yfinance 금리지표의 분봉**을 조회 가능하나 무지연 실시간성과 자동 이용권은 확인해야 한다. **2Y는 Treasury 일별**만 기본으로 사용하고 현물과 선물상품을 혼동하지 않는다.
+- VIX 및 3M/5Y/10Y/30Y yfinance 분봉은 무지연 실시간 수익률이 아님. 2Y는 네이버 자동수집 허가 전까지 Treasury 공식 일별만 사용한다.
 - **FRED 주의:** API 이용약관은 별도의 무허가 데이터 저장/캐싱/DB 편입 및 AI 개발/학습 관련 제한을 명시한다. Auto-Axe의 영속 DB에 FRED 반환값을 무조건 적재하지 말 것. [FRED 이용약관](https://fred.stlouisfed.org/legal/terms/). 가능한 경우 데이터 원 발행기관(EIA/Treasury/BOJ/ECB)의 허용된 공개 다운로드로 대체한다.
 
 ### 6. 펜타곤 피자지수: 수동
 
-[pentagon.pizza](https://www.pizzint.watch/)의 공개 Activity Index를 **화면에서 수동 관찰**한다. PizzINT 자체 공개 JSON은 관측되지만 API 호출 권한 확인 전 자동 실행하지 않는다. Google Maps Popular Times 원천 데이터를 추출하는 문서화된 무료 REST API는 확인되지 않았고, [Google Places 데이터 정책](https://developers.google.com/maps/documentation/places/web-service/policies)은 외부 추출·저장 및 재배포를 제한한다. 서드파티 피자지수 페이지의 직접 스크래핑도 원천 콘텐츠 권리 검토가 필요하다. `activity_label`, `activity_score_if_public`, `observed_at`, `source_url`, `manual_note`만 기록하고 **객관적 예측력/자동매매 신호로 확정하지 않는다**.
+[PizzINT](https://www.pizzint.watch/)의 공개 Activity Index를 **화면에서 수동 관찰**한다. PizzINT 자체 공개 JSON은 관측되지만 API 호출 권한 확인 전 자동 실행하지 않는다. Google Maps Popular Times 원천 데이터를 추출하는 문서화된 무료 REST API는 확인되지 않았고, [Google Places 데이터 정책](https://developers.google.com/maps/documentation/places/web-service/policies)은 외부 추출·저장 및 재배포를 제한한다. 서드파티 피자지수 페이지의 직접 스크래핑도 원천 콘텐츠 권리 검토가 필요하다. `activity_label`, `activity_score_if_public`, `observed_at`, `source_url`, `manual_note`만 기록하고 **객관적 예측력/자동매매 신호로 확정하지 않는다**.
 
 ### 7. 경제지표 발표 일정·실제 수치
 
@@ -97,7 +97,7 @@
 
 ### 10. 비트코인
 
-- **기본 요약 시세:** yfinance `BTC-USD`; 무료 Coinbase/Binance WebSocket은 별도 거래소 체결 스트림으로 추가 운영 가능. `BTCUSDT`와 `BTC-USD`를 혼동하지 않는다.
+- **기본 거래 시세:** Binance Spot `BTCUSDT@trade` WebSocket. Coinbase `BTC-USD`는 거래소와 호가통화가 다른 보조 무료 체결 스트림이다. Yahoo `BTC-USD`를 기본 수집하지 않는다.
 
 - [Coinbase 거래 체결/호가 WS](https://docs.cdp.coinbase.com/exchange/websocket-feed/overview): `wss://ws-feed.exchange.coinbase.com` 구독 `{"type":"subscribe","product_ids":["BTC-USD"],"channels":["ticker","heartbeat"]}` (무키).
 - [Binance market-data-only WS](https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md): `wss://data-stream.binance.vision/stream?streams=btcusdt@trade/btcusdt@kline_1m`, trade 실시간, `k.x=true` 마감 1분봉. 연결 시간/핑·퐁/호가통화/지역제한 준수.
@@ -134,4 +134,4 @@
 
 **CNN 공포·탐욕 공식 수집 대상:** [CNN International Fear & Greed](https://edition.cnn.com/markets/fear-and-greed), `source_url=https://edition.cnn.com/markets/fear-and-greed`. HTML 페이지의 `span.market-data-poller[data-data-url]`는 비공식 `https://production.dataviz.cnn.io/index/fearandgreed/graphdata`를 가리키는 것이 확인되었으나 공식 공개 개발자 API가 아니며 **[CNN Terms](https://www.cnn.com/terms)는 자동화된 데이터 수집·스크래핑을 금지**한다. 따라서 소스 URL을 지정·문서화하되 **실제 스크래핑 구현/자동 호출은 CNN의 명시적 허가 후에만**, 그 전에는 지정된 CNN URL에서 수동으로 `score`, `rating`, `as_of` 입력.
 
-**yfinance 조사 결과:** [YFinance_Data_Validation.md](./YFinance_Data_Validation.md) 참고. 2026-11-22 Python `yfinance 1.8.0` 실측에서 `^VIX`, `^TNX`, `CL=F`, `BZ=F`의 일봉·1분봉 수신 성공. 분봉 수신은 무지연 실시간 데이터 보장이 아니며 원유 선물과 현물은 분리한다.
+**이전 yfinance 조사 기록:** [YFinance_Data_Validation.md](./YFinance_Data_Validation.md) 참고. 2026-11-22 `^VIX`, `^TNX`, `CL=F`, `BZ=F`의 일봉·1분봉 수신을 확인했으나 **2026-11-23부터 원유·금·BTC의 기본 가격은 Binance로 전환**했다.
