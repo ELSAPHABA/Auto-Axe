@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Auto-Axe reference collector (stdout JSON Lines, no orders).
-Commands: binance-live, binance-futures, gold, naver-2y, yf-market, treasury-five, coinbase, binance, sec-8k, bls-calendar, bls-actual, fred, eia, vix-eod
+Commands: binance-live, binance-futures, binance-longshort, gold, naver-2y, yf-market, treasury-five, coinbase, binance, sec-8k, bls-calendar, bls-actual, fred, eia, vix-eod
 Set env vars in docs/examples/.env.example. Respect source terms and credentials.
 """
 import argparse
@@ -106,6 +106,8 @@ YF_CHOICES = list(YF_MARKET_SYMBOLS)
 # USDT denomination is NOT the same as a USD settlement quote.
 BINANCE_TRADFI_SYMBOLS = {
     "GOLD_BINANCE_PERP": ("XAUUSDT", "commodity_gold_linked_perpetual", "USDT/gold_contract_unit"),
+    "SILVER_BINANCE_PERP": ("XAGUSDT", "commodity_silver_linked_perpetual", "USDT/silver_contract_unit"),
+    "COPPER_BINANCE_PERP": ("COPPERUSDT", "commodity_copper_linked_perpetual", "USDT/copper_contract_unit"),
     "WTI_BINANCE_PERP": ("CLUSDT", "commodity_wti_linked_perpetual", "USDT/oil_contract_unit"),
     "BRENT_BINANCE_PERP": ("BZUSDT", "commodity_brent_linked_perpetual", "USDT/oil_contract_unit"),
 }
@@ -113,6 +115,16 @@ BINANCE_SPOT_SYMBOLS = {
     "BITCOIN_BINANCE_SPOT": ("BTCUSDT", "spot_crypto", "USDT/BTC"),
 }
 BINANCE_FUTURES_REST = "https://fapi.binance.com/fapi/v1"
+BINANCE_FUTURES_DATA_REST = "https://fapi.binance.com/futures/data"
+BINANCE_LONGSHORT_TYPES = {
+    "global_accounts": ("/globalLongShortAccountRatio", "long_short_account_ratio"),
+    "top_accounts": ("/topLongShortAccountRatio", "top_trader_account_ratio"),
+    "top_positions": ("/topLongShortPositionRatio", "top_trader_position_ratio"),
+    "taker_volume": ("/takerlongshortRatio", "taker_buy_sell_volume_ratio"),
+}
+BINANCE_LONGSHORT_PERIODS = ("5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d")
+BINANCE_LONGSHORT_SYMBOLS = ("BTCUSDT",) + tuple(value[0] for value in BINANCE_TRADIFI_SYMBOLS.values())
+BINANCE_RATIO_SEEN = {}  # In-process dedup; durable storage must also key on period end.
 BINANCE_FUTURES_WS = "wss://fstream.binance.com/market/stream?streams="
 BINANCE_SPOT_WS = "wss://data-stream.binance.vision/stream?streams="
 NAVER_2Y_PAGE = "https://m.stock.naver.com/marketindex/bond/US2YT=RR"
@@ -203,6 +215,64 @@ def binance_futures_snapshot(selected=None):
              market_status="unverified_session",
              source_url=BINANCE_FUTURES_REST + "/ticker/price",
              note="Exchange contract last trade; not gold spot or NYMEX/ICE dated futures")
+
+
+def binance_longshort(symbols=None, types=None, period="5m"):
+    """Latest *completed aggregate interval* ratios (REST, min 5m).
+
+    These are exchange-wide summaries, not per-trade real-time position updates.
+    'taker_volume' measures aggressive buy versus sell volume, not open
+    long/short positions. Provider occasionally uses surprising property names
+    for top_positions; record the raw field names rather than reinterpret them.
+    """
+    symbols = symbols or BINANCE_LONGSHORT_SYMBOLS
+    types = types or tuple(BINANCE_LONGSHORT_TYPES)
+    if period not in BINANCE_LONGSHORT_PERIODS:
+        raise ValueError(f"Binance ratio period unsupported: {period}")
+    for symbol in symbols:
+        for kind in types:
+            path, meaning = BINANCE_LONGSHORT_TYPES[kind]
+            url = BINANCE_FUTURES_DATA_REST + path
+            try:
+                data = request("GET", url, params={
+                    "symbol": symbol, "period": period, "limit": 2}).json()
+                if not isinstance(data, list) or not data:
+                    logging.warning("Binance ratio empty for %s %s %s",
+                                    symbol, kind, period)
+                    continue
+                latest = max(data, key=lambda x: int(x.get("timestamp") or 0))
+                if not latest.get("timestamp"):
+                    logging.warning("Binance ratio missing timestamp for %s %s",
+                                    symbol, kind)
+                    continue
+                raw_stamp = int(latest["timestamp"])
+                key = (symbol, kind, period)
+                if BINANCE_RATIO_SEEN.get(key) == raw_stamp:
+                    continue
+                raw_ratio = latest.get("buySellRatio") if kind == "taker_volume" else latest.get("longShortRatio")
+                if raw_ratio is None:
+                    logging.warning("Binance ratio missing data for %s %s",
+                                    symbol, kind)
+                    continue
+                value = float(raw_ratio)
+                if value < 0:
+                    raise ValueError(f"Negative ratio for {symbol} {kind}")
+                # The response field names vary (e.g. top positions sometimes
+                # arrives with longAccount/shortAccount). Expose them literally.
+                extra = {k: float(latest[k]) for k in
+                         ("longAccount", "shortAccount", "longPosition",
+                          "shortPosition", "buyVol", "sellVol") if latest.get(k) is not None}
+                series = "BINANCE_" + kind.upper() + "_" + symbol
+                emit("binance_futures", series, value, millis(raw_stamp),
+                     symbol=symbol, unit="ratio", kind=kind, ratio_definition=meaning,
+                     period=period, period_end_utc=millis(raw_stamp),
+                     source_url=url, data_kind="periodic_rest_aggregate_not_live_tick",
+                     quote_currency="USDT", raw_response_fields=extra,
+                     note="5-minute-or-longer published aggregates; no real-time position WS guarantee")
+                BINANCE_RATIO_SEEN[key] = raw_stamp
+            except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+                logging.error("Binance ratio %s %s %s: %s",
+                              symbol, kind, period, exc)
 
 
 def gold():
@@ -547,13 +617,23 @@ def main():
     parser.add_argument("source", choices=[
         "gold", "sec-8k", "bls-calendar", "bls-actual", "fred", "eia",
         "vix-eod", "coinbase", "binance", "rss", "yf-market", "treasury-five",
-        "binance-live", "binance-futures", "naver-2y", "gold-spot-reference"])
+        "binance-live", "binance-futures", "binance-longshort", "naver-2y", "gold-spot-reference"])
     parser.add_argument("--symbols", nargs="+", default=YF_CHOICES,
                         choices=YF_CHOICES,
                         help="market indicators for yfinance (2Y is official Treasury only)")
     parser.add_argument("--bar-interval", default="1m",
                         help="yfinance bar interval: 1m, 5m, 1d (not real-time guarantee)")
     parser.add_argument("--period", default="1d", help="yfinance lookback (1d, 5d, etc)")
+    parser.add_argument("--ratio-symbols", nargs="+",
+                        choices=BINANCE_LONGSHORT_SYMBOLS,
+                        default=list(BINANCE_LONGSHORT_SYMBOLS),
+                        help="Binance USD-M contracts for periodic ratios")
+    parser.add_argument("--ratio-types", nargs="+",
+                        choices=tuple(BINANCE_LONGSHORT_TYPES),
+                        default=list(BINANCE_LONGSHORT_TYPES),
+                        help="global_accounts, top_accounts, top_positions, taker_volume")
+    parser.add_argument("--ratio-period", choices=BINANCE_LONGSHORT_PERIODS,
+                        default="5m", help="Binance min ratio interval is 5m (no real-time WS)")
     parser.add_argument("--series", default="", help="FRED or EIA series ID")
     parser.add_argument("--feed", choices=sorted(OFFICIAL_FEEDS), help="official RSS name for rss command")
     parser.add_argument("--interval", type=int, default=0,
@@ -576,6 +656,7 @@ def main():
         parser.error("rss requires --feed (e.g. fed, boj, ecb, nvidia-pr)")
     cb = {
         "gold": gold, "binance-futures": binance_futures_snapshot,
+        "binance-longshort": lambda: binance_longshort(args.ratio_symbols, args.ratio_types, args.ratio_period),
         "gold-spot-reference": gold_spot_reference,
         "naver-2y": naver_2y,
         "sec-8k": sec_8k, "bls-calendar": bls_calendar,
