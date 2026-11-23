@@ -5,6 +5,8 @@
 | 항목 | 기본 스트림 | 데이터 정의 |
 |---|---|---|
 | 금 연동 가격 | `wss://fstream.binance.com/market/stream?streams=xauusdt@aggTrade` | Binance `XAUUSDT` TradFi 영구선물 체결 |
+| 은 연동 가격 | `wss://fstream.binance.com/market/stream?streams=xagusdt@aggTrade` | Binance 은 연동 영구선물 체결 |
+| 구리 연동 가격 | `wss://fstream.binance.com/market/stream?streams=copperusdt@aggTrade` | Binance 구리 연동 영구선물 체결 |
 | WTI 연동 가격 | `wss://fstream.binance.com/market/stream?streams=clusdt@aggTrade` | Binance `CLUSDT` 영구선물 체결 |
 | Brent 연동 가격 | `wss://fstream.binance.com/market/stream?streams=bzusdt@aggTrade` | Binance `BZUSDT` 영구선물 체결 |
 | 비트코인 | `wss://data-stream.binance.vision/stream?streams=btcusdt@trade` | Binance Spot BTC/USDT 체결 |
@@ -24,3 +26,11 @@ python docs/examples/realtime_collector.py treasury-five
 ```
 
 [최신 상세 설계](./Market_Source_Policy_20261123.md) · [Binance 검증](./Binance_API_Coverage.md).
+
+## 구리·은 및 Binance 롱숏 비율 추가 (2026-11-23)
+
+- **구리:** Binance Futures `COPPERUSDT`, 내부 `COPPER_BINANCE_PERP`; **은:** `XAGUSDT`, 내부 `SILVER_BINANCE_PERP`. 두 종목 모두 실측 `TRADING / TRADIFI_PERPETUAL`, REST 1분봉 지원. 기존 Binance Futures `@aggTrade` 실시간 스트림의 구독 목록에 추가했다. USDT 표시 영구선물은 원자재 현물 또는 거래소 만기선물과 다르다.
+- **공식 롱숏 비율 4종:** 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율. Binance `/futures/data/*` 무료 공개 REST의 **최소 5분 집계**로 수집한다. 실시간 WS 틱이 아니며, Taker 매수·매도 비율은 포지션 롱숏 비율과 다르다.
+- `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
+- `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
+- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](./examples/realtime_collector.py).
