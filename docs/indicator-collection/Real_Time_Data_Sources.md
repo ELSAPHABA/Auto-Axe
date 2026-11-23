@@ -10,6 +10,9 @@
 | WTI 연동 가격 | `wss://fstream.binance.com/market/stream?streams=clusdt@aggTrade` | Binance `CLUSDT` 영구선물 체결 |
 | Brent 연동 가격 | `wss://fstream.binance.com/market/stream?streams=bzusdt@aggTrade` | Binance `BZUSDT` 영구선물 체결 |
 | 비트코인 | `wss://data-stream.binance.vision/stream?streams=btcusdt@trade` | Binance Spot BTC/USDT 체결 |
+| 나스닥 100 지수 연동 영구선물(후보) | MEXC Futures `NAS100_USDT` WebSocket (Protobuf 사양 확인 필요) | 무료 저지연 후보, 실시간 메시지 직접 검증 전. 실제 CME NQ와 별개 |
+| 나스닥 100 관련 QQQ 연동 선물(보조) | Binance Futures `QQQUSDT` WebSocket (구독 동작 검증 전) | QQQ ETF 연동 영구선물; NQ·NDX 수준과 별개 |
+| 실제 CME 나스닥 100 선물(지연) | yfinance `NQ=F` 1분봉 | Yahoo의 CME 지연 시세; 라이선스된 실시간 피드가 아님 |
 | VIX 원지수 | yfinance `^VIX` | 지연 가능한 최신 봉, **미검증 WebSocket 사용 안 함** |
 | 미국 국채 3M/5Y/10Y/30Y | yfinance `^IRX/^FVX/^TNX/^TYX` | 지연 가능한 금리지표 |
 | 미국 국채 2Y | [Naver `US2YT=RR`](https://m.stock.naver.com/marketindex/bond/US2YT=RR) | 값·갱신 시각 확인. `robots.txt: Disallow /`이므로 **허가 전 자동 스크래핑 금지**. 공식 Treasury XML 일별값 fallback |
