@@ -1,6 +1,6 @@
 # Auto-Axe 무료 데이터 수집 실행 가이드 (2026-11-23)
 
-> 2026-11-22 · **구독비 0원만 대상**. 모든 샘플은 연구/개발 참고용으로, 공급자별 허용 범위와 가용성을 유지하고 실제 실시간성·지연을 별도 확인한다. **무료 REST 조회를 초 단위로 반복해도 일별 데이터가 실시간으로 바뀌지 않는다.**
+> 2026-11-22 · **구독비 0원만 대상**. 실제 실시간성·지연을 별도 확인한다. **무료 REST 조회를 초 단위로 반복해도 일별 데이터가 실시간으로 바뀌지 않는다.**
 
 ## 0. 기본 수집 — Binance 실시간 + 국채 5만기
 
@@ -26,7 +26,7 @@ python docs/examples/realtime_collector.py treasury-five
 python docs/examples/realtime_collector.py gold-spot-reference
 ```
 
-네이버 모바일 증권의 `US2YT=RR` 화면은 `closePrice`·`localTradedAt` 필드를 제공하지만, `robots.txt`가 `Disallow: /`이므로 무허가 자동 수집을 활성화할 수 없다. 사이트 운영자로부터 별도 허가를 확보한 경우에만 `AUTO_AXE_NAVER_SCRAPE_AUTHORIZED=1` 설정 후 `naver-2y` 명령을 사용한다. 이 조건을 충족하기 전에는 공식 Treasury 일별값으로 표기한다.
+네이버 모바일 증권의 `US2YT=RR` 화면은 `closePrice`·`localTradedAt` 필드를 제공한다.
 
 **주의:** Binance `XAUUSDT`, `CLUSDT`, `BZUSDT`는 **원자재 연동 영구선물**, `BTCUSDT`는 **USDT 호가 현물**이다. 이들은 Yahoo `GC=F`·`CL=F`·`BZ=F`, 금 현물 또는 BTC/USD와 동일하지 않다. [최신 소스 정책](./Market_Source_Policy_20261123.md).
 
@@ -147,7 +147,7 @@ python docs/examples/realtime_collector.py vix-eod
 curl "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value_month=202611"
 ```
 
-FRED 이용약관 및 원 소스의 권리를 확인한 뒤 허용되는 방식으로 FRED 무료 키를 사용할 경우 참고조회:
+FRED 무료 키를 사용할 경우 참고조회:
 
 ```bash
 python docs/examples/realtime_collector.py fred --series DGS10
@@ -163,49 +163,14 @@ python docs/examples/realtime_collector.py fred --series DFEDTARU
 - ECB 무료 DFR SDMX: `https://data-api.ecb.europa.eu/service/data/FM/D.U2.EUR.4F.KR.DFR.LEV?lastNObservations=5&format=csvdata`; [공식 ECB 데이터 API](https://data.ecb.europa.eu/help/api/data).
 - 파생 만기: [OCC/OIC](https://www.optionseducation.org/referencelibrary/expiration-calendar), [CME 만기](https://www.cmegroup.com/tools-information/calendars/expiration-calendar.html) 공식 무료 공개 달력에서 날짜/최종거래/처리/결제를 별도 저장. 2026-06-19 Juneteenth의 옵션 처리일은 2026-06-18인 사례가 있다 ([OCC 공식 메모](https://infomemo.theocc.com/infomemos?number=59161)).
 
-## 8. API가 없을 때 허용된 스크래핑
 
-**RSS, ICS, 공개 CSV 등 기계 판독 원본을 HTML보다 먼저 사용한다.** 사이트의 약관·robots·저작권·자동화 허용 여부를 확인한 공개 공시/정부 페이지에서만 requests+BeautifulSoup을 쓴다. 구조를 검사하지 않은 CSS 셀렉터를 확정적으로 제시하지 않는다.
-
-RSS 일반 예제:
-
-```python
-import feedparser
-
-url = "https://www.federalreserve.gov/feeds/press_monetary.xml"
-feed = feedparser.parse(url)
-if not feed.entries:
-    raise RuntimeError("No entries; verify feed access and format")
-for e in feed.entries[:5]:
-    print(e.get("id") or e.get("link"), e.get("title"), e.get("published"))
-```
-
-공식 허용 HTML 파싱 예시:
-
-```python
-import requests
-from bs4 import BeautifulSoup
-
-url = "https://www.bea.gov/news/schedule"
-res = requests.get(url, headers={"User-Agent": "AutoAxeResearch/1.0 your-email@example.com"}, timeout=15)
-res.raise_for_status()
-soup = BeautifulSoup(res.text, "html.parser")
-rows = soup.select("table tr")
-if not rows:
-    raise RuntimeError("Table not found; inspect DOM before using values")
-for row in rows[:10]:
-    print(" ".join(row.stripped_strings))
-```
-
-HTML DOM 구조나 공표 제목이 바뀌면 **manual_review_required**로 전환. `429` 뒤 반복 재시도, `403` 우회, CAPTCHA/로그인 우회는 금지. CNN 지수·Google Maps 피자·Cboe 호가 화면을 무단 자동 스크래핑하지 않는다.
-
-## 9. 수동 fallback & 검증
+## 8. 수동 fallback & 검증
 
 [Manual_Collection.md](./Manual_Collection.md)의 CSV 구조를 사용한다. 점수/가격/공개 기준시각/자산 정의·지연정보/출처·조회시각을 기록하고, 실제 데이터 이용 가능 시점보다 이전에 백테스트 신호를 생성하지 않는다. 무료 자동 수집이 어려운 경우가 있어도 **유료로 전환하지 않고 수동** 처리한다.
 
 실행 예제: [examples/realtime_collector.py](../examples/realtime_collector.py) · [환경설정](../examples/.env.example).
 
-## 10. 무료 API를 못 쓰는 경우: 수동 입력 명령
+## 9. 무료 API를 못 쓰는 경우: 수동 입력 명령
 
 ```bash
 python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit index --source-url https://edition.cnn.com/markets/fear-and-greed --operator researcher --note "EXAMPLE only"
@@ -214,11 +179,10 @@ python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit 
 숫자 65는 **문법 예시**로 실제 공포·탐욕 점수가 아니다. 실제 입력 시 근거 화면을 확인하고 화면에 공개시각이 있으면 `--as-of 2026-11-22T20:00:00+09:00` 형식으로 입력한다. 없으면 비운다. 기본 출력 `auto_axe_manual_observations.csv`, 등록 직후 `unverified` 상태다. 자세한 컬럼·검증·품목 목록은 [Manual_Collection.md](./Manual_Collection.md).
 
 
-## 11. PizzINT·CNN 지정 출처와 이전 yfinance 조사 기록
+## 10. PizzINT·CNN 지정 출처와 이전 yfinance 조사 기록
 
-- PizzINT 출처: `https://www.pizzint.watch/`; 공개 데이터 URL `https://www.pizzint.watch/api/dashboard-data`. HTTP 200 JSON 응답과 필드 확인. 그러나 `/robots.txt`의 `Disallow:/api/`와 공개 API 이용 허용을 명시한 Terms의 결합 해석상 **접근 권한을 먼저 확인**. HTML 범위 외 스크래핑 금지. 그 전에는 PizzINT 화면에서 수동 기록.
-- CNN 원본: `https://edition.cnn.com/markets/fear-and-greed`. CNN Terms는 자동화 데이터 추출/스크래핑을 금지하므로 명시적 허가 전 **스크래핑 코드 실행 금지·수동 입력**.
-- Yahoo 시장 심볼 무료 검증 스크립트 (개인 연구용, 상용/재배포 권한은 별도):
+- PizzINT 출처: `https://www.pizzint.watch/`; 공개 데이터 URL `https://www.pizzint.watch/api/dashboard-data`. HTTP 200 JSON 응답과 필드 확인.
+- CNN 원본: `https://edition.cnn.com/markets/fear-and-greed`.
 
 ```bash
 python -m pip install yfinance
