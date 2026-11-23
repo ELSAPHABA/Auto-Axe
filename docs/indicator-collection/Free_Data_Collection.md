@@ -33,6 +33,7 @@
 | 일본 기준금리 | [BOJ 무료 2026 통계 API](https://www.stat-search.boj.or.jp/info/api_manual_en.pdf) 실효콜금리 + 정책 결정문 | [BOJ 통화정책 성명](https://www.boj.or.jp/en/mopo/mpmdeci/) 공개 HTML/PDF (허용 시) | PDF 성명 정책 목표금리 수동 확인 | `EVENT` 목표치 / 통계는 일별 실효치 |
 | 영국 기준금리 | [BoE 공개 Bank Rate CSV](https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp) `IUDBEDR` | BoE 공식 MPC 성명 HTML (허용 시) | 정책 결정·발효시점 확인 | `EVENT` / 일별 Bank Rate |
 | 유로존(ECB) 기준금리 | [ECB SDMX 공개 API](https://data.ecb.europa.eu/help/api/data) DFR | [ECB 공식 결정 RSS](https://www.ecb.europa.eu/home/html/rss.en.html) / 보도자료 (허용 시) | 원문 결정금리 수동 확인 | `EVENT` / 일별 DFR; **EU 전체 단일금리 아님** |
+| 미국 주식·ETF 1초 주기 누적 거래량 | **yfinance `AsyncWebSocket` → `day_volume`** (NVDA·QLD 등) | 이벤트별 원본 갱신 후 로컬 1Hz 스냅샷; 별도 공식 무지연 SIP 권한 미확인 | Yahoo 메시지 지연/라이선스 문제 시 미수집·수동 검증 | **로컬 1초 기록만 보장, Yahoo 1초 WS 업데이트·무지연·체결별 거래량은 미보장.** [기술 명세](./YFinance_1s_Stock_Cumulative_Volume.md) |
 | 비트코인 | **Binance Spot `BTCUSDT` 무료 WS 실시간 체결** | Coinbase `BTC-USD` 공개 WS (별도 호가/거래소) | 장애 시 수동 | BTC/USDT와 BTC/USD, Yahoo 집계 시세는 별도 시계열 |
 
 **무료 동적 시장 가격:** Binance Spot `BTCUSDT`와 Binance TradFi 영구선물 `XAUUSDT`, `CLUSDT`, `BZUSDT`는 거래 발생 시 WS로 시세를 받는다. VIX `^VIX`와 국채 `^IRX/^FVX/^TNX/^TYX`는 yfinance 최신봉(지연 가능)을 유지한다. 2Y `US2YT=RR`는 허가받은 네이버 자동수집에서만 사용하며 현재 기본은 Treasury 공식 일별이다.
