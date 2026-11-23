@@ -77,3 +77,10 @@ python docs/examples/realtime_collector.py naver-2y
 [한국예탁결제원 SEIBro 해외주식 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921)을 수집 대상에 추가했다. **미국 등 국가별·기간별 매수결제, 매도결제, 순매수결제(USD)**를 추적하는 결제 기반 통계다. **WebSquare 브라우저 스크래핑 대상으로 지정**했으며 서비스 이용권·수집 허용 여부 및 실제 데이터 파싱은 아직 미검증이므로 **코드 실행은 미구현**, 그 전에는 수동 관찰한다. TOP50를 전체 서학개미 투자 총액으로 해석하지 않는다.
 
 - [SEIBro 수집 필드·조회 옵션·권한 확인 명세](./SEIBro_Overseas_Stock_Flows.md)
+
+## 나스닥 100 선물·연동상품 실시간 수집 후보
+
+- **MEXC `NAS100_USDT`**: 공개 Futures WebSocket 저지연 시장 시세 후보. **CME NQ가 아닌 지수 연동 영구선물**이며 Protobuf 기반 WebSocket 전환 및 실측 지연 검증 필요.
+- **Binance `QQQUSDT`**: QQQ ETF 연동 영구선물로 별도 참고 시계열.
+- **Yahoo Finance `NQ=F`**: 실제 CME NQ 선물의 무료 **지연** 1분봉 비교값. 유료 CME 직접 실시간 피드는 기본 범위에서 제외.
+- **문서 조사만 완료**, 실제 NAS100/QQQ WS 연결 및 Auto-Axe 수집기 구현은 아직 수행하지 않음. [데이터 소스·API·상세 검증 계획](./Nasdaq100_Futures_Data_Sources.md).
