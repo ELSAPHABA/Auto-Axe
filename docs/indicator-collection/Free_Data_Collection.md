@@ -92,6 +92,8 @@
 
 [OCC/OIC 공개 만기 달력](https://www.optionseducation.org/referencelibrary/expiration-calendar), Cboe 상품 설명/계약별 일정, CME 상품별 만기 명세를 무료 공개 페이지/파일에서 읽는다. 일반적인 월간 규칙 계산은 **예비 후보일 생성용**이고 실제 확정은 상품 계약/휴장 공지로 교차검증. OCC 2026-06-19 Juneteenth에 명목 expiration date와 processing date가 다른 사례([OCC 인포메모](https://infomemo.theocc.com/infomemos?number=56694))를 반영. `expiry_date`, `last_trade_at`, `processing_at`, `settlement_at`, `exercise_style`, `am_pm`, `source_url` 각각 저장. 공식 캘린더의 기계 판독이 어려우면 수동.
 
+**미국 위칭 이벤트:** `TRIPLE_WITCHING`과 `QUADRUPLE_WITCHING`을 별도 관리한다. 주식 옵션·지수 옵션·지수 선물의 동시 만기는 트리플, 실제 개별주식 선물의 동시 만기까지 확인되면 쿼드러플로 분류한다. CME의 2026년 개별주식 선물 재도입 이후 계약별 검증이 필수이며, 미확인 자료는 `PENDING_VERIFICATION`으로 관리한다. 다음 각 유형의 DTE와 공통 위칭 플래그를 로컬 계산한다. [상세 명세](./US_Equity_Witching_Calendar.md).
+
 ### 9. 정책금리 4개 지역
 
 | 기관 | 무료 자동 경로 | 발표 즉시 조치 | 별도 의미 |
