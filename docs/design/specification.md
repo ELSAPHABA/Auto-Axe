@@ -7,6 +7,7 @@
 Auto-Axe는 NH나무 OpenAPI 기반 알고리즘·패턴 매매 퀀트 시스템을 목표로 한다. 현재 저장소에서 확인되는 구현 범위는 무료 시장 데이터 수집 및 검증용 Python 예제다. 본 설계는 수집, 정규화, 저장, 피처 산출, 분석 및 향후 매매 연동의 경계를 정의한다. 주문 API 상세, 전략 알고리즘, 배포 인프라, DB 제품, UI 기술은 아직 확정하지 않는다.
 
 - [기능 명세](../function/specification.md)
+- [프론트엔드 디자인 명세 (Live3x 레퍼런스)](./frontend.md)
 - [무료 데이터 수집 정책](../indicator-collection/Free_Data_Collection.md)
 - [수집기 설계 원문](../indicator-collection/Collector_Design.md)
 
