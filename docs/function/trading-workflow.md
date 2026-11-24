@@ -11,7 +11,10 @@ Auto-Axe의 매수·매도 전략은 ComfyUI, n8n과 유사한 노드 기반 비
 - OR: 조건 1 || 조건 2 → 매수/매도.
 - 전체 중단: 별도 트리거 충족 시 실행 중인 해당 Workflow 전체를 중단.
 - 초기 트리거: 목표가 도달, N% 상승/하락, 상승 후 하락 또는 하락 후 상승, 상승/하락 강도, 뉴스 긍정/부정 감정.
-- 조건 블록의 중첩과 분기, 복수 조건 연결을 지원한다.
+- 조건 블록의 중첩과 분기, 복수 조건 연결을 지원한다. 한 Workflow 안에서 조건 결과에 따라 서로 다른 실행 경로를 선택할 수 있다.
+- 저장된 다른 Workflow 전체를 하나의 재사용 가능한 조건 블록(WorkflowCondition)으로 불러오고, 명시된 조건 결과를 일반 조건과 동일하게 연결한다.
+- 다른 Workflow에서 참조 중인 Workflow는 삭제할 수 없다. 참조 관계를 표시하고 모든 사용 중인 참조를 해제한 후 삭제할 수 있다.
+- 메인 대시보드에 활성 Workflow 개수를 표시하고, Workflow 목록 및 상세 화면에서는 각 Workflow의 조건 충족 상태와 실행 경로를 실시간으로 표시한다.
 - §5의 전체 추가 트리거, §7의 편집기 UI 및 §9의 전체 상세 기능을 확정 개발 범위에 포함한다.
 - 사용자 정의 주식 그룹을 생성하여 그룹 평균 수익률, 상승/하락 종목 비율, 조건부 평균 상승/하락률, 강도 및 그룹 간 비교를 조건·중단 노드에 연결한다. [주식 그룹 상세](./stock-groups.md).
 
@@ -62,6 +65,73 @@ TRUE/FALSE/UNKNOWN의 3값 논리를 사용한다. AND는 하나라도 FALSE면 
 
 실행 방식: 수동 시작, 예약 시작, 시장 데이터 변경 시 감시, 거래 세션 시작, 경제 이벤트 발생. 실행 종료 정책은 1회 완료(기본), 조건 재설정 후 재감시, 최대 N회 또는 기간 내 반복을 명시적으로 선택한다. 자동 반복은 쿨다운·일별 주문 제한을 요구한다. 무제한 순환 그래프는 초기 버전에서 금지하고 반복은 제어된 재실행/루프 노드로만 지원한다.
 
+### 2.3 조건에 따른 분기 및 합류
+
+단순 직렬 경로뿐 아니라 하나의 조건에서 복수의 경로로 나누고 이후 다시 합류할 수 있는 방향성 그래프를 지원한다.
+
+```mermaid
+flowchart LR
+  S[시작] --> A{조건 A}
+  A -->|TRUE| B{조건 B}
+  A -->|FALSE| C{조건 C}
+  A -->|UNKNOWN| U[대기 또는 명시적 예외 처리]
+  B -->|TRUE| D[매수 의도]
+  B -->|FALSE| E[계속 감시 또는 종료]
+  C -->|TRUE| F[매도 의도]
+  C -->|FALSE| E
+  D --> R[공통 리스크 및 주문 검증]
+  F --> R
+```
+
+- 조건 노드 또는 IF/ELSE 분기 노드는 TRUE / FALSE / UNKNOWN 출력 포트를 지원한다. TRUE와 FALSE 경로는 해당 평가에서 상호 배타적이다. FALSE를 연결하지 않으면 기본적으로 후속 주문 없이 감시/종료 정책을 따른다. UNKNOWN은 기본 대기 또는 안전 종료이며 FALSE로 치환하지 않는다.
+- 다중 분기(Switch)는 조건별 CASE 및 DEFAULT를 제공한다. 기본은 우선순위가 가장 높은 첫 일치 분기 실행이며, 복수 경로 동시 실행은 명시적인 병렬/Fork 노드로 구분한다. CASE 판정에 필요한 값이 UNKNOWN이면 DEFAULT로 자동 실행하지 않는다.
+- 분기 안에 순차 조건, AND/OR/NOT/N-of-M, 다른 분기, 재사용 Workflow 조건, 대기, 중단, 매수/매도 노드를 중첩할 수 있다. 선택되지 않은 경로는 SKIPPED로 기록하고 해당 경로의 주문 노드를 실행하지 않는다.
+- 병렬 경로의 합류는 Join(ALL/ANY 등 명시적 정책)으로 정의한다. 논리 AND/OR의 입력 평가와 실행 경로 합류를 구별한다. 상호 배타 분기의 합류는 선택된 경로만 대상으로 하며 실행되지 않은 분기를 영구 대기하지 않는다. 동일 실행/활성화의 합류 및 주문 의도는 한 번만 생성한다. 상충하는 주문은 기존 계좌 수준 전략 충돌·위험 게이트에서 검증한다.
+- 분기 결과, 선택 경로, 평가 시각, 분기/합류 식별자 및 미선택 사유를 기록한다. 상태형 조건은 해당 분기 활성화부터 평가하며 과거 충족 여부를 잘못 상속하지 않는다.
+- 독립 Interrupt는 분기 위치와 무관하게 감시한다. 중단 시 해당 실행의 모든 활성 분기 및 하위 조건 호출을 중지하고 신규 주문을 차단한다. 이미 전송된 주문은 기존 대사 정책을 적용한다.
+
+### 2.4 다른 Workflow 전체를 조건 블록으로 재사용
+
+저장된 Workflow를 편집기에서 하나의 조건 박스 `WorkflowCondition`으로 추가할 수 있다. 단순 복사/붙여넣기나 일부 노드 복제가 아니라 원본 Workflow ID 및 버전을 참조하는 Sub-workflow 방식이다. 원본 내부 그래프의 조건·분기·순차 상태 및 종료 결과를 하나의 조건 출력으로 캡슐화한다.
+
+```mermaid
+flowchart LR
+  S[부모 Workflow 시작] --> X[WorkflowCondition: 시장 추세 확인]
+  X -->|TRUE| B{추가 조건}
+  X -->|FALSE| C[다른 분기 또는 대기]
+  X -->|UNKNOWN| U[대기 또는 안전 종료]
+  B -->|TRUE| O[부모 매수 또는 매도 의도]
+  subgraph Child[참조된 Workflow 전체]
+    A[가격 조건] --> J{AND}
+    V[거래량 조건] --> J
+    J --> R[ConditionResult]
+  end
+  R -. 명시적 결과 .-> X
+```
+
+| 설정 | 구현 기준 |
+|---|---|
+| 참조 대상 | workflow_id + 불변 version, 이름·버전 표시; 저장된 접근 권한이 있는 Workflow 선택 |
+| 입력 | 부모의 종목·시간·변수 및 명시적 매핑, 모드/권한·시점 제약 상속 |
+| 결과 | 명시적인 ConditionResult 노드 또는 선언된 조건 결과 포트의 TRUE/FALSE/UNKNOWN |
+| 실행 | 부모 조건 활성화 시 전체 참조 그래프를 격리된 하위 조건 실행으로 평가; 별도 독립 활성화 불필요 |
+| 상태 | 하위 실행의 상태형 조건·타이머·분기·결과를 parent run/node/activation 및 호출 경로별로 격리 |
+| 중단/시간 초과 | 부모 중단은 해당 하위 호출에 전파; 하위 오류·만료·중단은 기본 UNKNOWN 및 사유, 부모의 명시적 오류/중단 처리 정책 적용 |
+| 버전 | 저장/배포 시 대상 버전을 고정. 원본 수정은 새 버전이며 부모의 기존 실행을 변경하지 않음; 버전 변경은 명시적 선택 및 재검증 |
+| 안전 | 조건 모드에서는 주문·취소·청산 등 외부 부작용 액션을 실행하지 않음 |
+
+기본 설계: **Workflow의 조건 충족 결과와 실행 성공/실제 주문 체결을 구분한다.** 모든 노드가 TRUE라는 뜻으로 임의 판정하지 않고 원본이 선언한 ConditionResult의 결과를 사용한다. 여러 종료 경로가 있으면 각 경로 결과를 명시하고, 여러 결과가 도달할 수 있는 경우 합류 정책을 정의한다. 아직 평가 중인 경우 UNKNOWN/WAITING으로 표현하고, 확정 FALSE만 FALSE로 전달한다. 결과의 관측 시각 및 유효기간을 보존한다.
+
+원본이 매수·매도 노드를 포함하더라도 조건 전용 호출에서는 주문 등 외부 부작용을 절대 발생시키지 않는다. 조건 결과를 순수 평가 경로에서 확정할 수 있도록 편집기에서 결과 포트를 지정한다. 결과가 실제 주문/체결 또는 부작용 실행에 의존하는 Workflow는 조건 블록으로 사용할 수 없으며 검증 오류로 표시한다. 해당 Workflow의 독립 실행은 기존 주문 정책을 따른다. 기존 독립 실행 결과를 무조건 재사용하지 않으며, 독립 실행 및 서로 다른 부모의 호출 상태는 격리한다.
+
+#### 참조 무결성 및 삭제 제한
+
+- 직접 자기 참조(A→A) 및 간접 순환(A→B→C→A)을 금지한다. 노드 연결 검증과 별개로 Workflow 간 버전 의존성 그래프를 저장·가져오기·버전 변경·배포 시 서버에서 검증한다.
+- 저장된 참조 블록이 존재하면 부모가 활성/비활성/초안 상태인지와 관계없이 대상 Workflow 삭제를 거부한다. 현재 참조하는 저장본 및 배포 버전, 활성 실행이 고정한 참조를 검사한다. 삭제 시 참조하는 Workflow 이름, 버전 및 노드, 사용 건수를 표시한다.
+- 삭제하려면 모든 사용 중인 참조를 제거하거나 다른 대상으로 교체하여 저장하고, 관련 활성 실행 및 버전 의존성을 안전하게 종료/해제한 후 다시 요청한다. 자동 연쇄 삭제, 참조의 강제 제거, 실행 중인 그래프의 묵시적 수정은 금지한다.
+- UI 삭제 비활성화뿐 아니라 서버 트랜잭션/제약에서 참조 생성과 삭제의 경쟁 조건을 차단한다. 권한 확인 후 삭제를 허용하며 과거 실행 감사 및 재현에 필요한 불변 버전은 별도로 보존한다. 과거 감사 기록 자체는 살아 있는 사용 참조와 구별한다.
+- 직접/간접 참조 목록과 영향 범위를 조회할 수 있다. 참조 대상이 누락되거나 권한/버전이 유효하지 않으면 저장·배포/실행 검증에서 차단하고 임의 TRUE/FALSE로 대체하지 않는다.
+
 ## 3. 노드 카탈로그
 
 | 노드 분류 | 예시 | 역할 |
@@ -72,7 +142,8 @@ TRUE/FALSE/UNKNOWN의 3값 논리를 사용한다. AND는 하나라도 FALSE면 
 | 조건 | 비교, 목표가, 퍼센트 변화, 돌파, 범위 | 조건의 TRUE/FALSE/UNKNOWN 산출 |
 | 상태형 조건 | 상승 후 하락, 하락 후 상승, 지속시간, 최고/최저 추적 | 여러 관측에 걸친 상태 보존 |
 | 논리 | AND, OR, NOT, N-of-M | 복수 조건 결합 |
-| 제어 | Sequence, IF/ELSE, Wait, Timeout, Cooldown, Interrupt | 실행 흐름 및 시간 제약 |
+| 제어 | Sequence, IF/ELSE, Switch, Fork, Join, Wait, Timeout, Cooldown, Interrupt | 조건 분기·합류·실행 흐름 및 시간 제약 |
+| Workflow 재사용 | WorkflowCondition, ConditionResult | 다른 저장된 Workflow 전체를 하나의 조건 블록으로 참조하고 명시적 조건 결과 반환 |
 | 주문 | BUY, SELL | 주문 의도 생성; 브로커 API 직접 호출 금지 |
 | 위험 관리 | 데이터 유효성, 한도, 손실 제한, 주문 검증 | 실행 허용 여부 결정 |
 | 알림/기록 | 알림, 로그, 결과 저장 | 실행 관측·검수 |
@@ -203,6 +274,32 @@ ComfyUI/n8n 스타일의 드래그 가능한 블록과 방향성 연결선. 기�
 - 저장 가능한 그래프(JSON 제안): workflow_id, version, nodes[{id,type,config,position}], edges[{from_node,from_port,to_node,to_port}], interrupt_rules, execution_policy, risk_profile_ref. 비밀정보/토큰은 그래프에 저장하지 않는다. 배포된 버전은 불변으로 보존한다.
 - 편집과 실행을 분리한다. 실행 중인 그래프는 저장 당시 버전에 고정되고 편집본 변경은 다음 실행에 반영한다.
 
+### 7.1 분기 및 재사용 블록 편집
+
+- 조건 노드에 TRUE/FALSE/UNKNOWN 포트 및 연결선을 표시한다. 분기 라벨을 선에 표기하고 선택된 실행 경로를 강조한다. 미선택 경로는 흐리게 표시하되 상태 텍스트를 제공한다. 병렬 Fork/Join은 IF/ELSE와 시각적으로 구분한다.
+- 라이브러리의 기존 Workflow 검색/선택에서 저장된 Workflow 전체를 캔버스에 드래그한다. 하나의 WorkflowCondition 카드에 이름·고정 버전·현재 결과·하위 충족 조건 수를 표시한다. 세부 그래프는 펼치기/상세 이동으로 조회한다.
+- Workflow 상세/목록에는 '사용 중인 Workflow' 및 '이 Workflow를 사용하는 Workflow' 목록을 제공한다. 참조가 존재하면 삭제 버튼을 비활성화하고 이유와 영향 대상을 표시한다. 서버 거절도 동일한 사유로 노출한다.
+
+### 7.2 메인 화면 활성 Workflow 수 및 상세 조건 상태
+
+메인 대시보드 상단에 **활성 Workflow N개**를 표시하고 클릭하면 활성 Workflow 목록으로 이동한다. 활성은 서버에서 실제로 시작되어 실행/감시 중인 최상위 Workflow 정의를 뜻한다. 단순 저장·검증·예약 대기·일시정지·완료·중단·오류는 제외한다. 활성 실행 상태는 RUNNING, MONITORING, WAITING(실행 중인 조건/타이머/승인 대기)으로 정규화한다. 동일 Workflow의 복수 종목/복수 실행은 정의 ID 기준 한 번만 센다. 하위 Workflow 조건 호출은 별도 표시하되 최상위 활성 개수에 중복 가산하지 않는다. 독립적으로 시작된 참조 대상은 자체 최상위 실행이 있을 때만 별도로 센다. LIVE/PAPER/DRY_RUN별 수와 실행 인스턴스 수를 구분하며 과거 BACKTEST 재생은 실시간 활성 수에서 제외한다.
+
+Workflow 목록에는 이름, 버전, 실행 모드, 실행 상태, 현재 경로, 충족 조건 수/전체 조건 수, 마지막 평가 및 최근 충족 시각을 표시한다. 복수 실행이 있으면 선택한 run_id 기준의 상태를 표시하고 서로 다른 실행의 충족 조건을 합산하지 않는다. 활성 실행이 없으면 미실행 또는 종료된 최신 이력임을 표시한다.
+
+| 조건 표시 | 의미 |
+|---|---|
+| TRUE / 충족 | 현재 평가 결과 참 또는 해당 순차 단계 충족 이력(두 의미는 분리 표기) |
+| FALSE / 미충족 | 유효 데이터로 평가한 결과 거짓 |
+| UNKNOWN / 확인 불가 | 데이터 부족·지연·하위 호출 평가 중 등; 사유 표시 |
+| WAITING / 감시 중 | 실행 경로에서 활성화되어 다음 평가/조건을 기다림 |
+| NOT_STARTED / 미평가 | 아직 활성화되지 않은 노드 |
+| SKIPPED / 미선택 | 분기 결과상 현재 실행에서 지나가지 않는 경로 |
+| ERROR / STOPPED | 평가 오류 또는 중단으로 후속 진행 차단 |
+
+- 상세 화면에는 각 노드의 상태, 현재값, 비교 기준, 조건 충족 시각, 마지막 평가 시각, 데이터 원본 시각, 품질/실패 사유 및 실제 선택된 연결선을 표시한다. 상태형 순차 노드는 과거 충족 래치와 현재 조건값을 구분한다.
+- 진행 요약은 선택 실행의 최상위 조건 노드 중 충족 상태인 수와 전체 조건 노드 수를 기본 표기한다(예: 3/5). 미선택/미평가/UNKNOWN 수와 현재 경로의 충족/평가 대상 수도 별도 제공한다. 중첩 Workflow는 부모 요약에서 1개 조건으로 계산하고 내부 진행도는 별도 표시한다. 전체 조건 수는 AND/OR 등 논리·합류/주문 노드를 포함하지 않는 판정 가능한 조건 블록 기준으로 일관되게 계산한다. 분기 구조이므로 이 비율을 주문 실행 가능성이나 완료율로 해석하지 않는다.
+- 상태는 서버의 실행 이벤트와 스냅샷을 구독하여 변경 시 갱신한다(WS/SSE 후보, 재접속 시 전체 스냅샷 및 이벤트 순서 대사). 브라우저 자체 추정이나 이전 값으로 활성/충족 상태를 위장하지 않는다. 연결 지연 시 마지막 상태 및 시각, 연결 끊김을 표시한다.
+
 ## 8. 실행 엔진·저장 구조 (논리 설계)
 
 UI는 그래프 작성 및 상태 조회, 서버는 이벤트 평가·상태 영속화·주문 의도 실행을 담당한다. 브라우저 종료와 무관하게 활성 실행을 관리한다. 데이터 수집 피드와 주문 브로커를 분리한다.
@@ -210,7 +307,11 @@ UI는 그래프 작성 및 상태 조회, 서버는 이벤트 평가·상태 영
 | 논리 엔터티 | 핵심 필드 |
 |---|---|
 | workflow_definitions / versions | workflow_id, version, graph, owner_ref, checksum, created_at, validation_status |
-| workflow_runs | run_id, version, mode, started_at, status, stopped_at, stop_reason |
+| workflow_runs | run_id, workflow_id, version, mode, started_at, status, stopped_at, stop_reason, parent_run_id?, parent_node_id?, parent_activation_id?, root_run_id, invocation_mode |
+| workflow_dependencies | parent_workflow_id/version, reference_node_id, target_workflow_id/version, reference_kind, live_reference_status; 역방향 조회 및 삭제 제약 |
+| workflow_condition_results | run_id, node_id, activation_id, child_run_id?, result, evaluated_at, valid_until, quality_status, reason |
+| workflow_branch_states | run_id, activation_id, branch_node_id, selected_ports, skipped_paths, join_policy, join_state, event_id |
+| workflow_status_snapshots | workflow_id, run_id, mode, state, condition_counts, active_path, last_evaluated_at, event_sequence |
 | node_states | run_id, node_id, activation_id, status, activated_at, reference_value, extrema, last_event_id, expires_at |
 | evaluation_events | event_id, run_id, node_id, evaluated_at, inputs_asof, result, source_refs, reason |
 | order_intents | intent_id, run_id, node_id, broker_symbol, side, quantity, price, risk_decision, status |
@@ -253,6 +354,10 @@ P0~P2는 개발 순서이며 모든 항목은 승인된 필수 개발 범위다.
 - 뉴스: 오래된/중복/무관 기사, 낮은 신뢰도, 모델 오류 및 권한 미확인 시 차단.
 - 백테스트: 공개 시각 이전 데이터 접근 금지, OHLC 경로 불확실성, 비용/슬리피지 반영.
 - 주식 그룹: 그룹 버전 고정, 평균·시장폭·가중 수익률, 결측/coverage, 그룹 비교 및 중단, 구성 변경에 따른 오발동 방지.
+- 분기: TRUE/FALSE/UNKNOWN, 중첩 및 Switch 우선순위, 병렬 합류, 미선택 경로 주문 방지, 동일 합류 중복 및 분기 전체 중단 검증.
+- 재사용: A가 B를 조건으로 평가, 중첩 참조, 명시적 결과 반환, 상태/변수 격리, 버전 고정, 조건 호출의 주문·외부 부작용 차단, 부모 중단/하위 UNKNOWN 전달.
+- 삭제: 활성/비활성/초안·고정 실행 참조가 있는 경우 UI와 API 모두 거부, 참조 해제 후 허용, 자기/간접 순환 및 동시 참조 등록·삭제 경쟁 테스트.
+- 상태 UI: 활성 정의 중복 제거, LIVE/PAPER/DRY_RUN 구분 및 자식 호출 제외, 상태 변경·재접속·지연 표시, 선택 실행의 조건 카운트와 선택/미선택 경로 정확성.
 - 추가 기능: 승인된 P0~P2 기능 각각의 수용 테스트를 구현한다.
 - 편집기: 노드 드래그·연결·저장/복원, 타입 오류, 순환 연결 거부, 검증 실패 시 배포 금지.
 
@@ -267,4 +372,4 @@ P0~P2는 개발 순서이며 모든 항목은 승인된 필수 개발 범위다.
 - [재무 및 기술지표](../indicator-collection/YFinance_Valuation_and_Moving_Averages.md)
 - [1초 누적 거래량](../indicator-collection/YFinance_1s_Stock_Cumulative_Volume.md)
 
-현재 상태: 기본 요구사항·전체 추가 트리거·전체 상세 기능·편집기 UI·주식 그룹 승인 명세 완료. 엔진, 편집기, 뉴스 분석, 주문·체결 연동 모두 미구현.
+현재 상태: 기본 요구사항·전체 추가 트리거·전체 상세 기능·편집기 UI·주식 그룹 및 조건 분기·Workflow 재사용·참조 삭제 제한·실행 상태 모니터링 승인 명세 완료. 엔진, 편집기, 뉴스 분석, 주문·체결 연동 모두 미구현.
