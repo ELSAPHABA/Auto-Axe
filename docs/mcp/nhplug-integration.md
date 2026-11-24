@@ -1,6 +1,6 @@
-# NH투자증권 nhplug-mcp 독립 연동 명세
+# NH투자증권 nhplug-mcp 및 nhplug-sdk 연동 명세
 
-> 2026-11-25 GitHub 원본 확인. 사용자 지정 외부 MCP는 [PLUG-OpenAPI/nhplug-mcp](https://github.com/PLUG-OpenAPI/nhplug-mcp)이다. 확인한 main commit: c61e38ca37de801911ac6c29a685077802513d44, package/server version 0.1.0. 현재 **조회 전용**이라 실제 주문 실행을 지원하지 않는다. 이는 구현 차단 사항이며 주문 가능하다고 문서화하지 않는다.
+> 2026-11-25 GitHub 원본 확인. 사용자 지정 외부 MCP는 [PLUG-OpenAPI/nhplug-mcp](https://github.com/PLUG-OpenAPI/nhplug-mcp)이다. 확인한 main commit: c61e38ca37de801911ac6c29a685077802513d44, package/server version 0.1.0. 현재 **조회 전용**이라 실제 주문 실행을 지원하지 않는다. 2026-11-25 사용자 승인에 따라 실제 주문은 공식 nhplug-sdk 기반 독립 실행 서비스로 구현한다. MCP의 조회 제한은 유지한다.
 
 ## 1. 확인된 upstream 기능
 
@@ -36,7 +36,10 @@ flowchart LR
   N --> R[NHPLUG 조회 API]
   A --> I[Auto-Axe 주문 의도 / 승인 요청]
   I --> G[리스크 검사]
-  G -. LIVE 제출 차단 .-> X[별도 실행 서비스 미확정]
+  G --> X[격리된 Trading Executor]
+  X --> SDK[nhplug-sdk]
+  SDK --> O[NHPLUG 주문 API]
+  O --> L[주문 및 체결 대사]
   A --> P[Portfolio read-only adapter]
   P -. 권한 검증 후 별도 MCP Client .-> N2[격리된 nhplug-mcp 프로세스]
   N2 --> R
@@ -65,11 +68,29 @@ N2 사용 시 BASE/AUTH를 N2 공식 도메인으로 함께 맞춘다. 허용 �
 - HTTP/JSON-RPC 성공만으로 업무 성공을 단정하지 않는다. upstream은 rsp_cd/rsp_msg 업무 판정을 그대로 전달하므로 API별 공식 규격에 따라 해석한다. 호출 제한·인증 실패·데이터 없음 및 조회 기준시각을 보존한다.
 - 오류 시 BROKER_UNAVAILABLE/STALE_DATA/UNKNOWN 등으로 처리한다. 조회 실패를 주문 성공·잔고 0으로 변환하지 않는다. upstream 변경 시 schema drift, allowlist, 주문 차단, 모의 환경 테스트를 다시 수행한다.
 
-## 5. 실제 주문 실행 한계 및 후속 결정
+## 5. 실제 주문 실행 — nhplug-sdk 채택 확정
 
-사용자가 선택한 nhplug-mcp는 유지하되, 현재 버전으로 실제 매수/매도/정정/취소를 수행할 수 없다. 따라서 Auto-Axe는 주문 의도, preview, 검증, 승인 요청 및 모의 엔진까지만 정의하며 LIVE 제출은 NOT_IMPLEMENTED/BROKER_UNAVAILABLE로 차단한다. upstream의 안전 제한을 제거하거나 우회하는 fork, 임의 REST proxy, 주문 테스트 스크립트 호출을 구현하지 않는다.
+사용자 승인에 따라 실제 매수·매도 주문은 공식 [nhplug-sdk](https://github.com/PLUG-OpenAPI/nhplug-sdk)를 활용한다. nhplug-mcp는 조회 전용으로 유지한다. SDK 채택은 기술 및 개발 범위 확정이며 실거래 활성화 승인이 아니다.
 
-공식 README가 안내하는 [nhplug-sdk](https://github.com/PLUG-OpenAPI/nhplug-sdk) 기반 독립 주문 실행 서비스는 **대안 후보이며 아직 채택 승인되지 않았다.** 향후 사용자 승인 후 공식 API의 거래 지원·모의/운영·계좌·시장·주문 유형·호출 제한·이용권을 검증하여 별도 설계를 확정한다. 승인된 경우에도 deterministic 주문 실행 서비스, 전용 자격증명, 위험 검사, 사람/사전 승인 정책, Kill Switch, 주문 의도 고유 키, 접수·체결 대사 및 미확인 응답 재전송 금지를 적용한다. 통합 Auto-Axe MCP에 실제 주문 제출 도구를 추가하지 않는다.
+| 항목 | 공식 README 확인 내용 |
+|---|---|
+| 패키지 | PyPI nhplug (저장소 nhplug-sdk) |
+| 호출 | Python REST client call(), URI 경로 기반; MCP operationId와 구분 |
+| 인증 | 앱키/시크릿, 토큰 캐시 및 호스트 가드 |
+| 국내 주문 | 현금 매수·매도 샘플 |
+| 해외 주문 | 매수 및 매수/매도 가능수량 조회 샘플 |
+| 조회 | REST 연속조회 및 WebSocket 기능 |
+| 응답 | HTTP 200은 업무 성공 보장 아님; rsp_cd/rsp_msg와 기대 출력 확인 |
+| 배포 | 버전·의존성 고정; snippets/examples는 PyPI 패키지에 미포함 |
+
+독립 Trading Executor에서만 SDK를 호출한다. Workflow 엔진은 승인된 주문 의도를 전달하고, 통합 MCP는 주문 준비·의도·승인 요청·상태 조회까지만 제공한다. 실제 제출/정정/취소 및 체결 대사는 Executor의 책임이며 구체적인 API 지원 범위는 공식 명세 및 모의 환경으로 검증한다. 임의 URI proxy와 MCP 주문 제한 우회는 금지한다.
+
+- 기존 리스크 게이트, Kill Switch, 주문 의도 고유 키, 승인, 접수·부분체결·체결 대사 및 응답 유실 후 재전송 금지 규칙을 적용한다.
+- 모의/운영 자격증명과 계좌 격리. 공식 README의 운영 계좌구분 01/02와 모의 03을 해당 환경에 맞게 확인한다. 모의 환경에서 운영으로 자동 fallback하지 않는다.
+- SDK의 토큰 캐시 및 환경변수 탐색이 다른 환경의 키를 읽지 않도록 전용 실행 계정과 명시적 설정을 사용한다. SDK 스로틀 외 플랫폼 공통 호출 제한 적용.
+- LIVE 제출은 SDK 연동 구현, 공식 API 계약 및 이용권 확인, 모의 주문·대사 검증, 별도 실제 거래 활성화 승인 전까지 비활성이다.
+
+출처: [SDK README](https://github.com/PLUG-OpenAPI/nhplug-sdk/blob/main/README.md), [AGENTS.md](https://github.com/PLUG-OpenAPI/nhplug-sdk/blob/main/AGENTS.md), [PyPI](https://pypi.org/project/nhplug/), [공식 API 명세](https://www.nhplug.com/llms.txt). 실제 계좌 연결이나 주문 테스트는 수행하지 않았다.
 
 ## 6. 검증 단계
 
@@ -77,6 +98,7 @@ N2 사용 시 BASE/AUTH를 N2 공식 도메인으로 함께 맞춘다. 허용 �
 2. 허용 조회 및 mock 환경에서 계좌 매핑·응답/단위·인증·호출 제한 검증.
 3. 주문 기능 미노출·차단은 무자격증명 mock/stub 또는 소스/계약 테스트로 검증; 실제 주문 호출 시험 금지.
 4. 외부 독립 연결과 Auto-Axe read-only adapter의 격리, 타 계좌 접근 차단, 키 및 로그 마스킹.
-5. 조회 장애·schema 변경·재접속 검증. LIVE 제출은 별도 지원 및 승인 전 차단.
+5. 조회 장애·schema 변경·재접속 검증.
+6. SDK 기반 Executor 구현, 공식 API 지원 확인, 모의 주문·업무 실패·부분체결·취소·대사 및 환경 격리 검증. 별도 LIVE 활성화 승인 전 실주문 차단.
 
 공식 명세: [NHPLUG](https://www.nhplug.com/llms.txt), [NHPLUG SDK](https://github.com/PLUG-OpenAPI/nhplug-sdk). [보안](./security.md) · [Tools](./tools.md) · [Workflow](../function/trading-workflow.md).
