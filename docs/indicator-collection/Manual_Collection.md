@@ -17,6 +17,7 @@
 | `BRENT_FUTURES_INTRADAY` | ICE 등 상품 표시 화면 | 가격 USD/bbl, 거래소·월물·지연 | 장중값이 필요할 때 | 현물 Brent 일별과 별도 |
 | `EARNINGS_CONSENSUS` | 각 기업 IR 및 권한 있는 공개 금융 자료 | ticker, 회계연도/분기, forecast EPS/revenue, 애널리스트 수(명시된 경우), 날짜 | 실적 전 예상치 비교 필요 시 | SEC **회사 자체 guidance**와 분리 |
 | `EARNINGS_GUIDANCE_EXCEPTION` | 기업 공식 IR PDF/실적콜 등 | metric, 범위, FY/Q, GAAP 여부, 최초 발표, 원문 링크 | 자동 parser 실패 시 | 리뷰필요 사유 기록 |
+| `US_EQUITY_WITCHING_VERIFY` | OCC/OIC·Cboe·CME 공식 계약 일정 | 실제 4개 상품군별 YES/NO/UNKNOWN, ET 세션 및 근거 링크 | 주간 확인·휴장/상장/정정 시 | 미확인 시 트리플/쿼드러플 단정 금지. [분류 기준](./US_Equity_Witching_Calendar.md) |
 | `EXPIRATION_EXCEPTION` | [OCC 공식](https://www.optionseducation.org/referencelibrary/expiration-calendar), [CME 공식](https://www.cmegroup.com/tools-information/calendars/expiration-calendar.html) | 상품별 명목 만기·최종거래·처리·결제일 | 휴일/특별처리 공지 시 | 달력의 일반 셋째 금요일 규칙으로 대체 금지 |
 | `ECONOMIC_FORECAST` | 적법하게 공개된 컨센서스 원문 | 지표명·예상치·조사시점·단위 | 주요 발표 직전 | 공식 actual과 별개; 허위 컨센서스 생성 금지 |
 
