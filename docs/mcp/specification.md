@@ -12,7 +12,7 @@ AI 에이전트가 Auto-Axe의 시장 데이터, 지표, 그룹, 전략, 예측,
 | MCP-004 | 시장·지표·그룹·Workflow·예측·백테스트·계좌·수집·시스템·주문 준비 기능 |
 | MCP-005 | 원격 인증·세분화 인가·감사·호출 제한 및 사용자 승인 |
 | MCP-006 | 장시간 작업 Job 생성/조회/취소, 실행 및 상태 이벤트 |
-| MCP-007 | 독립 nhplug-mcp 조회 연동, 실주문 경계 격리 |
+| MCP-007 | 독립 nhplug-mcp 조회 연동 및 nhplug-sdk 기반 실주문 경계 격리 |
 | MCP-008 | 도메인별 계약·오류·스키마 버전 및 호환성 검증 |
 | MCP-009 | 프론트엔드 상태/실행 원장과 MCP 결과 일관성, 도메인 제약 유지 |
 | MCP-010 | 신규 플랫폼 기능에 대응하는 Tool/Resource 등록 및 테스트, 미구현 기능 미노출 |
@@ -32,13 +32,15 @@ flowchart LR
   A --> N[독립 nhplug-mcp 조회 연결]
   N --> NH[NHPLUG 조회 API]
   S --> Q[주문 의도 및 리스크 게이트]
-  Q -. LIVE 제출 미확정 / 차단 .-> X[격리된 주문 실행 계층]
+  Q --> X[격리된 Trading Executor]
+  X --> SDK[nhplug-sdk]
+  SDK --> O[NHPLUG 주문 API]
 ```
 
 - Auto-Axe의 공개 MCP 연결은 기본 1개. nhplug-mcp는 외부 독립 서버이며 통합 MCP 내부 도구로 무조건 재등록하지 않는다.
 - 인증/인가/감사/스키마 검증은 공통 middleware와 Application Service에서 강제한다. MCP는 비즈니스 로직의 또 다른 어댑터일 뿐이다.
 - 플랫폼의 계좌 화면에 필요한 NH 조회 연동은 별도 내부 읽기 전용 MCP Client/adapter가 담당할 수 있다(명시적 권한·운영 검증 이후). 일반 MCP 서버에는 NH 자격증명을 저장하지 않는다.
-- 주문 의도와 실제 제출/접수/체결은 별개. 현재 upstream은 주문을 지원하지 않으므로 실주문 경로는 미완성 상태로 유지한다. [연동 명세](./nhplug-integration.md).
+- 주문 의도와 실제 제출/접수/체결은 별개. nhplug-mcp는 조회 전용으로 유지하고 실제 주문은 사용자 승인된 nhplug-sdk 기반 독립 Trading Executor로 실행한다. 구현·모의 검증·실거래 활성화 승인 전 LIVE 제출은 비활성이다. [연동 명세](./nhplug-integration.md).
 
 ## 3. 내부 모듈
 
@@ -99,7 +101,7 @@ backend/
     schemas/
   engines/
   integrations/nhplug_readonly/
-  trading_executor/  # 격리된 미래 실행 서비스, 현재 비활성
+  trading_executor/  # nhplug-sdk 기반 격리 실행 서비스, 현재 미구현
 frontend/
 tests/mcp/
 docs/mcp/
@@ -116,6 +118,6 @@ Python 공식 MCP SDK, FastAPI, Pydantic, 내부 Application Service 호출을 �
 | 3 | 모의 실행·예측·백테스트·Job | 비동기 상태 및 취소, 시점 정합성, 연구/실행 모델 분리 |
 | 4 | 수집/운영 및 권한·감사 강화 | 호출 제한, 허가 미확인 소스 차단, 접근 제어 테스트 |
 | 5 | nhplug-mcp 독립 조회 연결 | 버전 고정, mock/read-only 검증, 계좌 정보 마스킹 |
-| 6 | 실거래 실행 가능성 검토 | upstream 지원 한계 해결 및 별도 승인·모의 주문·대사 검증 전 LIVE 차단 |
+| 6 | nhplug-sdk 기반 Trading Executor 구현 및 검증 | API 계약·모의 주문·위험·대사 검증 및 별도 활성화 승인 전 LIVE 차단 |
 
 공식 참조: [MCP 명세](https://modelcontextprotocol.io/specification), [Python SDK](https://github.com/modelcontextprotocol/python-sdk), [MCP Inspector](https://github.com/modelcontextprotocol/inspector). 문서에 명시된 도구·구조는 구현 목표이며 실행 테스트 완료가 아니다.
