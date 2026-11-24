@@ -109,3 +109,8 @@ python docs/examples/realtime_collector.py naver-2y
 - 공식 OCC/OIC·Cboe·CME 만기 자료에서 분기 동시 만기 상품군을 확인하여 **트리플 위칭과 쿼드러플 위칭을 구분**한다. CME 개별주식 선물 재도입을 반영하고 실제 4종 동시 만기 여부를 검증한다.
 - 유형별 이벤트 플래그·DTE 및 실제 거래 세션까지 남은 거래일 수를 계산한다. 자료 미확인 시 보류하며 휴장 예외와 명목 만기·정산 시각을 구별한다.
 - [미국 위칭 캘린더 상세 명세](./US_Equity_Witching_Calendar.md). 문서화만 완료.
+
+## DRAM DDR5 모듈 현물가격
+
+- [DRAMeXchange](https://www.dramexchange.com/)의 `Module Spot Price` 표에서 **DDR5 UDIMM 16GB 4800/5600** 및 **DDR5 RDIMM 32GB 4800/5600**의 `Session Average`를 독립 지표로 수집한다. 공개 HTML 스크래핑은 자동 수집·저장·활용 권한을 확인한 뒤 활성화한다. 원본 주간 갱신 시각을 보존한다.
+- [DRAMeXchange 수집 상세 명세](./DRAMeXchange_Module_Spot_Prices.md). 문서화 완료, 운영 스크래퍼 미구현.
