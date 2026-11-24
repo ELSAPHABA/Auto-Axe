@@ -21,6 +21,7 @@
 | 미국 국채 30년 | yfinance `^TYX` | 지연 가능 |
 | CNN 공포·탐욕 | [CNN](https://edition.cnn.com/markets/fear-and-greed) | 자동 스크래핑 허가 전 수동 |
 | 해외주식 매수·매도 결제 통계 (서학개미 수급) | [SEIBro 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921) | 국가(미국 우선)·조회기간별 매수결제/매도결제/순매수결제 USD. **WebSquare 화면 스크래핑 예정**; 자동 허가 검토 전 수동, 실제 수집 미구현. TOP50는 전체 해외주식 총액이 아니며 체결 아닌 결제 기준. [상세 명세](./SEIBro_Overseas_Stock_Flows.md) |
+| DDR5 UDIMM 16GB 4800/5600 · RDIMM 32GB 4800/5600 | [DRAMeXchange](https://www.dramexchange.com/) `Module Spot Price`의 `Session Average` 스크래핑 (권한 확인 후) | 두 독립 모듈 현물가격 지표; 주간 갱신, 표의 Last Update 보존. [명세](./DRAMeXchange_Module_Spot_Prices.md) |
 | 펜타곤 피자지수 | [PizzINT](https://www.pizzint.watch/) | 수집 권한 확인 전 수동 |
 | 기업 가이던스 | SEC EDGAR/기업 IR | 원문과 추출 수치 구분 |
 | 미국 경제지표 일정·실제값 | BLS·BEA·Census 공개 자료 | 발표와 수정 이력 구분 |
