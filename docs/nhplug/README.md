@@ -2,6 +2,8 @@
 
 Auto-Axe의 NH투자증권 연동에 사용하는 공식 GitHub 저장소입니다.
 
+- **PLUG-OpenAPI 공식 GitHub 조직:** [github.com/PLUG-OpenAPI](https://github.com/PLUG-OpenAPI)
+
 | 프로젝트 | 바로가기 | Auto-Axe에서의 용도 |
 |---|---|---|
 | **nhplug-sdk** | [PLUG-OpenAPI/nhplug-sdk](https://github.com/PLUG-OpenAPI/nhplug-sdk) | Python SDK `nhplug`를 이용한 실제 매수·매도 주문 실행 및 증권사 API 연동. 주문은 Auto-Axe의 격리된 Trading Executor가 담당 |
