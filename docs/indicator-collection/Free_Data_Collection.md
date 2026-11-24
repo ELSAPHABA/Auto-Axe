@@ -25,6 +25,7 @@
 | VIX | **yfinance `^VIX`** (우선) / Cboe 무료 일별 CSV 검증 | Cboe Quote Dashboard 자동 추출 금지 | 데이터 권한·지연 문제 시 장중 수동 | **yfinance 분봉 수신 검증, 무지연 보장 없음** |
 | 미국 국채 금리 3M·2Y·5Y·10Y·30Y | **3M/5Y/10Y/30Y: yfinance `^IRX/^FVX/^TNX/^TYX`; 2Y: 네이버 `US2YT=RR` (승인 시)** | 네이버 robots 차단으로 무허가 시 [Treasury 공식 XML `BC_2YEAR`](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) 일별 대체 | 2Y 일중값 수동 기록 | Yahoo 지표·네이버 게시 수익률·Treasury 일별값을 별도 표기 |
 | 해외주식 매수·매도 결제 통계 (서학개미 동향) | **[한국예탁결제원 SEIBro 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921)**; 화면 로더·XML 확인, 공식 공개 자동 API 미확인 | WebSquare UI의 기간·국가·매수/매도/순매수 결제금액 **허가된 스크래핑 예정**; 권리 검토 전 비활성 | **SEIBro 화면 수동 기록** | **결제 기준, TOP50, USD; 실시간 체결·개인계정 원장 아님**. [필드·제약](./SEIBro_Overseas_Stock_Flows.md) |
+| DDR5 UDIMM 16GB 및 RDIMM 32GB 가격 | 공개 무료 API 미확인 | **DRAMeXchange 홈페이지 Module Spot Price → 지정 두 행 Session Average** (승인 후) | 허용된 범위에서 수동 확인, 불가 시 결측 | 주간 원본 갱신, 일 1회 점검; 권한 확인 전 비활성. [명세](./DRAMeXchange_Module_Spot_Prices.md) |
 | 펜타곤 피자지수 | 공개 JSON **/api/dashboard-data** 확인 (robots/Terms 권한 확인 필요) | Google Maps Popular Times 외부 추출·축적은 정책상 제한 → 기본 제외 | [PizzINT](https://www.pizzint.watch/) 상태·관찰시각·분류를 수동 기록 | 실험적 `MANUAL`; 시장 신호로 자동 주문 금지 |
 | 미국 지표·금리 발표 일정 | [BLS 일정 ICS](https://www.bls.gov/schedule/news_release/bls.ics), FOMC 일정, BEA 발표 일정 | BEA/FOMC/Census 등 공식 HTML/RSS/ICS | 일정 변경·공식 문서 PDF를 수동 입력 | `EVENT`: 공고 즉시 또는 변경시 |
 | 미국 지표 실제 발표값 | [BLS v2 API](https://www.bls.gov/developers/api_signature_v2.htm), BEA API, Census API | BLS [CPI 보도자료](https://www.bls.gov/news.release/cpi.htm), [고용보고서](https://www.bls.gov/news.release/empsit.htm), BEA 공식 발표 HTML (허용 범위) | 원문 확인 후 수치·최초 발표·수정여부 수동 입력 | `EVENT`; API가 원문보다 늦을 수 있음 |
@@ -153,3 +154,7 @@
 - `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
 - `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
 - [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](../examples/realtime_collector.py).
+
+### DRAM 모듈 현물가격 (2026-11-24 추가)
+
+[DRAMeXchange](https://www.dramexchange.com/)의 `Module Spot Price` 표에서 `DDR5 UDIMM 16GB 4800/5600` 및 `DDR5 RDIMM 32GB 4800/5600` 행의 `Session Average`를 각각 수집한다. 무료 공개 HTML 스크래핑은 목적·저장·활용 권한 확인 후 활성화한다. 주간 발표 시각을 보존하고 칩 현물가격이나 계약가격과 혼용하지 않는다. [상세 명세](./DRAMeXchange_Module_Spot_Prices.md).
