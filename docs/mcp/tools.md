@@ -166,7 +166,7 @@ scope: system:read, 로그는 system:logs:read, Job은 본래 작업 소유권/�
 | trading_request_approval | intent_id, expected_version | 사람 승인 요청 / trading:approval:request |
 | trading_request_cancel | order_ref, reason, idempotency_key | 취소 의도/요청 기록만 / trading:cancel:request |
 
-통합 MCP에는 trading_execute, trading_submit_order, 실제 정정/취소, 승인 우회 도구를 등록하지 않는다. request_cancel은 실제 취소 완료가 아니다. 현재 LIVE 주문 제출은 미지원이며 승인 요청이 있어도 실행 불가. [NH 연동 경계](./nhplug-integration.md).
+통합 MCP에는 trading_execute, trading_submit_order, 실제 정정/취소, 승인 우회 도구를 등록하지 않는다. request_cancel은 실제 취소 완료가 아니다. 실제 주문 제출·정정·취소는 사용자 승인된 nhplug-sdk 기반 독립 Trading Executor의 담당 범위다. 통합 MCP는 요청 및 상태 조회까지만 지원한다. Executor 구현·공식 API 지원 확인·모의 검증·별도 LIVE 활성화 승인 전 실주문은 불가하다. [NH 연동 경계](./nhplug-integration.md).
 
 ## 11. 계약 예시
 
