@@ -149,6 +149,16 @@ PizzINT는 기존 수집 정책상 자동 주문 신호에서 제외한다. 기�
 
 [주식 그룹 상세 명세](./stock-groups.md)의 전체 집계 지표 및 그룹 관리 기능을 지원한다. 그룹 평균 수익률, 상승·하락·보합 종목 비율, 평균 상승률·하락률, 시장폭, 강도, 상대수익률과 개별 구성종목 조건의 ALL/ANY/N-of-M 결합을 사용한다. 그룹 버전·평가 시각·기준 기간·유효 종목 비율을 검증하고, 그룹 신호와 실제 주문 종목을 분리한다. 그룹 조건도 순차·AND·OR·Interrupt에 연결할 수 있다.
 
+### 5.2 금요일 종가매수 예측 트리거
+
+[금요일 종가매수 상세 명세](./friday-close-strategy.md)에 따라 다음 8종 예측 출력을 Workflow 조건으로 연결한다.
+
+- MONDAY_UP_PROBABILITY, MONDAY_GAP_UP_PROBABILITY, MONDAY_INTRADAY_UP_PROBABILITY.
+- MONDAY_EXPECTED_RETURN, MONDAY_DOWNSIDE_RISK, PREDICTION_CONFIDENCE.
+- HISTORICAL_PATTERN_SIMILARITY, MODEL_VALIDATION_STATUS.
+
+노드는 분석 대상·타깃·모델 버전·cutoff·대상 월요일·단위·검증 상태·최대 데이터 age·최소 coverage를 설정한다. 연구 모델과 실행 모델을 구분하며 RESEARCH_EOD, 미검증/미승인, stale 또는 예측 보류를 실주문 조건에서 차단한다. 확률과 예상 수익률은 별도 출력이다. 금요일 지정 시각 → 상승 확률 및 비용 차감 기대수익 AND 조건 → 품질·위험 검증 → 사용자 지정 실제 종목 주문 의도를 구성할 수 있다. 임계값은 검증 후 사용자 설정하며 자동 청산·실주문 권한을 부여하지 않는다.
+
 ## 6. 매수·매도 액션 및 중단 안전장치
 
 ### 6.1 주문 노드
@@ -250,6 +260,7 @@ P0~P2는 개발 순서이며 모든 항목은 승인된 필수 개발 범위다.
 
 - [전체 기능 명세](./specification.md)
 - [주식 그룹 및 집계 트리거](./stock-groups.md)
+- [금요일 종가매수 및 월요일 예측 트리거](./friday-close-strategy.md)
 - [시스템 설계](../design/specification.md)
 - [프론트엔드 디자인](../design/frontend.md)
 - [무료 데이터 수집 명세](../indicator-collection/Free_Data_Collection.md)
