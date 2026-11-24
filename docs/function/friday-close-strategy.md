@@ -125,7 +125,7 @@ F는 해당 주의 금요일, M은 다음 달력 주 월요일(미국 거래소 
 
 금요일 확정 종가로 계산한 RSI·SMA·가격을 입력한 뒤 동일 금요일 종가에 매수하는 백테스트는 금지한다. 실제 시장 마감 및 브로커 주문 마감 시각을 확인한 뒤 충분한 여유를 둔 cutoff를 설정한다. 조기 폐장·휴장·DST를 반영하며 특정 MOC/LOC 주문 지원을 가정하지 않는다. yfinance의 장중 이력에는 조회 기간 제한이 있으므로 무료 데이터만으로 3년간 동일 시각 분봉을 확보할 수 있다고 가정하지 않는다. 초기에는 RESEARCH_EOD 구축과 허용된 마감 전 데이터 축적을 병행한다. cutoff 또는 상품·세션이 바뀌면 재검증한다.
 
-참고: [yfinance history API](https://ranaroussi.github.io/yfinance/reference/api/yfinance.Ticker.history.html). 실제 주문 조건은 NH나무 API 검증에서 확정한다.
+참고: [yfinance history API](https://ranaroussi.github.io/yfinance/reference/api/yfinance.Ticker.history.html). 실제 주문은 사용자 승인된 nhplug-sdk 기반 Trading Executor로 연동하며, 주문 조건은 NH나무 API 및 모의 환경 검증에서 확정한다. [NH 연동 명세](../mcp/nhplug-integration.md).
 
 ## 6. 통계 분석
 
