@@ -74,6 +74,8 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 
 발표/만기는 `event_calendar`에 `scheduled_at`, `released_at`, `first_seen_at`, `actual/forecast/previous`, `expiration_at`, `last_trade_at`, `processing_at`, `settlement_at`, `is_holiday_override`, `source_url`를 따로 기록. 명목 만기일과 처리일은 달라도 된다.
 
+미국 분기 동시 만기는 계약별 원자료를 기반으로 `TRIPLE_WITCHING` / `QUADRUPLE_WITCHING` / `PENDING_VERIFICATION`을 파생한다. 4개 상품군의 실제 동시 만기 여부를 확인하고, ET 세션 날짜·계약 참조·출처·검증시각·개정 이력을 보존한다. `IS_TRIPLE_WITCHING_DAY`, `IS_QUADRUPLE_WITCHING_DAY`, 유형별 DTE를 별도로 계산하며 쿼드러플을 트리플로 중복 집계하지 않는다. [분류·필드·예제](./US_Equity_Witching_Calendar.md).
+
 ## 3. 무료 수집 스케줄 (제안, 게시기관 보장 주기가 아님)
 
 | 어댑터 | 권장 실행 | 변동 시 |
