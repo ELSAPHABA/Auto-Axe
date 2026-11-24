@@ -35,7 +35,7 @@ flowchart LR
   D --> W
   P --> W
   W --> G[주문 의도 및 리스크 검증 - 향후]
-  G --> O[NH나무 주문 연동 - 향후]
+  G --> O[nhplug-sdk 기반 Trading Executor - 향후]
 ```
 
 | 계층 | 책임 |
@@ -51,7 +51,7 @@ flowchart LR
 | 금요일 예측 | 주간 피처·라벨, 시간순 모델 학습·검증·버전, 확률 및 수익률 예측, 승인 게이트 |
 | Workflow 엔진 | 노드 및 참조 그래프 검증, 조건 분기·합류, 하위 Workflow 조건 평가, 상태 보존, 독립 중단 감시, 주문 의도 생성 |
 | Workflow 상태·의존성 관리 | 버전 참조 무결성 및 삭제 제약, 활성 최상위 Workflow 집계, 실행/조건 스냅샷 및 상태 이벤트 |
-| 매매 연동 | 향후 브로커 어댑터; 데이터 품질·리스크 검증을 통과한 주문 의도만 전달 |
+| 매매 연동 | nhplug-sdk 기반 격리 Trading Executor; 데이터 품질·리스크 검증을 통과한 주문 의도만 전달 |
 
 ## 3. 수집 파이프라인
 
@@ -144,7 +144,7 @@ flowchart LR
   X[독립 중단 감시] --> K[중단 래치]
   K --> R[주문 게이트 / 리스크 검증]
   I --> R
-  R --> B[브로커 어댑터]
+  R --> B[Trading Executor / nhplug-sdk]
   B --> L[(주문 및 체결 원장)]
   L --> E
   E --> A[평가 로그 / UI 상태]
@@ -154,7 +154,7 @@ flowchart LR
 - 가격 반전 트리거는 기준가·고점/저점·활성화 시각·만료를 영속화한다. 뉴스 감정 피드는 출처·모델·이용권을 별도 확정한다.
 - 전체 중단 트리거는 실행 경로와 독립 감시하고 신규 주문 게이트에 우선 적용한다. 미체결 취소·보유량 청산은 별도 정책이다.
 - 실행 버전은 불변으로 고정하며 브라우저 종료에 의존하지 않는다. 실행·노드 상태와 주문 의도·체결·평가 로그를 저장한다.
-- NH 관련 외부 MCP는 독립 nhplug-mcp로 채택한다. 확인된 버전은 조회 전용이므로 LIVE 주문 제출은 차단한다. 실제 제출 서비스는 별도 승인 및 검증 대상이며 공식 SDK는 대안 후보에 한정한다. [NH 연동](../mcp/nhplug-integration.md). 주문 종목 매핑, 리스크 검증, 중복 방지, 응답 유실 대사 및 모의 검증을 필수 구현 요구사항으로 둔다.
+- NH 관련 외부 MCP는 독립 조회 전용 nhplug-mcp로 유지한다. 실제 주문은 사용자 승인된 공식 nhplug-sdk 기반 독립 Trading Executor를 통해 실행하도록 확정한다. 구현·모의 검증 및 실거래 활성화 승인 전 LIVE 제출은 차단한다. [NH 연동](../mcp/nhplug-integration.md). 주문 종목 매핑, 리스크 검증, 중복 방지, 응답 유실 대사 및 모의 검증을 필수 구현 요구사항으로 둔다.
 - [주식 그룹](../function/stock-groups.md)은 그룹 정의/버전/구성종목·가중치, 집계 스냅샷 및 상태형 조건을 영속화한다. 동일 as-of·세션·기준가격의 구성종목 수익률을 집계하고 coverage/신선도 검증 후 Workflow에 전달한다. 그룹 버전은 실행에 고정하며 신호와 주문 종목을 분리한다.
 - 승인된 전체 P0~P2 기능(편집기, 제어 노드, 기술·거시·뉴스 트리거, 백테스트, 주문·위험 제어, 다중 전략, 알림·성과)을 개발 범위에 포함한다.
 - 모의 실행·백테스트와 실거래 상태·자격증명을 분리한다. 구체 엔진·큐·DB·브로커 API 계약은 추가 확정 대상이다.
@@ -214,7 +214,7 @@ flowchart LR
 
 ## 8. 통합 MCP 아키텍처
 
-[통합 MCP 상세 명세](../mcp/specification.md). 외부에는 Auto-Axe MCP endpoint 1개, 내부는 market, indicator, stock_group, workflow, prediction, backtest, portfolio, collector, system, trading(주문 준비 전용) 10개 도메인 모듈로 구성한다. UI/REST와 공통 Application Service를 사용하며 도메인 제약·인증·인가·감사·Job·데이터 품질을 공유한다. nhplug-mcp는 별도 조회 전용 연결이며 통합 서버가 실주문을 직접 실행하지 않는다. 실주문 실행 방식은 upstream의 제약 때문에 미확정이다.
+[통합 MCP 상세 명세](../mcp/specification.md). 외부에는 Auto-Axe MCP endpoint 1개, 내부는 market, indicator, stock_group, workflow, prediction, backtest, portfolio, collector, system, trading(주문 준비 전용) 10개 도메인 모듈로 구성한다. UI/REST와 공통 Application Service를 사용하며 도메인 제약·인증·인가·감사·Job·데이터 품질을 공유한다. nhplug-mcp는 별도 조회 전용 연결이며 통합 서버가 실주문을 직접 실행하지 않는다. 실주문 실행 방식은 공식 nhplug-sdk 기반 독립 Trading Executor로 확정한다. SDK 자체는 MCP 서버가 아니며 통합 MCP로 주문 직접 실행 도구를 노출하지 않는다.
 
 ## 9. 구현 및 검증 단계
 
@@ -225,6 +225,6 @@ flowchart LR
 | 3 | 주식 1Hz 누적량, 재무·기술지표, Nasdaq 연동, DRAM·SEIBro, 위칭 | 상세 문서화; 운영 구현 및 필요한 실측·권한 확인 미완료 |
 | 4 | 비주얼 Workflow 편집기·조건 엔진·모의 실행·분석/백테스트 | 전체 기능 및 그룹 집계 승인·문서화, 구현 미완료 |
 | 4a | 금요일 종가매수 데이터셋·통계·모델·검증·전용 UI·Workflow 연동 | 승인 설계, 미구현; 별도 9개 Phase 명세 |
-| 5 | NH나무 매매 연동 및 리스크·체결 대사 | 별도 API 검증 및 세부 요구사항 확정 필요 |
+| 5 | nhplug-sdk 기반 NH나무 매매 연동 및 리스크·체결 대사 | 기술 채택 확정; 구현·API 지원 범위·모의 검증 및 LIVE 활성화 승인 필요 |
 
 단위 테스트는 필드 파싱·정규화·피처 계산, 통합 테스트는 연결 종료·중복·정정·휴장·권한 실패를 포함한다. 실시간 후보는 실제 장중 수신 빈도와 지연을 측정한다. [실행 예제](../examples/realtime_collector.py) · [검증 가이드](../indicator-collection/Realtime_Quickstart.md).
