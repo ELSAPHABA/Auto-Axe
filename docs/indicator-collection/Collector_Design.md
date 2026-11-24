@@ -17,6 +17,11 @@
 - `[symbol, source_event_at, received_at, sampled_at, day_volume, status]`를 보존하며 거래량 리셋·역순 메시지·휴장·재연결을 별도 검증한다.
 - [yfinance 주식·ETF 누적 거래량 1Hz 수집 명세](./YFinance_1s_Stock_Cumulative_Volume.md). **현재 운영 코드 미구현**.
 
+## DRAM 모듈 가격 수집 (추가 설계)
+
+- DRAMeXchange 홈페이지 `Module Spot Price` 표의 지정 UDIMM 16GB/RDIMM 32GB 두 행 `Session Average`를 승인 후 스크래핑한다. 상품별 별도 `series_id`, 원본 Last Update(GMT+8), 수집 시각·단위·정정 이력을 보존한다.
+- 일 1회 점검하되 주간 원본 갱신만 새 발표로 적재한다. DOM 구조·중복/누락 및 수집 권한 검증 실패 시 비활성 또는 결측 처리. [상세 명세](./DRAMeXchange_Module_Spot_Prices.md).
+
 ## 1. 모듈 구성
 
 ```mermaid
