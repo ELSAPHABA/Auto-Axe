@@ -8,6 +8,7 @@
 
 | series_id | 화면/공식 출처 | 입력 항목 | 기록 시기 | 구별해야 할 것 |
 |---|---|---|---|---|
+| `DRAM_DDR5_UDIMM_16GB_SESSION_AVG` / `DRAM_DDR5_RDIMM_32GB_SESSION_AVG` | [DRAMeXchange](https://www.dramexchange.com/) Module Spot Price | 지정 Item, Session Average, 섹션 Last Update, 단위 확인 | 주간 발표 확인 | 수동 적재도 허용 범위 확인 필수; 권한 미확인 시 비활성. [명세](./DRAMeXchange_Module_Spot_Prices.md) |
 | `CNN_FEAR_GREED` | [CNN Fear & Greed](https://edition.cnn.com/markets/fear-and-greed) | `score` (0~100), `category`, 화면 기준시각·조회시각 | 정기 점검(예: 미국 장 중/종료 후) | CNN 제공 점수 vs 자체 심리지표 |
 | `SEIBRO_OVS_STOCK_TOP50_SETTLEMENT` | [SEIBro 해외주식 종목별내역 TOP50](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921) | 국가·조회기간·조회기준일·매수결제/매도결제/순매수결제(USD), 종목코드·종목명·순위 | 결제 결과 게시 후 수동 조회 | **전체 시장 합계나 실시간 체결 데이터 아님.** 자동 스크래핑은 허용 조건 확인 전 비활성. [상세](./SEIBro_Overseas_Stock_Flows.md) |
 | `PENTAGON_PIZZA` | [pentagon.pizza](https://www.pizzint.watch/) | 화면의 활동 상태/공개 지수(있는 경우), 측정시각·관찰 메모 | 필요시 | Google Maps 외부 축적 금지; 독립·검증된 경제지표 아님 |
