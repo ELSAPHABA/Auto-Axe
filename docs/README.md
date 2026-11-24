@@ -9,3 +9,8 @@
 
 - [지표 수집 문서 모음](./indicator-collection/README.md)
 - [수집기 및 검증용 예제 코드](./examples/realtime_collector.py)
+
+## MCP 연동
+
+- [통합 MCP 명세 인덱스](./mcp/README.md)
+- [기능 및 아키텍처](./mcp/specification.md) · [Tools](./mcp/tools.md) · [Resources/Prompts](./mcp/resources-prompts.md) · [보안](./mcp/security.md) · [nhplug-mcp 연동](./mcp/nhplug-integration.md)
