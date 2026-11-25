@@ -222,6 +222,22 @@ flowchart LR
 
 [통합 MCP 상세 명세](../mcp/specification.md). 외부에는 Auto-Axe MCP endpoint 1개, 내부는 market, indicator, stock_group, workflow, prediction, backtest, portfolio, collector, system, trading(주문 준비 전용) 10개 도메인 모듈로 구성한다. UI/REST와 공통 Application Service를 사용하며 도메인 제약·인증·인가·감사·Job·데이터 품질을 공유한다. nhplug-mcp는 별도 조회 전용 연결이며 통합 서버가 실주문을 직접 실행하지 않는다. 실주문 실행 방식은 공식 nhplug-sdk 기반 독립 Trading Executor로 확정한다. SDK 자체는 MCP 서버가 아니며 통합 MCP로 주문 직접 실행 도구를 노출하지 않는다.
 
+### 8.1 로컬 및 외부 원격 MCP 접속
+
+```mermaid
+flowchart LR
+  C[외부 AI Host] -->|HTTPS Streamable HTTP| G[Reverse Proxy / Gateway]
+  C <-->|OAuth 인증 및 동의| A[Authorization Server]
+  G --> M[통합 MCP / 사설 네트워크]
+  L[로컬 AI Host] -->|stdio 또는 loopback HTTP| M
+  M --> S[공통 Application Service]
+  S --> I[내부 도메인 및 데이터 저장소]
+  S --> R[주문 의도 / 리스크 게이트]
+  R --> X[격리 Trading Executor]
+```
+
+로컬뿐 아니라 외부 PC·서버·클라우드 AI Host에서 접속할 수 있도록 한다. 원격 endpoint는 관리자가 활성화한 HTTPS 주소 한 개를 기본으로 사용한다. TLS, OAuth Resource Server, 클라이언트 등록/권한/폐기, scope 및 리소스 소유권, Host/Origin 검사, rate limit, 외부 접속 감사, 장애 시 fail closed를 적용한다. 프록시 뒤 내부 포트·DB·nhplug-mcp·nhplug-sdk 실행 서비스는 공개하지 않는다. 사설망/VPN은 선택적 배포 정책이며 인증을 대체하지 않는다. 구체 도메인·인증 서버·프록시 및 제한 수치는 구현 시 확정한다. [MCP 통신](../mcp/specification.md) · [외부 접속 보안](../mcp/security.md).
+
 ## 9. 구현 및 검증 단계
 
 | 단계 | 범위 | 상태 |
