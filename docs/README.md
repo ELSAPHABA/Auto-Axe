@@ -14,3 +14,7 @@
 
 - [통합 MCP 명세 인덱스](./mcp/README.md)
 - [기능 및 아키텍처](./mcp/specification.md) · [Tools](./mcp/tools.md) · [Resources/Prompts](./mcp/resources-prompts.md) · [보안](./mcp/security.md) · [nhplug-mcp 조회 및 nhplug-sdk 주문 연동](./mcp/nhplug-integration.md)
+
+## 기술 스택
+
+- [기술 스택 및 구현 기준 설계안](./tech-stack/README.md)

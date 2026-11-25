@@ -1,0 +1,65 @@
+# Backend 및 Application Service 기술 명세
+
+## 1. 기술 구성
+
+| 기술 | 사용 |
+|---|---|
+| Python 3.12 / uv | asyncio 기반 서비스, 의존성 및 lockfile |
+| FastAPI / Uvicorn | REST, OpenAPI, SSE ASGI |
+| Pydantic / pydantic-settings | DTO 검증, 구성, 환경별 설정 |
+| SQLAlchemy 2.x + psycopg 3 | async DB 접근, UoW, connection pool |
+| Alembic | schema migration, 배포 전 단일 실행 |
+| httpx / websockets | provider REST 및 WebSocket |
+| APScheduler | 주기/cron 계산과 스케줄러 기동 보조; 업무 상태는 DB가 소유 |
+| structlog / OpenTelemetry | 구조 로그·correlation·trace |
+
+블로킹 requests/yfinance 호출은 bounded thread 또는 별도 worker로 격리한다. CPU 모델/백테스트는 process worker. AsyncSession을 task 간 공유하지 않으며 네트워크 호출을 DB 트랜잭션 안에서 장시간 유지하지 않는다. 금액·주문 수량·가격은 Decimal, 분석 float는 명시적 구분; Pydantic으로 유효성 검증, Decimal JSON 문자열과 ISO 8601 UTC 시간 사용.
+
+## 2. API 설계
+
+| 경로(초안) | 기능 |
+|---|---|
+| /api/v1/market/instruments, /quotes, /ohlcv, /long-short | 상품·시세·봉·비율 |
+| /api/v1/indicators, /indicators/{id}/observations | 지표 카탈로그·시계열 |
+| /api/v1/groups, /groups/{id}/versions, /metrics | 그룹 CRUD 및 집계 |
+| /api/v1/workflows, /workflows/{id}/versions | 초안·저장·버전·의존성 |
+| /api/v1/workflows/{id}/validate, /deploy, /runs | 검증·승인·실행 |
+| /api/v1/runs/{id}, /stop, /events | 상태·중단·경로 |
+| /api/v1/predictions/friday-close, /models | 예측·유사 패턴·모델 |
+| /api/v1/backtests, /jobs/{id} | 백테스트·작업 상태·취소 |
+| /api/v1/portfolio, /trading/intents | 제한 계좌 조회·주문 의도 |
+| /api/v1/collectors, /system/health, /events | 수집 관리·시스템·SSE |
+
+예시 URI는 계약 설계안이며 기존 MCP 도구명과 1:1 URL 대응을 강제하지 않는다. 조회 cursor pagination·max window·aggregation, write expected_version + Idempotency-Key, 별도 action 권한, 표준 오류 code/reason/retryable/request_id. 인증 actor는 서버에서 결정. OpenAPI를 기준으로 프론트엔드 타입을 생성하고 CI에서 drift를 검출한다. 실주문을 직접 제출하는 일반 REST/MCP endpoint는 제공하지 않는다.
+
+응답 예시:
+
+```json
+{
+  "data": {"series_id": "VIX", "value": null, "unit": "index"},
+  "meta": {
+    "source": "yfinance",
+    "source_event_at": null,
+    "collected_at": "2026-11-25T00:00:00Z",
+    "quality": "no_data",
+    "permission": "unverified",
+    "schema_version": 1
+  }
+}
+```
+
+## 3. 공통 서비스 및 동시성
+
+API와 MCP가 동일 use case를 호출하며 서버에서 인증·인가·소유권·승인·모드·품질을 재검증한다. Repository/UoW 인터페이스로 DB 구현을 격리한다. 버전 증가와 FK/unique 제약으로 경쟁 쓰기 방지. 저장된 Workflow 수정 시 활성 버전 불변. 읽기만 허용된 연결에서 변경 use case 호출 금지. 요청 payload에 임의 SQL·shell·파일 경로·URL을 허용하지 않는다.
+
+## 4. Durable Job 및 이벤트
+
+job 테이블: id, kind, owner_ref, input_ref, input_version, idempotency_key, status, attempt, max_attempts, available_at, lease_until, lease_token, heartbeat_at, progress, result_ref, error_code, created_at, finished_at. 동일 actor/kind/key와 payload hash 비교; 다른 payload는 CONFLICT. worker claim은 짧은 transaction, SKIP LOCKED, fencing token으로 종료 기록 검증. 장기 작업은 heartbeat, lease 만료 회수, exponential backoff+jitter, terminal failure, 협력적 취소. 취소 요청과 실제 종료를 구분하고 CPU 작업은 체크포인트에서 중단한다. 주문은 일반 job 재시도 규칙의 대상이 아니다.
+
+outbox: event_id, aggregate_id, aggregate_version, type, schema_version, payload, committed_at, correlation_id, causation_id. 상태 변경과 같은 transaction에 기록, consumer별 durable inbox/checkpoint, 중복 event_id 제거. commit 순서를 보장하지 않는 sequence 숫자만을 안전한 전역 high-watermark로 사용하지 않는다. relay가 미전달 행을 재탐색하고 각 aggregate version의 순서·gap을 확인한다. UI replay cursor는 전달 순서가 보장되는 별도 log 또는 snapshot/version 재조회로 구현한다.
+
+SSE는 동일 origin 인증 세션, Last-Event-ID, heartbeat, backpressure/최대 큐, 재접속 시 snapshot 및 누락 확인; 시세 과다 이벤트는 UI 전송만 coalesce하며 원본/Workflow 평가 이벤트는 별도 유지. API replica 증가 시 DB/캐시 알림과 snapshot을 사용해 sticky session에 의존하지 않도록 설계한다.
+
+## 5. 공식 참조
+
+[FastAPI](https://fastapi.tiangolo.com/) · [SQLAlchemy asyncio](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html) · [Pydantic](https://docs.pydantic.dev/) · [Alembic](https://alembic.sqlalchemy.org/) · [PostgreSQL SELECT](https://www.postgresql.org/docs/17/sql-select.html) · [APScheduler](https://apscheduler.readthedocs.io/)
