@@ -1,5 +1,7 @@
 # NH투자증권 nhplug-mcp 및 nhplug-sdk 연동 명세
 
+PAPER_LOCAL은 내부 시뮬레이터, PAPER_BROKER는 공식 NH 모의투자, LIVE는 실전 계좌로 분리한다. 모의 API 미지원 시 자동 LIVE fallback 금지. 독립 Executor의 Order Coordinator와 사전/개별 승인 정책은 [주문 기술 명세](../tech-stack/trading-integration.md)를 따른다.
+
 > 2026-11-25 GitHub 원본 확인. 사용자 지정 외부 MCP는 [PLUG-OpenAPI/nhplug-mcp](https://github.com/PLUG-OpenAPI/nhplug-mcp)이다. 확인한 main commit: c61e38ca37de801911ac6c29a685077802513d44, package/server version 0.1.0. 현재 **조회 전용**이라 실제 주문 실행을 지원하지 않는다. 실제 주문은 공식 nhplug-sdk 기반 독립 실행 서비스로 구현한다. MCP의 조회 제한은 유지한다.
 
 ## 1. 확인된 upstream 기능

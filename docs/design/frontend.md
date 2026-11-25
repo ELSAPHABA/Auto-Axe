@@ -395,6 +395,8 @@ CSS는 적용 예시이며 원본 CSS 복제물이 아니다. 실제 HTML에서�
 
 ### 4.4 매수·매도 Workflow 편집기
 
+Workflow 설정에 실행 모드, 우선순위(0~100), 종목별 1회/일별 최대 매수·매도량·금액, 계좌/리스크 정책 및 승인 범위를 노출한다. 조건 충족에 따른 타 조건 즉시 갱신 중/실패/신선도 및 평가 시점을 표시한다. 주문 상태는 충돌 보류(CONFLICT_HELD), 한도 거부, 승인 대기 및 예약 수량을 구분한다. PAPER_LOCAL/PAPER_BROKER를 UI에서 명시적으로 구분하고 PAPER 집계는 선택적으로 표시한다. LIVE는 별도 승인 전 비활성.
+
 [Workflow 기능 및 실행 명세](../function/trading-workflow.md). 기존 금융 대시보드 디자인 토큰을 재사용하며, Workflow 화면은 ComfyUI/n8n에서 영감을 받은 노드 중심 편집 화면으로 구성한다.
 
 | 영역 | 적용 구성 |
@@ -416,14 +418,14 @@ CSS는 적용 예시이며 원본 CSS 복제물이 아니다. 실제 HTML에서�
 
 #### 4.4.2 메인 활성 개수 및 Workflow 상세 모니터링
 
-메인 대시보드의 상단 상태 카드/헤더에 '활성 Workflow N개'를 표시하고 선택 시 활성 목록으로 이동한다. LIVE/PAPER/DRY_RUN별 수를 별도 표기하고 서버 집계값을 사용한다. 중복 실행 및 하위 호출은 총 활성 정의 수에 중복 포함하지 않는다.
+메인 대시보드의 상단 상태 카드/헤더에 '활성 Workflow N개'를 표시하고 선택 시 활성 목록으로 이동한다. LIVE/PAPER_LOCAL/PAPER_BROKER/DRY_RUN별 수를 별도 표기하고 서버 집계값을 사용한다. 중복 실행 및 하위 호출은 총 활성 정의 수에 중복 포함하지 않는다.
 
 ```text
 메인 대시보드
-[활성 Workflow 3개]  [LIVE 1 / PAPER 2 / DRY_RUN 0] (예시)
+[활성 Workflow 3개]  [LIVE 1 / PAPER_LOCAL 1 / PAPER_BROKER 1 / DRY_RUN 0] (예시)
 
 Workflow 상세
-[전략 이름] [v3] [PAPER] [감시 중] [실행 선택]
+[전략 이름] [v3] [PAPER_LOCAL] [감시 중] [실행 선택]
 [충족 2/4] [미충족 1] [확인 불가 0] [미선택 1]
 [조건 A ✓] ─ TRUE ─ [참조 Workflow B ✓] ─ [조건 C 감시]
           └ FALSE ─ [조건 D 미선택]

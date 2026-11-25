@@ -1,5 +1,7 @@
 # 인프라·DevOps·운영 기술 설계
 
+실행 환경은 BACKTEST/DRY_RUN/PAPER_LOCAL/PAPER_BROKER/LIVE로 구분한다. PAPER_LOCAL에는 증권사 주문 비밀을 제공하지 않고 PAPER_BROKER는 공식 모의 endpoint 및 모의 계좌만 허용한다. LIVE는 별도 승인 프로필 및 계좌·비밀·원장으로 격리한다.
+
 ## 1. 배포 전략
 
 [전체 플랫폼 보안 설계](./security.md)의 SEC 요구사항을 적용한다. 기본 외부 ingress 차단, 관리 VPN 또는 사설망, host nftables/동등 방화벽과 Docker forwarding 정책을 실제 테스트한다. 스크래퍼는 전용 제한 egress gateway 이외의 외부 통신 및 내부 서비스 접근을 차단하고, broker는 고정 job/result 계약만 허용한다. 운영 비밀은 역할별 mount 및 회전, off-host 암호화 백업, 이미지 서명/취약점 검사, 보안 사고 대응 훈련을 적용한다. 외부 MCP 및 LIVE 기본 비활성 유지.

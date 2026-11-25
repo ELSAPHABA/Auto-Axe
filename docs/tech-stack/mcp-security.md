@@ -23,6 +23,8 @@ Web UI: same-origin backend session/BFF, Authorization Code + PKCE, HttpOnly Sec
 
 ## 3. 권한·안전
 
+MCP 연결 및 승인된 자동 Workflow의 실행 수명은 분리한다. 네트워크 연결 종료·개별 MCP client grant 폐기·원격 MCP 기능 OFF는 해당 연결의 신규 요청과 스트림을 차단하되, 독립적으로 유효한 사람 사전 승인과 계좌 거래 권한을 가진 Workflow는 계속 실행할 수 있다. 클라이언트 권한에만 의존한 미승인 단발 주문·대기 작업은 재인가 실패 시 진행하지 않는다. Workflow 승인 철회는 해당 실행의 신규 주문을 차단하고 미제출 의도·예약을 정리하며, 계좌 거래 권한 철회는 해당 계좌 전체 신규 주문을 차단한다. 전역/계좌 Kill Switch는 지정 범위에서 우선한다. 공통 인가·승인·위험 정책의 상태를 확인할 수 없는 장애에서는 신규 주문을 fail closed 처리한다. 원격 MCP만 OFF인 상태와 공통 인가 장애를 구분한다. 이미 브로커로 제출된 주문은 자동 청산하거나 취소 성공으로 간주하지 않고 대사한다.
+
 - 서버에서 issuer/audience/exp/nbf/signature/allowed algorithm/client/scope/principal 검증. introspection/JWKS 및 revocation 정책, 짧은 access token 수명, 위험 변경 즉시 grant 확인. 토큰 전달(pass-through) 금지.
 - RBAC + resource-level policy (owner/account/mode/data permission/approved version), scope 예: market:read, workflow:draft:write, workflow:execute:paper, trading:intent:write. 기본 deny, 고위험 action은 추가 승인/MFA/expected_version/idempotency.
 - Tool annotation/모델 프롬프트/Host 승인 UI는 서버 인가 대체 불가. 미구현 tool은 capabilities에 노출하지 않는다. 원격·로컬 모두 직접 주문 제출 도구 없음.

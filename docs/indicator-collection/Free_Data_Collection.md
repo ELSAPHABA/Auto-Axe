@@ -4,6 +4,10 @@
 
 ## 1. 공통 수집 정책
 
+네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패 또는 권한·접근 제한으로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 자동화·저장·활용 권한 확인 전에는 네이버 요청을 실행하지 않으며 접근 제한을 우회하지 않는다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+
+VIX 원본 TTL 10초 및 나머지 지표별 신선도는 [수집 기술 명세](../tech-stack/data-collection.md)를 따른다.
+
 자동 스크래핑에는 [Scrapling](../tech-stack/data-collection.md)을 사용하며 [전체 보안 설계](../tech-stack/security.md)의 격리·egress·권한 검증을 적용한다.
 
 - 무료 공식 API, WebSocket, 다운로드 파일(RSS/Atom/ICS/CSV/JSON)을 우선한다. 무료 API 키가 필요한 경우도 포함하되 데이터 이용권을 별도로 확인한다.
@@ -62,7 +66,7 @@ MEXC `NAS100_USDT`는 지수 연동 영구선물이며 실시간 수신·지연�
 | VIX | **yfinance `^VIX`** (우선) / Cboe 무료 일별 CSV 검증 | Cboe Quote Dashboard 자동 추출 금지 | 데이터 권한·지연 문제 시 장중 수동 | **yfinance 분봉 수신 검증, 무지연 보장 없음** |
 | 미국 국채 금리 3M·2Y·5Y·10Y·30Y | **3M/5Y/10Y/30Y: yfinance `^IRX/^FVX/^TNX/^TYX`; 2Y: 네이버 `US2YT=RR` ** | | | Yahoo 지표·네이버 게시 수익률·Treasury 일별값을 별도 표기 |
 
-- **기본:** VIX `yfinance ^VIX`, 국채 3M `^IRX`, 5Y `^FVX`, 10Y `^TNX`, 30Y `^TYX`. **2Y 지정 출처:** [네이버 `US2YT=RR`](https://m.stock.naver.com/marketindex/bond/US2YT=RR). 실측 JSON의 `closePrice`·`localTradedAt` 확인.
+- **기본:** VIX `yfinance ^VIX`, 국채 3M `^IRX`, 5Y `^FVX`, 10Y `^TNX`, 30Y `^TYX`. **2Y 최우선 출처:** [네이버 `US2YT=RR`](https://m.stock.naver.com/marketindex/bond/US2YT=RR). 실측 JSON의 `closePrice`·`localTradedAt` 확인.
 
 - VIX [Cboe 공식 EOD CSV](https://www.cboe.com/tradable_products/vix/vix_historical_data): `https://cdn-api.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv`. 시장 운영시간의 실제 스트리밍이 아니다. Cboe Quotes Dashboard에 명시된 **자동화 추출 금지**를 준수한다.
 - Treasury [일별 공식 파 수익률](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics), [XML 제공 안내](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed): 2Y/10Y 등 단위 `percent`. [FRED DGS2/DGS10](https://fred.stlouisfed.org/series/DGS10)은 무료 개인 조회 참고만. 국채 현물 수익률과 국채 선물 가격은 전혀 다른 값.

@@ -4,8 +4,12 @@
 
 ## 수집 정책
 
+네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패 또는 권한·접근 제한으로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 자동화·저장·활용 권한 확인 전에는 네이버 요청을 실행하지 않으며 접근 제한을 우회하지 않는다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+
+VIX 원본 TTL은 10초이며 [전체 신선도 표준](../tech-stack/data-collection.md)을 적용한다.
+
 - **가격·체결 데이터:** Binance 무료 **WebSocket 우선** — 금·은·구리 연동 영구선물 `XAUUSDT`, `XAGUSDT`, `COPPERUSDT`, WTI 연동 영구선물 `CLUSDT`, Brent 연동 영구선물 `BZUSDT`, 비트코인 현물 `BTCUSDT`. REST로도 최근 가격을 조회할 수 있다. *수신 틱이 존재할 때만* 거래소 실시간 체결이고, 거래소·계약 거래시간 밖에는 갱신되지 않는다.
-- **VIX·국채 금리지표:** Binance에 동일한 원본이 없어 yfinance `^VIX`, `^IRX`, `^FVX`, `^TNX`, `^TYX` 유지 (지연 가능). **미국 2년물은 지정된 네이버 증권 페이지** [US2YT=RR](https://m.stock.naver.com/marketindex/bond/US2YT=RR)에서 값을 확인한다. 다만 `robots.txt`가 `Disallow: /`이므로 무허가 자동 수집은 비활성화; 기본은 Treasury 공식 일별 수익률로 fallback.
+- **VIX·국채 금리지표:** Binance에 동일한 원본이 없어 yfinance `^VIX`, `^IRX`, `^FVX`, `^TNX`, `^TYX` 유지 (지연 가능). **미국 2년물은 지정된 네이버 증권 페이지** [US2YT=RR](https://m.stock.naver.com/marketindex/bond/US2YT=RR)에서 값을 확인한다. 다만 `robots.txt`가 `Disallow: /`이므로 무허가 자동 수집은 비활성화; 실패/실행 불가 시에만 Treasury 공식 일별 수익률로 임시 fallback하고 정상 복구 시 복귀.
 - **경제지표·정책·기업 가이던스·만기일:** 공식 무료 API, 보도자료, RSS/Atom, ICS 우선. 허가받은 스크래핑 또는 수동 입력.
 - **수집 대상에 두바이유는 없음.**
 
@@ -14,7 +18,7 @@
 | 만기 | 기본 소스 | 표기/심볼 |
 |---|---|---|
 | 3개월 | yfinance 지표 | `^IRX` |
-| 2년 | **네이버 증권 US2YT=RR (자동화 허가 필요)** | `US2YT=RR`; 무허가 시 Treasury 일별 `BC_2YEAR` |
+| 2년 | **네이버 증권 US2YT=RR (자동화 허가 필요)** | `US2YT=RR`; 실패/실행 불가 시 임시 Treasury 일별 `BC_2YEAR` |
 | 5년 | yfinance 지표 | `^FVX` |
 | 10년 | yfinance 지표 | `^TNX` |
 | 30년 | yfinance 지표 | `^TYX` |
@@ -55,7 +59,7 @@ python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m -
 # VIX와 국채 3M/5Y/10Y/30Y: yfinance 지연 가능
 python docs/examples/realtime_collector.py yf-market
 
-# 2년물: 네이버 사이트의 수집 승인이 없는 동안 공식 Treasury 일별 값
+# 2년물: 네이버 실패/실행 불가 시 임시 공식 Treasury 일별 값
 python docs/examples/realtime_collector.py treasury-five
 
 # 네이버: 승인을 받은 경우에만 AUTO_AXE_NAVER_SCRAPE_AUTHORIZED=1 설정

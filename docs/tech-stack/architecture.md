@@ -53,6 +53,8 @@ flowchart LR
 
 ## 2. 저장·통신 결정
 
+조건의 유효 충족은 RefreshCoordinator를 통해 나머지 관련 조건의 데이터를 즉시 갱신 요청하고 committed snapshot 재평가로 이어진다. 주문 Executor 내부 Order Coordinator는 계좌/모드별 priority·매수/매도량·위험 예약을 관리한다. BACKTEST/DRY_RUN/PAPER_LOCAL/PAPER_BROKER/LIVE는 각각 격리된 실행 상태와 원장을 사용한다.
+
 - 동기 요청: REST JSON(OpenAPI), MCP JSON-RPC; 조회·검증 및 단건 명령. 쓰기 작업은 DB 트랜잭션과 idempotency key, expected_version을 사용한다.
 - 장기 작업: PostgreSQL jobs + lease/heartbeat, FOR UPDATE SKIP LOCKED 기반 claim; 요청 응답은 Job ID. 큐와 결과 원장을 DB로 일원화해 초기 Redis/Celery의 추가 복잡성을 피한다.
 - 이벤트: 동일 트랜잭션의 outbox, durable 소비자 checkpoint/inbox. 소비는 at-least-once, 외부 주문은 exactly-once라고 주장하지 않는다. PostgreSQL NOTIFY나 Valkey는 깨우기/캐시용이며 유실돼도 DB polling으로 복구한다.

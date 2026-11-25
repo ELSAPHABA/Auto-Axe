@@ -14,9 +14,9 @@
 | 최근 5·10·20거래일 최고가·최저가 | **yfinance `Ticker.history(interval='1d')`의 `High`/`Low` → `rolling().max()`/`min()` 로컬 계산** | 5·10·20개 **실제 거래세션**의 `HIGH_5D/10D/20D`, `LOW_5D/10D/20D` 6개 지표. 마감 후 당일 확정봉 포함; 장중 돌파 기준은 직전 N개 완성봉만 사용. [산출 명세](./YFinance_Valuation_and_Moving_Averages.md) |
 | 미국 주식·ETF 당일 누적 거래량 (1초 스냅샷) | **yfinance WebSocket `day_volume`**; NVDA·QLD 등 | WebSocket 신규 메시지마다 누적 거래량 갱신, **로컬 1초 스케줄러가 최신값 기록**. Yahoo 메시지의 1초 주기 도착·무지연·통합시장 거래량 보장 없음. 구현 전 실측 필요. [상세 명세](./YFinance_1s_Stock_Cumulative_Volume.md) |
 | 나스닥 100 선물·연동 가격 | **MEXC Futures `NAS100_USDT` WebSocket 후보(지수 연동 영구선물)**; Binance Futures `QQQUSDT`(QQQ ETF 연동 영구선물) 참고; yfinance `NQ=F`(CME 실제 선물 지연 1분봉) 비교 | **MEXC 직접 실시간 수신 미검증**, WebSocket Protobuf 전환 2026-12-01 예정. 서로 다른 계약 가격이며 NQ=F 무지연 아님. [수집 방안](./Nasdaq100_Futures_Data_Sources.md) |
-| VIX | yfinance `^VIX` | Cboe 원지수 후보, 지연 가능. `UVXYUSDT`는 대체 불가 |
+| VIX | yfinance `^VIX` | 원본 TTL 10초, 지연 가능; `UVXYUSDT` 대체 불가 |
 | 미국 국채 3개월 | yfinance `^IRX` | 13-week Bill 지표, 지연 가능 |
-| 미국 국채 2년 | Naver `US2YT=RR` | [원본 페이지](https://m.stock.naver.com/marketindex/bond/US2YT=RR). `robots.txt` 차단으로 현재 기본은 Treasury `BC_2YEAR` 공식 일별 |
+| 미국 국채 2년 | Naver `US2YT=RR` 최우선 | [원본 페이지](https://m.stock.naver.com/marketindex/bond/US2YT=RR). 실패/실행 불가 시에만 Treasury `BC_2YEAR` 임시 일별 fallback; 허가 전 자동화 금지, 원본 분리 |
 | 미국 국채 5년 | yfinance `^FVX` | 지연 가능 |
 | 미국 국채 10년 | yfinance `^TNX` | 지연 가능 |
 | 미국 국채 30년 | yfinance `^TYX` | 지연 가능 |
@@ -30,6 +30,6 @@
 | 미국 트리플·쿼드러플 위칭 | OCC/OIC·Cboe·CME (지수선물 및 개별주식선물 포함) | 실제 분기 동시 만기 상품군 3/4종 확인, 별도 이벤트·DTE·미확인 상태 저장. [상세 명세](./US_Equity_Witching_Calendar.md) |
 | 중앙은행 금리 (Fed·BoJ·BoE·ECB) | 각 중앙은행 공식 발표/공개 시계열 | 실시간 시장 금리와 다름 |
 
-**두바이유는 수집 대상에 포함하지 않는다.** 시장가격은 Binance 공개 시세, VIX·3M/5Y/10Y/30Y 수익률은 yfinance, 2Y 지정 출처는 네이버 증권이며 승인 전 Treasury 일별 fallback이다.
+**두바이유는 수집 대상에 포함하지 않는다.** 시장가격은 Binance 공개 시세, VIX·3M/5Y/10Y/30Y 수익률은 yfinance, 2Y는 네이버 증권 최우선이며 실패/실행 불가 시에만 Treasury 임시 일별 fallback이다.
 
 [시장 데이터 소스 정책](./Market_Source_Policy_20261123.md) · [수집기](../examples/realtime_collector.py).

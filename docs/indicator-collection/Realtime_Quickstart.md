@@ -4,6 +4,10 @@
 
 ## 0. 기본 수집 — Binance 실시간 + 국채 5만기
 
+네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패 또는 권한·접근 제한으로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 자동화·저장·활용 권한 확인 전에는 네이버 요청을 실행하지 않으며 접근 제한을 우회하지 않는다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+
+VIX 10초는 원본 신선도 TTL이며 아래 PoC 조회 간격과 별개다.
+
 ```bash
 python -m pip install -r docs/examples/requirements.txt
 
@@ -22,7 +26,7 @@ python docs/examples/realtime_collector.py yf-market --symbols VIX UST_3M UST_5Y
 # 국채 2Y 지정 출처 네이버 US2YT=RR (자동화 권한 확인 후에만 실행)
 python docs/examples/realtime_collector.py naver-2y
 
-# fallback: 미국 재무부 공식 국채 2Y 포함 5개 만기 일별
+# 네이버 2Y 실패/실행 불가 시 임시 fallback 및 공식 5개 만기 일별 비교
 python docs/examples/realtime_collector.py treasury-five
 
 # 금 현물 추정가격은 선택적 참고 시리즈 (기본 금 영구선물과 별개)

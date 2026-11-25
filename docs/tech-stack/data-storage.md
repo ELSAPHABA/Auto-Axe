@@ -25,6 +25,8 @@ Parquet + PyArrow는 연구용 불변 데이터셋/허가된 원본 아카이브
 
 ## 3. 시계열 계약
 
+논리 지표 indicator_id와 실제 원본 series_id를 분리한다. source registry/mapping은 indicator_id, series_id, instrument_id, provider, contract, unit, currency, frequency, priority, equivalence policy, mapping_version, permission, freshness_policy를 보존한다. UST_2Y 논리 지표의 최우선 원본은 UST_2Y_NAVER(US2YT=RR), 임시 fallback은 UST_2Y_TREASURY(BC_2YEAR)이며 별도 원본 시계열로 저장한다. 활성 공급원 선택·실패 사유·전환 시각·복귀를 versioned provenance에 기록한다. 연속 수익률/EDGE/이동평균 등의 계산은 원본 전환 경계에서 이어 붙이지 않고 재기준화 또는 UNKNOWN 처리한다. 원본 고정이 기본이며 명시적으로 허용된 동등/호환 정의의 fallback만 Workflow에 사용한다.
+
 관측값 key 후보: series_id, instrument_id, source_id, source_event_at, source_event_key, revision; source definition/contract/quote_currency/unit/schema version/quality/permission/available_at/ingested_at 보존. 누락 timestamp는 임의 현재 시각을 원본 시각으로 만들지 않는다. 원본 시각 없는 수집은 collected_at을 분리하고 품질 상태 표시. source_event_at이 null인 시계열은 정규화된 명시적 partition timestamp와 별도 dedupe key 사용. Decimal은 NUMERIC(실제 상품 precision/scale 검증 후), 분석 수익률/확률은 double precision, timestamptz UTC, JSONB는 유동 메타데이터·graph config·보조 payload로 제한한다.
 
 관측·틱·1Hz 스냅샷은 partition timestamp의 월별 RANGE를 시작점으로 하며 고빈도 raw는 일/주 파티션을 실측 후 채택. 최신값과 장기 시계열 분리. index: (series_id, instrument_id, event_at DESC), BRIN(time) 대형 append-only 테이블 후보. PostgreSQL 파티션 unique에는 partition key가 포함되어야 하므로 전역 dedupe가 필요한 source_event_id는 별도 unpartitioned registry의 unique key 및 같은 트랜잭션으로 보장. retention 삭제와 event replay/checkpoint 수명 정합성 필요.
@@ -32,6 +34,8 @@ Parquet + PyArrow는 연구용 불변 데이터셋/허가된 원본 아카이브
 단일 1Hz sampler N종목 × 세션 초 수의 row 증가를 기준으로 volume/size를 추정하고 actual load test 후 retention 결정. 시장 휴장·장외·누락 스냅샷 구분; 사용자 데이터 이용권보다 긴 보관 금지. archive는 허용된 데이터만, 삭제/정정 정책과 백업 수명도 일치시킨다.
 
 ## 4. 상태와 감사
+
+strategy에 workflow_run_modes, evaluation_seq/snapshot input references, refresh_generations, activation/invocation identity를 저장한다. trading에 strategy_approval_grants, order_conflicts, order_reservations, account/mode/instrument/session별 risk counters 및 priority enqueue ordering을 저장한다. mode enum은 BACKTEST, DRY_RUN, PAPER_LOCAL, PAPER_BROKER, LIVE이며 PAPER는 집계 라벨이다. order_intents는 canonical key unique 및 payload_hash 비교, 승인 grant 버전, risk reservation 상태를 영속화한다. reset_epoch/activation_id가 신규 유효 실행과 retry를 분리한다. 일별 위험 카운터는 계좌의 지정 거래 세션으로 계산하며 Workflow reset으로 초기화하지 않는다.
 
 workflow_versions/group_versions는 배포/실행에 고정; dependency FK 및 삭제 정책, 순환은 application validation + transaction lock으로 처리. node_state key=(run_id,node_id,activation_id,reset_epoch), optimistic version. 같은 event 재처리 방지 및 원자적 outbox. reset은 상태만 초기화하고 주문/체결·중단·risk·idempotency 원장은 유지한다. 주문 attempt는 immutable history와 허용 상태 전이, broker order ID/계좌/모드 unique. 불명 제출은 reconciliation 전 재전송 금지.
 

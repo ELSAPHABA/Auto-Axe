@@ -71,11 +71,13 @@ Binance Spot BTCUSDT 및 TradFi Futures 5종은 독립 상품으로 구독한다
 
 ### 3.2 스케줄링
 
+수집 주기와 신선도 TTL을 구분한다. VIX의 TTL은 10초, yfinance 국채 3M/5Y/10Y/30Y는 5분이다. 조건 충족 시 다른 조건의 데이터 즉시 갱신 요청을 수집기에 전달하며 rate limit/권한/원본 갱신주기를 준수한다. [신선도 및 갱신 계약](../tech-stack/data-collection.md).
+
 | 작업 | 권장 주기 |
 |---|---|
 | Binance 시세 | 체결 이벤트 |
 | Binance 롱숏·Taker 통계 | 5분 집계, 기본 300초 조회 |
-| yfinance VIX·국채 | 1~5분 최신봉 |
+| yfinance VIX | TTL 10초, 허용된 즉시 조회 |
 | 미국 주식 누적 거래량 | WS 이벤트 + 로컬 1초 |
 | PER·PBR | 일별 |
 | ROE | 실적 발표 후 |
@@ -108,6 +110,8 @@ Binance Spot BTCUSDT 및 TradFi Futures 5종은 독립 상품으로 구독한다
 
 ### 4.1 식별 및 정정
 
+indicator_id(논리 지표)와 series_id(원본 정의)를 분리한다. UST_2Y는 네이버 UST_2Y_NAVER 최우선, 스크래핑 실패/실행 불가에 한해 UST_2Y_TREASURY 임시 fallback, 정상 복구 시 복귀한다. 다른 원본의 변화량을 연결하지 않고 전환 provenance를 보존한다.
+
 - 원본 상품과 공급자별 시계열을 분리한다. 현물/영구선물/만기선물, USD/USDT, 정규장/시간외를 혼합하지 않는다.
 - 관측값은 공급자·시계열·원본 관측시각·계약/종목·집계기간을 고려한 복합 식별자를 사용한다. 정정은 revision으로 보존한다.
 - 1Hz 거래량 샘플은 종목과 샘플 시각으로 식별한다. DRAM은 provider + series_id + source_updated_at을 기본 키로 한다.
@@ -130,6 +134,8 @@ UTC 저장, 미국 동부시간 DST 및 거래소 세션 달력 적용, DRAM GMT
 - 주문 계층은 오래된 데이터 차단, 중복 주문 방지, 리스크 한도, 비상 정지 및 모의 검증을 확정 기능으로 구현한다. 세부 한도·API 계약은 별도 검증한다. 현재 주문 구현은 확인되지 않는다.
 
 ## 6. 매수·매도 Workflow 실행 아키텍처 (설계)
+
+실행 모드 BACKTEST / DRY_RUN / PAPER_LOCAL / PAPER_BROKER / LIVE를 구분한다. 조건 충족 시 관련 타 조건 즉시 갱신 barrier, durable evaluation sequence, 영속 activation/reset idempotency를 적용한다. 자동 Workflow 사전 승인과 수동/AI 개별 승인을 분리하고 Executor 내 계좌별 Order Coordinator가 우선순위·최대 매수/매도량·예약·상반 주문·Kill Switch를 조정한다. [실행 계약](../tech-stack/workflow-engine.md) · [주문 계약](../tech-stack/trading-integration.md).
 
 [매수·매도 Workflow 상세 명세](../function/trading-workflow.md). 사용자는 ComfyUI/n8n 스타일 캔버스에서 조건·트리거·논리·주문 노드를 연결한다.
 
@@ -184,7 +190,7 @@ flowchart LR
 
 ### 6.2 실행 상태 전달
 
-서버의 실제 실행 상태로 메인 활성 Workflow 정의 수를 집계한다. 실행/감시/활성 대기 상태만 포함하고, 중복 실행은 정의 ID로 중복 제거한다. 하위 호출 및 과거 백테스트는 제외하고 LIVE/PAPER/DRY_RUN과 실행 인스턴스 수를 구분한다. 상세 조회는 선택된 run_id 기준으로 조건별 결과·충족 이력·경로·원본 시각·사유를 반환한다. REST 스냅샷 및 SSE 상태 이벤트로 갱신하고 이벤트 순서, 재접속, stale을 처리한다. 공급자 WebSocket과 UI SSE를 분리한다.
+서버의 실제 실행 상태로 메인 활성 Workflow 정의 수를 집계한다. 실행/감시/활성 대기 상태만 포함하고, 중복 실행은 정의 ID로 중복 제거한다. 하위 호출 및 과거 백테스트는 제외하고 LIVE/PAPER_LOCAL/PAPER_BROKER/DRY_RUN과 실행 인스턴스 수를 구분한다. 상세 조회는 선택된 run_id 기준으로 조건별 결과·충족 이력·경로·원본 시각·사유를 반환한다. REST 스냅샷 및 SSE 상태 이벤트로 갱신하고 이벤트 순서, 재접속, stale을 처리한다. 공급자 WebSocket과 UI SSE를 분리한다.
 
 ### 6.3 조건 충족 유지 및 영업일 리셋
 

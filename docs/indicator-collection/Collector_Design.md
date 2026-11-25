@@ -1,6 +1,6 @@
 # Auto-Axe 무료 수집기 설계 및 운영 표준
 
-> [시장 데이터 소스 정책](./Market_Source_Policy_20261123.md), [기술 스택](../tech-stack/data-collection.md) 및 [보안](../tech-stack/security.md)을 구현 기준으로 한다. Binance BTC Spot 및 금·은·구리·WTI·Brent 연동 선물, yfinance VIX·국채 3M/5Y/10Y/30Y·주식/ETF 지정 지표, 네이버 2Y(허가 전 Treasury 일별 fallback)를 사용한다.
+> [시장 데이터 소스 정책](./Market_Source_Policy_20261123.md), [기술 스택](../tech-stack/data-collection.md) 및 [보안](../tech-stack/security.md)을 구현 기준으로 한다. Binance BTC Spot 및 금·은·구리·WTI·Brent 연동 선물, yfinance VIX·국채 3M/5Y/10Y/30Y·주식/ETF 지정 지표, 네이버 2Y 최우선(실패/실행 불가 시 Treasury 임시 일별 fallback)를 사용한다.
 
 ## yfinance 기업 재무지표 조회와 이동평균선 산출
 
@@ -38,7 +38,7 @@ flowchart LR
 ```
 
 - 수집기의 `provider`, `collection_method=API|WEBSOCKET|SCRAPE|MANUAL`, `source_url`, `frequency`, `cost=0`, `terms_check_at`, `quality_status` 고정 기록.
-- **Binance 실시간:** `BTCUSDT` Spot과 `XAUUSDT`·`XAGUSDT`·`COPPERUSDT`·`CLUSDT`·`BZUSDT` 영구선물은 별도 `series_id`, 시장 종류, USDT 호가통화, 원본 시각을 보존한다. VIX·국채 3M/5Y/10Y/30Y 및 지정 주식·ETF는 yfinance(지연 가능). **2Y 국채:** 네이버 증권 `US2YT=RR`(허가 전 Treasury 일별 fallback). `Gold API`는 별도의 현물 참고 값이다.
+- **Binance 실시간:** `BTCUSDT` Spot과 `XAUUSDT`·`XAGUSDT`·`COPPERUSDT`·`CLUSDT`·`BZUSDT` 영구선물은 별도 `series_id`, 시장 종류, USDT 호가통화, 원본 시각을 보존한다. VIX·국채 3M/5Y/10Y/30Y 및 지정 주식·ETF는 yfinance(지연 가능). **2Y 국채:** 네이버 증권 `US2YT=RR` 최우선(실패/실행 불가 시 Treasury 임시 일별 fallback). `Gold API`는 별도의 현물 참고 값이다.
 - API 장애 → 동일 정의 데이터 fallback → 스크래핑 → 수동. 같은 자산이라도 선물과 현물처럼 `instrument_type`이 다르면 서로 fallback으로 섞지 않는다.
 
 ## 2. 저장 스키마
@@ -86,11 +86,16 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 
 ## 3. 무료 수집 스케줄 (제안, 게시기관 보장 주기가 아님)
 
+네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패 또는 권한·접근 제한으로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 자동화·저장·활용 권한 확인 전에는 네이버 요청을 실행하지 않으며 접근 제한을 우회하지 않는다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+
+조건 충족 시 타 조건의 즉시 갱신 요청을 허용 범위 내 처리하며 [신선도 및 갱신 표준](../tech-stack/data-collection.md)의 TTL·single-flight·timeout을 적용한다.
+
 | 어댑터 | 권장 실행 | 변동 시 |
 |---|---|---|
 | Binance Spot·TradFi Futures WS (기본 시장가격) | 거래 발생 시 이벤트 기반 | 체결시각/연결 상태/휴장·유동성 확인, 백오프·누락 보완 | 
 | Binance 선물 롱숏 4종 | 5분 이상 집계 주기 | 전체 계정·상위 계정·상위 포지션·Taker 거래량 구분 |
-| yfinance VIX·3M/5Y/10Y/30Y | 1~5분(제안) 최신봉 조회 | Yahoo 지연·장시간 확인 |
+| yfinance VIX | 원본 TTL 10초; 허용된 조회·즉시 refresh | Yahoo 지연·장시간 확인, TTL 미달 UNKNOWN |
+| yfinance 3M/5Y/10Y/30Y | 원본 TTL 5분, 허용된 최신봉 조회 | 원본 갱신·지연 별도 |
 | 네이버 2Y | 승인 전 자동화 비활성; 승인 후 원본 갱신·rate limit에 맞춤 | `US2YT=RR` 원본 시각·지연 |
 | Treasury 공식 국채 2년물 + 5종 교차검증 | 게시 후 일 1회 | 2Y 일별값, 공식 5종 별도 검증 |
 | Coinbase BTC/USD WS (보조) | 필요할 때 스트리밍 | USD와 USDT 혼합 금지, 누락·재연결 관리 |
@@ -136,7 +141,7 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 | 만기 | 우선 소스 | 보조 공식 일별 |
 |---|---|---|
 | 3개월 | yfinance `^IRX` | Treasury `BC_3MONTH` |
-| 2년 | 네이버 `US2YT=RR` (허가 후) | Treasury `BC_2YEAR` 일별 |
+| 2년 | 네이버 `US2YT=RR` 최우선 (허가 필요) | 실패/실행 불가 시 Treasury `BC_2YEAR` 임시 일별 |
 | 5년 | yfinance `^FVX` | Treasury `BC_5YEAR` |
 | 10년 | yfinance `^TNX` | Treasury `BC_10YEAR` |
 | 30년 | yfinance `^TYX` | Treasury `BC_30YEAR` |

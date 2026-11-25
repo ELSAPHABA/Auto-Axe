@@ -130,7 +130,11 @@ PostgreSQL no public port, TLS 및 SCRAM-SHA-256, schema/GRANT/별도 role, migr
 
 ## 7. 거래 안전 및 MCP
 
-[trading-integration.md](./trading-integration.md)와 [MCP 보안](../mcp/security.md)을 적용한다. API/MCP는 preview/intent/승인 요청만; nhplug-mcp 조회 전용; SDK Executor만 실제 주문 제출. LIVE 기본 off, 모의 계좌/credential/endpoint/DB 환경 분리, 실패 시 운영 fallback 금지. 승인 정책·한도·허용 상품·시각·버전·freshness·risk reservation을 제출 직전 확인. idempotency 및 주문/체결 대사, UNKNOWN 재전송 차단. Kill Switch는 신규 주문 차단 및 대사(자동 청산과 별도). 승인 철회·비상 중단 상태는 reset/재시작으로 해제되지 않는다. 원격 MCP off/인가 실패/권한 정책 장애, 데이터 불명 및 대사 불일치 시 fail closed. 승인된 자동 전략과 임의 AI 요청 구분. AI의 도구 설명·프롬프트·외부 데이터는 권한이 아니다.
+MCP 연결 및 승인된 자동 Workflow의 실행 수명은 분리한다. 네트워크 연결 종료·개별 MCP client grant 폐기·원격 MCP 기능 OFF는 해당 연결의 신규 요청과 스트림을 차단하되, 독립적으로 유효한 사람 사전 승인과 계좌 거래 권한을 가진 Workflow는 계속 실행할 수 있다. 클라이언트 권한에만 의존한 미승인 단발 주문·대기 작업은 재인가 실패 시 진행하지 않는다. Workflow 승인 철회는 해당 실행의 신규 주문을 차단하고 미제출 의도·예약을 정리하며, 계좌 거래 권한 철회는 해당 계좌 전체 신규 주문을 차단한다. 전역/계좌 Kill Switch는 지정 범위에서 우선한다. 공통 인가·승인·위험 정책의 상태를 확인할 수 없는 장애에서는 신규 주문을 fail closed 처리한다. 원격 MCP만 OFF인 상태와 공통 인가 장애를 구분한다. 이미 브로커로 제출된 주문은 자동 청산하거나 취소 성공으로 간주하지 않고 대사한다.
+
+AUTO_WORKFLOW 사전 승인과 MANUAL_OR_AI 개별 승인을 분리하고, 계좌/모드별 Order Coordinator의 우선순위·매수/매도 최대량·금액·예약 정책은 승인 범위에 포함한다. PAPER_LOCAL/PAPER_BROKER/LIVE의 원장·자격증명·네트워크를 분리한다. BACKTEST/DRY_RUN은 브로커 주문 네트워크 접근 금지.
+
+[trading-integration.md](./trading-integration.md)와 [MCP 보안](../mcp/security.md)을 적용한다. API/MCP는 preview/intent/승인 요청만; nhplug-mcp 조회 전용; SDK Executor만 실제 주문 제출. LIVE 기본 off, 모의 계좌/credential/endpoint/DB 환경 분리, 실패 시 운영 fallback 금지. 승인 정책·한도·허용 상품·시각·버전·freshness·risk reservation을 제출 직전 확인. idempotency 및 주문/체결 대사, UNKNOWN 재전송 차단. Kill Switch는 신규 주문 차단 및 대사(자동 청산과 별도). 승인 철회·비상 중단 상태는 reset/재시작으로 해제되지 않는다. 원격 MCP off는 MCP 신규 요청 차단; 거래 승인·공통 인가/위험 정책 확인 실패, 필수 데이터 불명 및 대사 불일치 시 신규 주문 fail closed. 승인된 자동 전략과 임의 AI 요청 구분. AI의 도구 설명·프롬프트·외부 데이터는 권한이 아니다.
 
 ## 8. 공급망·운영 보안 및 사고 대응
 

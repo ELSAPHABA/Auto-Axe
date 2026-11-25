@@ -1,5 +1,7 @@
 # 퀀트 분석·피처·예측·백테스트 기술 스택
 
+BACKTEST는 기록된 available_at 및 가상 시계에서 동일 Workflow 평가·즉시 갱신 barrier를 재생하며 미래 데이터나 실제 네트워크 요청을 사용하지 않는다. PAPER_LOCAL/PAPER_BROKER/LIVE 원장과 분리한다.
+
 ## 1. 선택
 
 | 기술 | 역할 |

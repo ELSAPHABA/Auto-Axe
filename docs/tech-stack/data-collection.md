@@ -10,7 +10,7 @@
 | Binance XAUUSDT/XAGUSDT/COPPERUSDT/CLUSDT/BZUSDT | Futures aggTrade WS 및 REST | USDT 영구선물 별도 상품, 원자산 대체 금지 |
 | Binance 롱숏 | REST 4종(global account/top account/top position/taker), 5m 이상 | 계정·포지션·거래량 기준 분리, 원본 갱신 확인 |
 | Nasdaq | MEXC NAS100_USDT Protobuf 어댑터 후보, Binance QQQUSDT 별도, yfinance NQ=F 지연 비교 | MEXC 실제 수신 검증 및 2026-12-01 예정 전환 재확인; NQ 실시간으로 위장 금지 |
-| VIX·국채 | yfinance ^VIX/^IRX/^FVX/^TNX/^TYX, Treasury XML | Yahoo 지연·단위 확인; 2Y는 Naver 승인 전 BC_2YEAR 일별 |
+| VIX·국채 | yfinance ^VIX/^IRX/^FVX/^TNX/^TYX, Treasury XML | Yahoo 지연·단위 확인; 2Y는 Naver 최우선, 실패/실행 불가 시에만 BC_2YEAR 임시 일별 fallback |
 | 미국 주식·ETF | yfinance AsyncWebSocket day_volume, 별도 1Hz sampler, Ticker.history | 새 메시지 없음 상태·세션 리셋, 통합 시장 거래량 보장 없음 |
 | 기업 재무·기술 | Ticker.info, OHLCV, pandas rolling/EMA | point-in-time 이력, ETF 재무 필드 결측 |
 | 공식 경제·정책·가이던스 | httpx, feedparser, icalendar, lxml/XML/JSON | SEC EDGAR, BLS, FRED, EIA, Treasury, 중앙은행/거래소 공식 발표; API 키 무료 등록·권한 |
@@ -38,6 +38,29 @@ ScrapeRequest는 사용자 URL 대신 source_id, approved adapter version, 조�
 대상별 계획: CNN/PizzINT/DRAM은 허용된 정적 파싱 우선, SEIBro WebSquare는 정상 렌더링 가능성 검증, Naver 2Y는 기존 robots 차단 및 권한 확인 전 비활성. 기존 수집 소스·상품·갱신 주기·수동 정책은 변경하지 않는다. PizzINT는 자동 주문 신호 금지. 합성 fixture로 parser/DOM 변경/오인식/권한 취소/redirect/SSRF 및 브라우저 격리 테스트 후에만 활성화한다.
 
 ## 2. 파이프라인
+
+### 공급원 선택 및 신선도
+
+네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패 또는 권한·접근 제한으로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 자동화·저장·활용 권한 확인 전에는 네이버 요청을 실행하지 않으며 접근 제한을 우회하지 않는다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+
+indicator_id는 논리 지표, series_id는 원본 제공자·상품·단위·계약·정의가 고정된 시계열이다. 가격, VIX, 국채, Nasdaq 등 동일 관심 자산의 다른 계약·공급원은 분리 저장한다. Workflow는 원본 series_id 고정 기본, 사용자 명시적 허용 시에만 호환 정의의 fallback을 사용한다. UST_2Y 화면은 위 우선순위로 표시하되 장중 전략은 일별 fallback 사용을 명시적으로 허용하고 해당 신선도·정의 조건을 만족할 때만 평가한다. 전환 경계의 수익률/EDGE/rolling 계산은 재기준화 또는 UNKNOWN 처리한다.
+
+| 데이터 | 기본 신선도 정책 (TTL/유효 기간) |
+|---|---|
+| Binance 실시간 체결 | 10초, 거래 세션·유동성 및 원본 이벤트 확인 |
+| 미국 주식 WebSocket | 10초, 공급자 원본 지연 별도 확인 |
+| VIX yfinance ^VIX | **10초**, 원본 이벤트 시각 기준 |
+| yfinance 국채 3M/5Y/10Y/30Y | 5분 |
+| Binance 롱숏 4종 | 10분, 원본 최소 5분 집계 |
+| 네이버 2Y | 5분을 초기 기본으로 적용, 원본 시각·지연 검증 |
+| Treasury 공식 일별 수익률 | 다음 공식 발표 예정 시각 기준 |
+| 기업 재무지표 | 최근 유효 공시 및 정정 여부 |
+| 경제지표 | 공식 발표 일정·revision 기준 |
+| DRAM 모듈 가격 | 주간 발표 일정 기준 |
+
+TTL은 원본 관측의 유효성 기준이며 수집 주기·네트워크 연결 상태·조회 시각과 별개다. VIX 10초는 확정된 신선도 기준이지 Yahoo가 매 10초 신규 값을 제공하거나 무지연임을 보장하지 않는다. 원본 시각 미확인/지연 초과 시 UNKNOWN 또는 stale, 반복 조회로 원본 timestamp/TTL 갱신 금지. 거래 시간 밖은 session_closed로 분리하며 장중 최신값으로 위장하지 않는다. 소스별 수집 주기는 원본 제공 빈도·권한·호출 제한에 따르고 TTL을 만족할 수 없으면 실거래 조건을 차단한다.
+
+조건 충족/새 유효 달성 사건이 발생하면 RefreshCoordinator에서 관련 타 조건 데이터의 즉시 갱신을 요청한다. WS 최신 이벤트 확인, 허용 REST 재조회, 로컬 지표 재계산을 수행하고 source/series별 in-flight 병합·rate limit·timeout을 적용한다. 요청 결과 및 원본 시각을 기록하고 새 committed snapshot으로 재평가한다. 데이터 제공자 권한·게시 주기를 우회하지 않는다. [실행 계약](./workflow-engine.md).
 
 ```mermaid
 flowchart LR

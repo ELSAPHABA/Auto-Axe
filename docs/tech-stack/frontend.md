@@ -40,6 +40,8 @@ SSR/Next.js는 초기 금융 내부 대시보드 요구에 비해 복잡성이 �
 
 ## 3. 편집기
 
+모드 enum 및 Coordinator 설정(priority, 1회/일별 최대 매수·매도 수량/금액, risk profile, approval scope)은 backend DTO에 따른다. PAPER_LOCAL/PAPER_BROKER 구분, 갱신 generation 상태·source freshness·fallback 표시 및 CONFLICT_HELD/예약/한도 사유를 제공한다. LIVE 별도 승인 필요.
+
 React Flow 그래프는 backend graph schema를 투영한다. node_id, type, schema_version, config, input/output port, edge source/target handle을 저장하고 UI 좌표/viewport는 별도 presentation metadata로 보존한다. 문자열 표현식을 eval하지 않는다. node catalog와 허용 연결·파라미터 schema는 서버에서 제공. 로컬 연결 검사(타입/필수 입력/순환)와 서버 validation을 분리한다. import/export는 버전 포함 JSON, 검증/참조 삭제 제약, undo/redo, autosave draft, optimistic concurrency. 하위 Workflow는 조건 포트만 노출하고 배포 버전을 고정한다. 노드 편집이 활성 실행 상태를 변경하지 않는다.
 
 조건 설정: LATCHED N회, hold_until, CONTINUOUS, 재무장/중복 방지; 1/5/20/N 거래일 reset 및 거래소 달력 선택. 서버가 반환한 raw/effective TRUE/FALSE/UNKNOWN, 평가/미선택/감시/만료 상태와 실행 경로를 구별한다. 전체 중단은 권한 확인 및 실제 서버 응답 기준으로 표시한다.

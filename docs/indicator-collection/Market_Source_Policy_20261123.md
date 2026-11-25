@@ -2,7 +2,7 @@
 
 ## 1. 적용 범위
 
-시장가격은 Binance 공개 체결 스트림을 기본으로 한다. VIX 및 국채 3M/5Y/10Y/30Y와 미국 주식·ETF의 지정 지표는 yfinance, 국채 2Y의 지정 출처는 [네이버 증권 US2YT=RR](https://m.stock.naver.com/marketindex/bond/US2YT=RR)이다. 네이버는 robots 차단 및 자동 이용 권한 미확인으로 자동화 기본 비활성, Treasury `BC_2YEAR` 공식 일별값을 기본 운영 fallback으로 사용한다. 원본 정의·지연·권한이 다른 시계열은 병합하지 않는다.
+시장가격은 Binance 공개 체결 스트림을 기본으로 한다. VIX 및 국채 3M/5Y/10Y/30Y와 미국 주식·ETF의 지정 지표는 yfinance를 사용한다. 네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패 또는 권한·접근 제한으로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 자동화·저장·활용 권한 확인 전에는 네이버 요청을 실행하지 않으며 접근 제한을 우회하지 않는다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
 
 ## 2. 대상별 기본 데이터 소스
 
@@ -19,9 +19,9 @@
 | 최근 5·10·20거래일 최고·최저가 | **yfinance `High`·`Low` 일봉 → rolling 최댓값·최솟값 로컬 계산** | `HIGH_5D/10D/20D`, `LOW_5D/10D/20D` | 실제 거래 세션 N개 기준. 일봉 확정 후 당일 포함, 장중 비교는 직전 N개 확정봉 기준. [명세](./YFinance_Valuation_and_Moving_Averages.md) |
 | 미국 주식·ETF 초단위 누적 거래량 (NVDA·QLD 등) | **yfinance WebSocket `day_volume` + 로컬 1초 주기 스냅샷** | `US_STOCK_DAILY_CUM_VOLUME_1S` + symbol | 원본 WS 이벤트 주기는 불규칙, 새 값 없으면 `stale/no_update`로 직전 값 표시; 진정한 무지연 초봉 또는 SIP 통합 체결량 아님. [명세](./YFinance_1s_Stock_Cumulative_Volume.md) |
 | 나스닥 100 선물·연동 신호 | **MEXC `NAS100_USDT` 무료 Futures WebSocket(개발/검증 후보)**; Binance `QQQUSDT` 별도 보조, yfinance `NQ=F` 지연 CME 기준 | `NASDAQ100_MEXC_PERP_USDT` / 별도 2시리즈 | MEXC는 지수 연동 영구선물, Binance는 QQQ ETF 연동 계약, Yahoo는 CME 실제 NQ 지연 시세. WS 수신 미검증; [조사 문서](./Nasdaq100_Futures_Data_Sources.md) |
-| VIX | yfinance `^VIX` | `VIX` | Cboe VIX 지수 (지연 가능) |
+| VIX | yfinance `^VIX` | `VIX` | Cboe VIX 지수, 원본 기준 TTL 10초; 지연 가능 |
 | 미국 국채 3개월 | yfinance `^IRX` | `UST_3M` | Yahoo 13주물 금리지표 |
-| 미국 국채 2년 | **네이버 증권 `US2YT=RR` (허가 후); Treasury `BC_2YEAR` 일별 fallback** | `UST_2Y` | 네이버 게시 2년물 수익률(%) |
+| 미국 국채 2년 | **네이버 증권 `US2YT=RR` 최우선; 실패/실행 불가 시에만 Treasury `BC_2YEAR` 임시 일별 fallback** | `UST_2Y` (논리); `UST_2Y_NAVER` / `UST_2Y_TREASURY` (원본) | 네이버 게시 수익률 및 Treasury 공식 par yield를 별도 유지 |
 | 미국 국채 5년 | yfinance `^FVX` | `UST_5Y` | Yahoo 5년물 금리지표 |
 | 미국 국채 10년 | yfinance `^TNX` | `UST_10Y` | Yahoo 10년물 금리지표 |
 | 미국 국채 30년 | yfinance `^TYX` | `UST_30Y` | Yahoo 30년물 금리지표 |
@@ -33,6 +33,10 @@
 - **두바이유는 수집 대상에서 제외**되어 있다.
 
 ## 3. 국채 2년물 수집 및 검증 근거
+
+네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패 또는 권한·접근 제한으로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 자동화·저장·활용 권한 확인 전에는 네이버 요청을 실행하지 않으며 접근 제한을 우회하지 않는다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+
+전환 후 일별 Treasury 값은 별도 원본과 freshness를 유지한다. 실거래 Workflow는 원본 고정 기본이며 명시적 fallback 허용 및 품질 검증 없이는 UNKNOWN. [공통 시계열 계약](../tech-stack/data-storage.md) · [신선도](../tech-stack/data-collection.md).
 
 원본 페이지: [m.stock.naver.com/marketindex/bond/US2YT=RR](https://m.stock.naver.com/marketindex/bond/US2YT=RR).
 

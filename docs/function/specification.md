@@ -32,9 +32,9 @@ NH나무 OpenAPI 기반 알고리즘·패턴 매매 퀀트 시스템에 필요�
 | FR-106 | Brent | Binance Futures BZUSDT | WS 체결 |
 | FR-107 | Nasdaq 100 연동 가격 | MEXC NAS100_USDT 후보 | WS, 실측 필요 |
 | FR-108 | Binance 롱숏·Taker 비율 | Futures 공개 REST | 5분 이상 집계 |
-| FR-109 | VIX | yfinance ^VIX | 1~5분 조회 |
+| FR-109 | VIX | yfinance ^VIX | 기본 TTL 10초, 허용 범위 즉시 갱신; 무지연 보장 없음 |
 | FR-110 | 미국 국채 3M/5Y/10Y/30Y | yfinance ^IRX/^FVX/^TNX/^TYX | 1~5분 조회 |
-| FR-111 | 미국 국채 2Y | Treasury BC_2YEAR, 네이버 US2YT=RR 승인 후 | 현재 일별 |
+| FR-111 | 미국 국채 2Y | 네이버 US2YT=RR 최우선; 스크래핑 실패/권한상 실행 불가 시에만 Treasury BC_2YEAR 임시 fallback | 원본별 시계열·신선도 분리, 네이버 정상 복구 시 복귀 |
 
 - FR-102~106은 USDT 결제 연동 영구선물이다. 금 현물 Gold API, 원유 EIA 일별 현물, Coinbase BTC/USD는 별도 참고 시계열이다. 두바이유 제외.
 - FR-107은 실제 CME NQ 선물이 아니다. Binance QQQUSDT는 ETF 연동 참고, yfinance NQ=F는 실제 CME 선물의 지연 비교 자료다. MEXC Protobuf 전환 및 실측 검증 필요.
@@ -107,6 +107,8 @@ DRAM은 두 독립 시계열을 유지하며 주간 원본 Last Update를 저장
 
 ## 7. 매수·매도 Workflow
 
+조건 충족 또는 새 유효 달성 사건 발생 시 연결된 타 조건 데이터의 즉시 갱신을 요청하고 fresh committed snapshot으로 재평가한다. 제공자 권한·rate limit·timeout 준수, 실패/신선도 미달 시 UNKNOWN/주문 차단. 사전 승인된 자동 Workflow와 개별 승인 필요한 수동·AI 의도를 구분한다. 실행 모드는 BACKTEST / DRY_RUN / PAPER_LOCAL / PAPER_BROKER / LIVE; PAPER는 UI 집계용이다. 계좌/모드별 Coordinator와 멱등 키 및 승인·권한 철회 정책은 [Workflow 상세](./trading-workflow.md), [Trading 기술](../tech-stack/trading-integration.md)을 따른다.
+
 ComfyUI/n8n과 유사한 블록 편집 방식으로 사용자가 조건·트리거·논리·주문 노드를 드래그 및 연결한다. 상세 규칙, 승인된 추가 트리거와 상세 기능은 [매수·매도 Workflow 명세](./trading-workflow.md)를 참조한다.
 
 | ID | 기능 | 요구사항 |
@@ -130,7 +132,7 @@ ComfyUI/n8n과 유사한 블록 편집 방식으로 사용자가 조건·트리�
 | FR-517 | 편집기 UI 및 디버깅 | 좌측 노드 라이브러리·중앙 캔버스·우측 설정·하단 로그·상단 툴바, 경로 강조, 미니맵·Undo/Redo·복사/붙여넣기 |
 | FR-518 | Workflow 관리 | 저장·복제·버전·템플릿·JSON 가져오기/내보내기·변수·Sub-workflow |
 | FR-519 | 주문 제어 | 분할 매수/매도, 익절/손절, 트레일링, OCO, 이벤트 거래 금지 구간 |
-| FR-520 | 다중 전략 | Watchlist 종목별 실행, 전략 충돌 방지, 계좌 수준 조정 |
+| FR-520 | 다중 전략 | Watchlist 종목별 실행, 계좌별 Order Coordinator, Workflow 우선순위, 1회/일별 최대 매수·매도량/금액, 상충 주문 보류 및 예약 |
 | FR-521 | 승인·알림·성과 | 승인 노드, 배포 승인, 권한, 결과/오류 알림, 성과 리포트 |
 | FR-522 | 사용자 주식 그룹 | 생성/편집/검색/복제/삭제, 구성 종목 및 가중치 버전, JSON 가져오기/내보내기 |
 | FR-523 | 그룹 집계 | 평균/가중/중앙 수익률, 상승·하락·보합 종목 수와 비중, 조건부 평균 상승·하락률, 시장폭·분산·강도·상대수익률 |

@@ -2,6 +2,8 @@
 
 ## 1. 테스트 구성
 
+실행 계약의 필수 검수: 조건 충족 시 관련 타 조건 즉시 갱신 및 committed snapshot 재평가, refresh dedupe/timeout/원본 TTL(VIX 10초), 네이버 2Y 우선 및 실패 시에만 Treasury 임시 fallback/복귀, source series 분리, 사전·개별 승인, Order Coordinator priority/매수·매도별 최대량·예약·충돌, reset/retry 멱등 키, 5개 모드 원장 격리, MCP disconnect/client revoke와 거래 승인 철회 구분. 합성 fixture로 우선 검증하고 실제 제공자·브로커 권한과 호환성 검증 전 LIVE 차단.
+
 | 영역 | 도구·검증 |
 |---|---|
 | Python 단위 | pytest, pytest-asyncio, Hypothesis; 계산·parser·state transition, UNKNOWN·idempotency·달력 속성 |
@@ -26,7 +28,7 @@
 | 2. 전체 지표 및 대시보드 | 주식 1Hz, 기업지표/고저가, Nasdaq/DRAM/SEIBro/위칭, UI | 권한 확인 소스 활성화, 미검증 표시, 실시간 갱신/계약 테스트 |
 | 3. 그룹/Workflow Core | graph/version/dependency, node engine, reset/latched/continuous, editor, dry-run | 순차/논리/분기/재사용/중단·리셋·경쟁·재시작 검증 |
 | 4. 전체 트리거/분석 | P0~P2 기존 기능, 그룹 집계, 예측/백테스트 Job, Friday UI, 알림/성과 | point-in-time/replay·비용·walk-forward·버전, 부족 데이터 fail closed |
-| 5. NHPLUG paper | 독립 조회 MCP, SDK Executor 모의, 주문 원장/리스크/대사 | 공식 계약 및 모의 권한 검증, UNKNOWN 재전송 차단, kill/recovery |
+| 5. NHPLUG PAPER_BROKER 및 PAPER_LOCAL | 독립 조회 MCP, SDK Executor 모의, 주문 원장/리스크/대사 | 공식 계약 및 모의 권한 검증, UNKNOWN 재전송 차단, kill/recovery |
 | 6. 통합 MCP | 10 도메인 Tools/Resources/Prompts, local/remote, IdP/권한 | 로컬·실제 외부 Host, OAuth/권한/폐기, 직접 주문 거부, job 상태 일관 |
 | 7. 운영 검증 | Compose staging/prod, backup, metrics, load, security | 복원/배포 rollback, 권한 및 환경 격리, 운영 절차; LIVE 여전히 별도 승인 |
 | 8. LIVE(조건부) | 명시적 승인된 운영 Executor | 사용자 승인, 계좌/한도/거래 유형/모의 성과/대사/리스크·데이터권한 검증 전 비활성 |

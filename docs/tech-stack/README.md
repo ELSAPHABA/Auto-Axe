@@ -4,6 +4,8 @@
 
 ## 1. 선정 원칙
 
+실행 정책의 구현 기준은 조건 충족 시 관련 데이터 즉시 갱신, 원본 시계열 분리·VIX TTL 10초, 네이버 2Y 우선/실패 시 임시 Treasury fallback, 사전 전략 승인/개별 주문 승인, 계좌별 Order Coordinator 및 5개 실행 모드(BACKTEST/DRY_RUN/PAPER_LOCAL/PAPER_BROKER/LIVE), 리셋/활성화 멱등 키, MCP 연결과 자동매매 수명 분리이다. 상세 계약은 [수집](./data-collection.md), [Workflow](./workflow-engine.md), [Trading](./trading-integration.md), [보안](./security.md)에 정의한다.
+
 - 개인/소규모 운영을 출발점으로 하여 자체 호스팅 가능한 오픈소스 중심 구성, 최소 서비스 수, 운영 비용 및 장애 복구 난이도를 우선한다. 무료 데이터 정책은 유지하며 인프라·거래 수수료까지 무료라고 가정하지 않는다.
 - Python 데이터 생태계와 기존 수집 PoC, 공식 nhplug Python SDK를 활용한다. 화면과 그래프 편집은 TypeScript로 타입을 고정한다.
 - 논리적으로 모듈화하되 초기에는 하나의 backend 코드베이스 및 DB, 역할별 프로세스로 배포한다. 주문 실행기는 처음부터 독립 신뢰 경계로 분리한다.

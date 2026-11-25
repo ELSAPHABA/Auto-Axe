@@ -54,6 +54,8 @@ scope: indicator:read; 대규모 분석은 indicator:analyze 추가. 권한/역�
 
 ## 4. Workflow
 
+영속 mode enum은 BACKTEST, DRY_RUN, PAPER_LOCAL, PAPER_BROKER, LIVE이다. PAPER는 UI 집계 라벨이며 입력 mode로 받지 않는다. MCP의 workflow_start는 DRY_RUN/PAPER_LOCAL/PAPER_BROKER에만 허용하고 LIVE 시작은 별도 신뢰 UI의 사람 승인·활성화 경계를 따른다. Workflow graph/settings DTO에는 priority, 종목별 1회/일별 최대 매수·매도량/금액, risk profile, source series/fallback, freshness 및 reset/activation 정책을 포함한다. 상태 조회는 refresh_generation/evaluation_seq, source provenance·TTL, CONFLICT_HELD/예약·한도 사유를 반환한다.
+
 | Tool | 주요 입력 | 결과 / scope |
 |---|---|---|
 | workflow_list | filters, cursor | 목록 / workflow:read |
@@ -74,7 +76,7 @@ scope: indicator:read; 대규모 분석은 indicator:analyze 추가. 권한/역�
 | workflow_list_templates | cursor | 템플릿 / read |
 | workflow_dry_run | workflow_id, version, inputs, as_of | 주문 없는 실행/Job / workflow:execute:dry_run |
 | workflow_request_deploy | workflow_id, version, mode, risk_profile_ref | 승인 요청 / workflow:deploy:request |
-| workflow_start | workflow_id, approved_version, mode, idempotency_key | 실행 ID (PAPER/DRY_RUN만 현재 목표) / workflow:execute:paper 또는 dry_run |
+| workflow_start | workflow_id, approved_version, mode, idempotency_key | 실행 ID (PAPER_LOCAL/PAPER_BROKER/DRY_RUN) / workflow:execute:paper_local, paper_broker 또는 dry_run |
 | workflow_pause | run_id, reason | 일시정지 상태 / workflow:pause |
 | workflow_stop | run_id, reason | 중단 래치·대사 상태 / workflow:stop |
 
@@ -158,6 +160,8 @@ scope: system:read, 로그는 system:logs:read, Job은 본래 작업 소유권/�
 
 ## 10. Trading (주문 준비 및 내부 상태만)
 
+단발 MCP 주문 의도는 MANUAL_OR_AI로 분류하며 개별 사람 승인 없이는 제출할 수 없다. 사전 승인된 AUTO_WORKFLOW의 권한을 단발 주문에 재사용할 수 없다. Executor가 Coordinator 우선순위·계좌/종목/모드 한도·예약·충돌 및 승인 상태를 검증한다. [실행 명세](../tech-stack/trading-integration.md).
+
 | Tool | 주요 입력 | 결과 / scope |
 |---|---|---|
 | trading_get_orders | account_ref, mode, period, cursor | 내부 원장/허용된 조회 / trading:read |
@@ -186,7 +190,7 @@ scope: system:read, 로그는 system:logs:read, Job은 본래 작업 소유권/�
   "status": "ok",
   "data": {
     "run_id": "example-run",
-    "mode": "PAPER",
+    "mode": "PAPER_LOCAL",
     "condition_expression": "A AND B",
     "result": "FALSE",
     "input_results": ["TRUE", "FALSE"]

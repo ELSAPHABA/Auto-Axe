@@ -50,6 +50,8 @@
 
 ## 3. 공통 서비스 및 동시성
 
+공통 API/MCP/Job 계약에 mode enum(BACKTEST, DRY_RUN, PAPER_LOCAL, PAPER_BROKER, LIVE), immutable workflow_version, reset_epoch, activation_id, source series pin/fallback policy, freshness_policy, priority 및 매수·매도별 승인 한도, approval grant/payload hash를 포함한다. 평가 응답에 evaluation_seq/evaluation_at/snapshot input refs 및 refresh_generation/status/reason, 주문 응답에 CONFLICT_HELD 및 예약/한도 사유를 제공한다. 기존 UI PAPER 집계는 서버가 두 모드를 합산한다.
+
 [전체 플랫폼 보안 설계](./security.md)의 SEC-01~SEC-10을 적용한다. 공통 인가 계층에서 REST/MCP/Job 동일 정책, CSRF·입력 검증·리소스 단위 권한·rate limit을 적용한다. 수집 broker는 등록 source_id 기반 제한 계약만 허용하고 scraper 결과를 신뢰하지 않으며 schema·권한·출처를 재검증한 후 원장에 적재한다.
 
 API와 MCP가 동일 use case를 호출하며 서버에서 인증·인가·소유권·승인·모드·품질을 재검증한다. Repository/UoW 인터페이스로 DB 구현을 격리한다. 버전 증가와 FK/unique 제약으로 경쟁 쓰기 방지. 저장된 Workflow 수정 시 활성 버전 불변. 읽기만 허용된 연결에서 변경 use case 호출 금지. 요청 payload에 임의 SQL·shell·파일 경로·URL을 허용하지 않는다.
