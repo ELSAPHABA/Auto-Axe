@@ -21,19 +21,21 @@
 
 ## 2. 개발 단계 및 완료 기준
 
+아래 Phase 0~8이 유일한 전역 개발 로드맵이다. 개별 기능 명세의 세부 작업 순서는 해당 Phase 내 하위 작업으로 관리한다. 선행 의존성을 충족한 작업은 병렬화할 수 있다. [공통 기술 계약](./contracts.md) §10의 테스트를 Phase별 완료 기준에 포함한다.
+
 | 단계 | 산출물 | exit criteria |
 |---|---|---|
-| 0. 기술 검증 | uv/pnpm/SDK 호환 matrix, Compose dev, DB/CI skeleton, ADR | Python/Node/nhplug/MCP/DB 설치 및 smoke, 라이선스 검토 |
-| 1. 수집·저장 기반 | registry, collector adapters, migrations, durable event/quality, CLI migration | 기존 Binance/yfinance/Treasury PoC parity, reconnect·dedupe·stale·permission gate |
-| 2. 전체 지표 및 대시보드 | 주식 1Hz, 기업지표/고저가, Nasdaq/DRAM/SEIBro/위칭, UI | 권한 확인 소스 활성화, 미검증 표시, 실시간 갱신/계약 테스트 |
-| 3. 그룹/Workflow Core | graph/version/dependency, node engine, reset/latched/continuous, editor, dry-run | 순차/논리/분기/재사용/중단·리셋·경쟁·재시작 검증 |
-| 4. 전체 트리거/분석 | P0~P2 기존 기능, 그룹 집계, 예측/백테스트 Job, Friday UI, 알림/성과 | point-in-time/replay·비용·walk-forward·버전, 부족 데이터 fail closed |
-| 5. NHPLUG PAPER_BROKER 및 PAPER_LOCAL | 독립 조회 MCP, SDK Executor 모의, 주문 원장/리스크/대사 | 공식 계약 및 모의 권한 검증, UNKNOWN 재전송 차단, kill/recovery |
-| 6. 통합 MCP | 10 도메인 Tools/Resources/Prompts, local/remote, IdP/권한 | 로컬·실제 외부 Host, OAuth/권한/폐기, 직접 주문 거부, job 상태 일관 |
-| 7. 운영 검증 | Compose staging/prod, backup, metrics, load, security | 복원/배포 rollback, 권한 및 환경 격리, 운영 절차; LIVE 여전히 별도 승인 |
-| 8. LIVE(조건부) | 명시적 승인된 운영 Executor | 사용자 승인, 계좌/한도/거래 유형/모의 성과/대사/리스크·데이터권한 검증 전 비활성 |
+| Phase 0 — 기술 검증 및 개발 환경 | uv/pnpm/SDK 호환 matrix, Compose dev, DB/Role 및 CI skeleton, OpenAPI 3.1/JSON Schema/Event Envelope 초기 fixture 및 생성 파이프라인 | Python/Node/nhplug/MCP/DB smoke, 라이선스, OpenAPI→TS drift, DB 격리·Decimal/UTC 계약 검증 |
+| Phase 1 — 수집·저장 기반 | registry, collector adapters, migrations, durable event/quality, cross-DB outbox/inbox, CLI migration | 기존 Binance/yfinance/Treasury PoC parity, reconnect·dedupe·stale·permission gate |
+| Phase 2 — 전체 지표 및 대시보드 | 주식 1Hz, 기업지표/고저가, Nasdaq/DRAM/SEIBro/위칭, Scrapling Job/Result API, 대시보드/BFF/SSE | 권한 확인 소스 활성화, 미검증 표시, 실시간 갱신/계약 테스트 |
+| Phase 3 — 그룹/Workflow Core | versioned graph schema/dependency, node engine, reset/latched/continuous, 즉시 갱신, editor, dry-run | 순차/논리/분기/재사용/중단·리셋·경쟁·재시작 검증 |
+| Phase 4 — 전체 트리거/분석 | P0~P2 기존 기능, 그룹 집계, 예측/백테스트 Job, Friday UI, 알림/성과 | point-in-time/replay·비용·walk-forward·버전, 부족 데이터 fail closed |
+| Phase 5 — NHPLUG PAPER_BROKER 및 PAPER_LOCAL | 독립 조회 MCP, SDK Executor 모의, Order Coordinator, 승인·주문 원장/리스크/대사 | 공식 계약 및 모의 권한 검증, UNKNOWN 재전송 차단, kill/recovery |
+| Phase 6 — 통합 MCP | 10 도메인 Tools/Resources/Prompts, local/remote, IdP/권한 | 로컬·실제 외부 Host, OAuth/권한/폐기, 직접 주문 거부, job 상태 일관 |
+| Phase 7 — 운영 검증 | Compose staging/prod, backup, metrics, load, security | 복원/배포 rollback, 권한 및 환경 격리, 운영 절차; LIVE 여전히 별도 승인 |
+| Phase 8 — LIVE(조건부) | 명시적 승인된 운영 Executor | 사용자 승인, 계좌/한도/거래 유형/모의 성과/대사/리스크·데이터권한 검증 전 비활성 |
 
-읽기 MCP 기반은 1~2단계부터 병행 가능, 도메인 기능 완성에 따라 등록한다. 단계 순서는 기능 축소가 아니다. 기존 명세의 수용 테스트는 모두 유지하며 완료 기준에 매핑한다.
+읽기 MCP 기반은 Phase 1~2부터 병행 가능, 도메인 기능 완성에 따라 등록한다. 단계 순서는 기능 축소가 아니다. 기존 명세의 수용 테스트는 모두 유지하며 완료 기준에 매핑한다.
 
 ## 3. 우선 검증할 미확정 사항
 

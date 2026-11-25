@@ -54,6 +54,8 @@ scope: indicator:read; 대규모 분석은 indicator:analyze 추가. 권한/역�
 
 ## 4. Workflow
 
+그래프 input/output 및 import/export는 [공통 기술 계약](../tech-stack/contracts.md) §2의 versioned JSON Schema를 공통 사용한다. 금액/수량 Decimal 문자열, mode enum 및 오류 사유는 동일 도메인 DTO를 사용하고 MCP 응답 형식은 유지한다.
+
 영속 mode enum은 BACKTEST, DRY_RUN, PAPER_LOCAL, PAPER_BROKER, LIVE이다. PAPER는 UI 집계 라벨이며 입력 mode로 받지 않는다. MCP의 workflow_start는 DRY_RUN/PAPER_LOCAL/PAPER_BROKER에만 허용하고 LIVE 시작은 별도 신뢰 UI의 사람 승인·활성화 경계를 따른다. Workflow graph/settings DTO에는 priority, 종목별 1회/일별 최대 매수·매도량/금액, risk profile, source series/fallback, freshness 및 reset/activation 정책을 포함한다. 상태 조회는 refresh_generation/evaluation_seq, source provenance·TTL, CONFLICT_HELD/예약·한도 사유를 반환한다.
 
 | Tool | 주요 입력 | 결과 / scope |

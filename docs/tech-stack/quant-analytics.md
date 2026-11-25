@@ -4,6 +4,8 @@ BACKTEST는 기록된 available_at 및 가상 시계에서 동일 Workflow 평�
 
 ## 1. 선택
 
+통계/ML은 Float64, 실제 원장 계산은 Decimal, BACKTEST는 autoaxe_backtest의 격리 상태/원장으로 [공통 기술 계약](./contracts.md) §3~5에 따른다. 시장 원본과 정의는 시점 고정 reference로 사용한다.
+
 | 기술 | 역할 |
 |---|---|
 | NumPy / pandas | 시계열·벡터 연산, rolling, 피처·그룹 |

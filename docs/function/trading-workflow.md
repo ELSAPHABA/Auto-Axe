@@ -47,6 +47,8 @@ flowchart LR
 
 ### 2.1 평가 규칙
 
+Workflow import/export 및 실행 규격은 [공통 기술 계약](../tech-stack/contracts.md) §2/3을 따른다. schema_version, workflow_version, node_schema_version을 구분하고 UI presentation metadata는 실행 해시에서 분리한다.
+
 평가는 committed event 기반이며 평가 시점까지 이용 가능한 최신 유효 관측을 사용한다. 데이터별 TTL·세션·공급원 및 권한을 확인하고 늦은 데이터는 저장하되 과거 주문을 소급 변경하지 않는다. 관련 조건이 최초 충족되거나 새 유효 달성 사건이 발생하면 동일 실행의 활성 복합 조건 및 연결된 후속 조건에 필요한 나머지 데이터의 즉시 갱신을 요청한다. AND/OR/N-of-M, 순차·분기·재사용 조건에 동일 적용한다. 갱신은 공급자별 공식 API/WS·권한·레이트리밋·원본 게시 주기를 준수하며, 실제 새 원본을 강제 생성할 수 없다. 요청 시 최신 WS 이벤트 확인, 허용된 REST 재조회 또는 파생 지표 재계산을 우선한다. 동일 신호의 중복 요청은 single-flight로 병합하며 timeout·실패 시 UNKNOWN/품질 차단을 적용한다. 미선택 경로는 주문 부작용 없이 필요한 데이터만 확인하며 다른 조건의 달성 횟수·순차 활성화 규칙을 우회하지 않는다. 갱신된 데이터가 커밋된 뒤 새로운 단일 평가 시점의 유효 스냅샷으로 복합 조건을 재평가하고, 그 결과 및 독립 위험 게이트를 통과해야 주문 의도를 확정한다. 동일 TRUE 지속·갱신 응답 반복·재시작에 따른 무한 갱신/중복 주문은 금지한다.
 
 세부 평가 순서 및 갱신 barrier는 [Workflow 기술 명세](../tech-stack/workflow-engine.md), 데이터 신선도는 [수집 기술 명세](../tech-stack/data-collection.md)를 따른다.

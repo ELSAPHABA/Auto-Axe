@@ -9,7 +9,7 @@
 | 기능 및 동작 | [기능 명세](./function/specification.md), 도메인별 상세 기능 명세 |
 | 시스템·UI | [시스템 설계](./design/specification.md), [UI 디자인](./design/frontend.md) |
 | 무료 데이터·상품 정의 | [수집 카탈로그](./indicator-collection/Free_Data_Collection.md), [시장 소스 정책](./indicator-collection/Market_Source_Policy_20261123.md) |
-| 구현 기술·저장·배포 | [기술 스택](./tech-stack/README.md) 및 영역별 기술 명세 |
+| 구현 기술·저장·배포 | [기술 스택](./tech-stack/README.md), [공통 기술 계약](./tech-stack/contracts.md) 및 영역별 기술 명세 |
 | 보안·실거래 | [전체 보안](./tech-stack/security.md), [MCP 보안](./mcp/security.md), [주문 실행](./tech-stack/trading-integration.md); 제한 정책 우선 |
 | 검수 | 각 명세의 수용 기준과 [개발·검증 계획](./tech-stack/testing-roadmap.md) |
 
@@ -20,7 +20,7 @@
 - [시스템 설계 명세서](./design/specification.md)
 - [프론트엔드 디자인 명세서 (Live3x 레퍼런스)](./design/frontend.md)
 - [기능 명세서](./function/specification.md)
-- [매수·매도 Workflow 명세서 (전체 기능 승인)](./function/trading-workflow.md)
+- [매수·매도 Workflow 명세서](./function/trading-workflow.md)
 - [주식 그룹 및 집계 트리거 명세서](./function/stock-groups.md)
 - [금요일 종가매수 분석·예측 시스템 명세서](./function/friday-close-strategy.md)
 
@@ -34,6 +34,6 @@
 
 ## 기술 스택
 
-- [기술 스택 및 구현 기준 설계안](./tech-stack/README.md)
+- [기술 스택 및 구현 기준](./tech-stack/README.md)
 
 - [전체 플랫폼 보안 설계](./tech-stack/security.md)

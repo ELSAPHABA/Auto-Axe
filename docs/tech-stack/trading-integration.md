@@ -19,6 +19,8 @@ nhplug-mcp의 현재 조회 제한을 변경하거나 주문 테스트 스크립
 
 ## 2. 주문 실행 경계
 
+[DB/Role 계약](./contracts.md) §5에 따라 승인·Workflow 실행·intent·예약·주문/체결·outbox를 해당 mode DB의 동일 트랜잭션 경계에 배치한다. mode별 credential/DB pool 분리, 공통 정의/시장 원본은 versioned reference/snapshot. cross-DB 외부 호출은 atomic이라고 가정하지 않으며 철회/fence 불일치 시 신규 제출 차단.
+
 승인 방식은 두 가지로 분리한다. AUTO_WORKFLOW는 사람이 특정 불변 Workflow 버전, 계좌·모드·종목·방향·거래 시간·최대 수량/금액·위험 정책 및 만료를 사전 승인하고 활성화한 후, 범위 내 주문마다 독립 리스크 검사를 거쳐 자동 제출한다. 별도 승인 노드를 구성한 경우 해당 주문에 추가 사람 승인이 필요하다. MANUAL_OR_AI는 단발 주문 의도마다 canonical payload hash, 계좌/모드, 만료를 묶은 개별 사람 승인이 필요하다. 사전 승인은 범위 밖 주문·변경 버전·다른 계좌·만료/철회에 재사용하지 않는다. AI/MCP 자체 승인 및 직접 제출 금지. LIVE 활성화는 두 방식 모두 별도 사용자 승인 및 모의 검증을 요구한다.
 
 ### Order Coordinator 및 한도

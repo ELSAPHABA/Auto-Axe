@@ -14,7 +14,7 @@ flowchart LR
   P --> IDP[Keycloak auth paths]
   API --> S[Shared Application Service]
   MCP --> S
-  C[Async Collector] --> DB[(PostgreSQL)]
+  C[Async Collector] --> DB[(PostgreSQL databases)]
   C --> SB[Private scrape job broker]
   SB --> SW[Isolated Scrapling worker]
   SW --> EG[Restricted egress gateway]
@@ -47,18 +47,20 @@ flowchart LR
 | outbox relay | 커밋된 이벤트 재전송, UI 알림 및 consumer 전달. 전송 중복 허용·소비자 멱등 |
 | nhplug-read | 외부 MCP stdio 프로세스의 전용 adapter; 조회만 수행, private |
 | executor | 주문 리스크 재검증·SDK 제출·체결 대사·Kill Switch. 독립 비밀·네트워크·실행 모드 |
-| postgres / idp | 원장·이력 및 인증 서버; DB role/스키마 분리 |
+| postgres / idp | PostgreSQL Database/Role 분리, Keycloak 전용 DB 및 Auto-Axe BFF 세션 분리 |
 
 초기에는 collector/scheduler/worker/outbox를 역할별 command로 같은 이미지에서 실행 가능하게 한다. 분리 개수는 운영 프로필에 따라 조절하되 executor는 항상 격리한다.
 
 ## 2. 저장·통신 결정
+
+[공통 기술 계약](./contracts.md)을 적용한다. 위 DB 노드는 단일 PostgreSQL 인스턴스 내 market/app/identity/모드별 Database의 논리 표현이다. 모드별 local UoW에서 Workflow·주문·위험·outbox를 원자 커밋하고 DB 사이에는 versioned snapshot/reference와 at-least-once outbox/inbox를 사용한다. API는 OpenAPI 3.1, Workflow는 versioned JSON Schema, 이벤트는 Pydantic Envelope, scraper broker는 내부 FastAPI+mTLS, BFF 세션은 PostgreSQL, UI 복구는 Snapshot+Version이다.
 
 조건의 유효 충족은 RefreshCoordinator를 통해 나머지 관련 조건의 데이터를 즉시 갱신 요청하고 committed snapshot 재평가로 이어진다. 주문 Executor 내부 Order Coordinator는 계좌/모드별 priority·매수/매도량·위험 예약을 관리한다. BACKTEST/DRY_RUN/PAPER_LOCAL/PAPER_BROKER/LIVE는 각각 격리된 실행 상태와 원장을 사용한다.
 
 - 동기 요청: REST JSON(OpenAPI), MCP JSON-RPC; 조회·검증 및 단건 명령. 쓰기 작업은 DB 트랜잭션과 idempotency key, expected_version을 사용한다.
 - 장기 작업: PostgreSQL jobs + lease/heartbeat, FOR UPDATE SKIP LOCKED 기반 claim; 요청 응답은 Job ID. 큐와 결과 원장을 DB로 일원화해 초기 Redis/Celery의 추가 복잡성을 피한다.
 - 이벤트: 동일 트랜잭션의 outbox, durable 소비자 checkpoint/inbox. 소비는 at-least-once, 외부 주문은 exactly-once라고 주장하지 않는다. PostgreSQL NOTIFY나 Valkey는 깨우기/캐시용이며 유실돼도 DB polling으로 복구한다.
-- 화면 실시간 상태: SSE + snapshot/version/cursor, 브라우저 재접속 시 이력 replay 또는 snapshot 재조회. 시장 소스 WebSocket과 UI 전송을 분리.
+- 화면 실시간 상태: SSE + snapshot/version/cursor, 브라우저 재접속 시 snapshot 재조회. 시장 소스 WebSocket과 UI 전송을 분리.
 - 내부 도메인: Python typed DTO, UTC aware datetime, Decimal 금액/수량, versioned JSON. 외부 소스별 값 정의 및 단위 강제.
 - 저장: PostgreSQL 17 transactional truth, Parquet immutable 연구 스냅샷/허용된 원본 아카이브, DuckDB 로컬 분석. Valkey는 선택적 캐시이며 장애 시 주문 조건의 안전성을 훼손하지 않는다.
 
@@ -80,7 +82,7 @@ auto-axe/
       tests/
     executor/                  # 별도 패키지/이미지, SDK credential
   packages/
-    contracts/                 # OpenAPI 및 event schemas, generated TS types
+    contracts/                 # OpenAPI 3.1, workflow/event JSON Schema, generated TS types
   infra/
     compose/
     caddy/
@@ -102,7 +104,7 @@ auto-axe/
 |---|---|---|
 | ADR-001 | Python 모듈러 모놀리스 + 별도 실행 프로세스 | 기존 코드와 ML/NH 연동 재사용; 초기 microservices/K8s 오버헤드 배제 |
 | ADR-002 | React + Vite + React Flow | 노드 편집기, 클라이언트 중심 대시보드; SSR/Next.js 및 자체 canvas 엔진 불필요 |
-| ADR-003 | PostgreSQL 단일 원장 | FK/버전/트랜잭션/파티션/복구; MongoDB·별도 TSDB 초기 제외 |
+| ADR-003 | PostgreSQL 모드별 DB 원장 | 동일 모드 원자성·DB/Role 격리; cross-DB outbox/inbox; MongoDB·별도 TSDB 초기 제외 |
 | ADR-004 | PostgreSQL durable queue/outbox | 상태·명령 원자성, 단순한 운영; Kafka/RabbitMQ/Temporal은 부하 증명 후 |
 | ADR-005 | 자체 상태 머신 | 조건 유지·UNKNOWN·참조·영업일 리셋·결정론 replay; n8n/ComfyUI는 UX 참고이지 주문 엔진 아님 |
 | ADR-006 | 별도 주문 Executor | 조회 MCP 제한과 실주문 권한 분리, fail closed |

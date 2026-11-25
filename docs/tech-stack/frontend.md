@@ -4,6 +4,8 @@
 
 ## 1. 선택
 
+아래 기술 중 ELK.js만 자동 레이아웃 선택 사항이며 나머지 UI 구현/검증 라이브러리는 기본 필수다. OpenAPI 3.1 → openapi-typescript 생성 타입을 사용하고 React Flow 그래프는 [versioned JSON Schema](./contracts.md) §2에 맞춰 변환한다. 금융 원장 금액은 문자열로 취급한다.
+
 | 기술 | 책임 |
 |---|---|
 | React + TypeScript + Vite | SPA, 정적 배포, strict 타입 |
@@ -47,6 +49,8 @@ React Flow 그래프는 backend graph schema를 투영한다. node_id, type, sch
 조건 설정: LATCHED N회, hold_until, CONTINUOUS, 재무장/중복 방지; 1/5/20/N 거래일 reset 및 거래소 달력 선택. 서버가 반환한 raw/effective TRUE/FALSE/UNKNOWN, 평가/미선택/감시/만료 상태와 실행 경로를 구별한다. 전체 중단은 권한 확인 및 실제 서버 응답 기준으로 표시한다.
 
 ## 4. 실시간 데이터와 성능
+
+초기 복구는 [Snapshot + Version](./contracts.md) §8로 확정한다. SSE ready 후 delta 버퍼링 → REST snapshot → aggregate별 버전 대조, 재접속/누락/overflow 시 snapshot 재조회. 장기 replay 저장소는 초기 필수 아님. 권한 변경 시 cache 제거 및 stream 종료.
 
 REST snapshot + SSE delta, TanStack Query cache patch/invalidate; event version 역전/갭 시 재조회. EventSource는 동일 origin HttpOnly session cookie 사용, 브라우저 요청에 장기 API 토큰 노출 금지. 각 화면의 query key에 계좌/모드/버전/기간 포함. UI만 render coalescing 및 requestAnimationFrame, Web Worker에서 큰 차트 데이터 가공 후보, 서버 downsample의 min/max와 확정봉 의미 유지. 숨겨진 탭은 렌더링을 줄이고 수집·매매 엔진은 독립. SSE 끊김·no_update·stale 표시; 1Hz 기록을 1Hz 신규 거래로 오인하지 않는다. 롱숏 최소 5분 집계 및 4종 비율 정의 구분.
 

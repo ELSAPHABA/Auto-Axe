@@ -4,6 +4,8 @@
 
 ## 1. 배포 전략
 
+초기 PostgreSQL 단일 인스턴스에 [Database/Role 계약](./contracts.md) §5를 적용한다. market/app/identity 및 각 mode DB, dev/test를 별도 role/credential/pool로 격리한다. LIVE 물리 인스턴스 분리는 운영 요구 시 검토하고 현재 단일 호스트를 HA로 보지 않는다. scrape-broker는 private FastAPI/mTLS, BFF session은 app DB를 사용한다.
+
 [전체 플랫폼 보안 설계](./security.md)의 SEC 요구사항을 적용한다. 기본 외부 ingress 차단, 관리 VPN 또는 사설망, host nftables/동등 방화벽과 Docker forwarding 정책을 실제 테스트한다. 스크래퍼는 전용 제한 egress gateway 이외의 외부 통신 및 내부 서비스 접근을 차단하고, broker는 고정 job/result 계약만 허용한다. 운영 비밀은 역할별 mount 및 회전, off-host 암호화 백업, 이미지 서명/취약점 검사, 보안 사고 대응 훈련을 적용한다. 외부 MCP 및 LIVE 기본 비활성 유지.
 
 Linux 단일 서버 또는 개인 홈서버/VM + Docker Engine/Compose를 초기 기준으로 한다. CPU/RAM/SSD 및 네트워크 비용을 측정하며 AWS 등 특정 클라우드·Kubernetes·대형 메시지 클러스터를 기본 필수로 두지 않는다. 실제 호스트와 도메인/예산은 사용자 지정 전까지 미확정이다. 단일 호스트는 HA가 아니며 장애 시 안전하게 중단하고 복구한다.
@@ -30,7 +32,7 @@ local/dev: fixtures + PostgreSQL + API/web, 필요 시 Keycloak 및 모의 execu
 Python uv lock, Node pnpm lock, runtime major pin, image digest 및 공급망 스캔. multi-stage Dockerfile, non-root user, read-only filesystem 가능한 역할, cap_drop, resource limit, tmpfs, 최소 네트워크, liveness/readiness 구분. GPU 없는 CPU 이미지 기본, Scrapling 수집 의존성 및 필요한 브라우저 전이 의존성은 승인된 scraper-worker image에 격리한다. Playwright는 UI E2E 용도로만 직접 사용한다.
 
 GitHub Actions:
-- PR: Ruff format/lint, mypy, pytest/Hypothesis, PostgreSQL Testcontainers integration, TypeScript check, ESLint/Prettier, Vitest, Playwright, OpenAPI generated type drift, markdown link check.
+- PR: Ruff format/lint, mypy, pytest/Hypothesis, PostgreSQL Testcontainers integration, TypeScript check, ESLint/Prettier, Vitest, Playwright, OpenAPI 3.1/JSON Schema 및 generated TypeScript/event drift, cross-DB role/outbox/inbox·세션/SSE/scraper 계약 검증, markdown link check.
 - main/tag: reproducible build, SBOM(예: Syft), Trivy/vulnerability scan, GHCR image push, pinned Actions revisions/least permissions. 공급자 키나 live credential을 PR CI에 제공하지 않음.
 - 배포: staging migration 및 smoke, 승인 후 production deploy. DB migration은 단일 실행, backup/rollback 확인. 서비스 health 및 event lag, data gate 확인. LIVE executor는 CI/CD 자동 기동 금지, 별도 운영 승인.
 

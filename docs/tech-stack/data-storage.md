@@ -2,6 +2,8 @@
 
 ## 1. 기본 선택
 
+[공통 기술 계약](./contracts.md) §4~6에 따라 PostgreSQL 단일 인스턴스에 Database/Role을 분리한다. autoaxe_market(공통 시장), autoaxe_app(정의·권한·BFF 세션), autoaxe_backtest/autoaxe_dry_run/autoaxe_paper_local/autoaxe_paper_broker/autoaxe_live(모드별 원장), autoaxe_identity(Keycloak 전용), autoaxe_dev/autoaxe_test(개발/테스트). LIVE 물리 분리는 필요 시 적용하며 별도 credential 및 DB CONNECT 제한을 사용한다.
+
 [전체 플랫폼 보안 설계](./security.md)의 데이터 등급·DB 역할·암호화·감사·백업 정책을 적용한다. scraper-worker에는 DB credential을 부여하지 않고 broker/검증 계층만 결과를 적재한다. 거래 비밀은 DB 일반 조회와 연구 artifact에서 제외하며 DB 접근 제약과 API 리소스 정책을 함께 검증한다.
 
 PostgreSQL 17 + psycopg 3 + SQLAlchemy/Alembic을 기본 원장으로 한다. native RANGE partitioning, B-tree/BRIN, JSONB, COPY/batch insert로 초기 시계열 요구를 처리한다. TimescaleDB/ClickHouse는 실제 저장량·질의·운영 비용에서 이점이 확인되면 별도 ADR로 검토한다. SQLite는 단위 테스트용 단순 fixture에 한정하고 실제 동시성 테스트는 PostgreSQL에서 실행한다.
@@ -9,6 +11,8 @@ PostgreSQL 17 + psycopg 3 + SQLAlchemy/Alembic을 기본 원장으로 한다. na
 Parquet + PyArrow는 연구용 불변 데이터셋/허가된 원본 아카이브, DuckDB는 read-only 분석 query, pandas는 피처/모델 입력. 초기에는 private filesystem volume, 확장 시 S3 호환 object store(사용권·비용 확인)로 변경할 수 있는 artifact interface. Valkey는 선택적 최신값 캐시/알림으로만 사용하고 주문·조건·Job 원장의 유일 저장소로 쓰지 않는다.
 
 ## 2. 논리 스키마
+
+아래 표는 논리 도메인 스키마이며 하나의 DB에 모두 배치한다는 의미가 아니다. market/catalog/indicator 수집은 market DB, identity/공통 정의는 app DB, research/backtest는 backtest DB 및 허용 artifact, 실행 상태/승인/위험/주문/체결/감사는 각 모드 DB에 배치한다. ops outbox/inbox/jobs는 해당 원장의 DB 안에 둔다. 공통 정의와 시장 관측은 versioned snapshot/reference로 소비한다.
 
 | 스키마 | 주요 테이블 |
 |---|---|
@@ -35,9 +39,11 @@ Parquet + PyArrow는 연구용 불변 데이터셋/허가된 원본 아카이브
 
 ## 4. 상태와 감사
 
+한 모드의 Workflow state·intent·승인·risk reservation·order/fill ledger·outbox를 같은 DB transaction 경계에 둔다. cross-DB 시장/정의/권한 이벤트는 durable outbox/inbox 및 mode별 ingress를 사용한다. 승인 철회는 해당 mode gate에 반영 후 완료, 공통 인가 확인 실패/불일치 시 신규 주문 fail closed. [DB 및 Role 계약](./contracts.md) §5.
+
 strategy에 workflow_run_modes, evaluation_seq/snapshot input references, refresh_generations, activation/invocation identity를 저장한다. trading에 strategy_approval_grants, order_conflicts, order_reservations, account/mode/instrument/session별 risk counters 및 priority enqueue ordering을 저장한다. mode enum은 BACKTEST, DRY_RUN, PAPER_LOCAL, PAPER_BROKER, LIVE이며 PAPER는 집계 라벨이다. order_intents는 canonical key unique 및 payload_hash 비교, 승인 grant 버전, risk reservation 상태를 영속화한다. reset_epoch/activation_id가 신규 유효 실행과 retry를 분리한다. 일별 위험 카운터는 계좌의 지정 거래 세션으로 계산하며 Workflow reset으로 초기화하지 않는다.
 
-workflow_versions/group_versions는 배포/실행에 고정; dependency FK 및 삭제 정책, 순환은 application validation + transaction lock으로 처리. node_state key=(run_id,node_id,activation_id,reset_epoch), optimistic version. 같은 event 재처리 방지 및 원자적 outbox. reset은 상태만 초기화하고 주문/체결·중단·risk·idempotency 원장은 유지한다. 주문 attempt는 immutable history와 허용 상태 전이, broker order ID/계좌/모드 unique. 불명 제출은 reconciliation 전 재전송 금지.
+workflow_versions/group_versions는 배포/실행에 고정; 동일 DB 내부 dependency FK와 application validation/transaction lock을 적용한다. DB 간 참조는 app DB의 durable reservation/import ack/terminal release로 관리하고, 불명 참조는 삭제 차단한다. cross-DB FK/단일 transaction을 가정하지 않는다. node_state key=(run_id,node_id,activation_id,reset_epoch), optimistic version. 같은 event 재처리 방지 및 원자적 outbox. reset은 상태만 초기화하고 주문/체결·중단·risk·idempotency 원장은 유지한다. 주문 attempt는 immutable history와 허용 상태 전이, broker order ID/계좌/모드 unique. 불명 제출은 reconciliation 전 재전송 금지.
 
 감사 event는 actor, client, resource, action, decision, reason, request_id, time, redacted diff, correlation. 일반 앱은 append-only 제한, 관리자의 별도 복구/보관 정책은 감사에 남긴다. password/token/secret/민감 계좌 원문 로그 금지.
 

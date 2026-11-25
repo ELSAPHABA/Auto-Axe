@@ -8,6 +8,8 @@ Python typed dataclass/Pydantic graph DTO, 자체 event-driven 상태 머신, Po
 
 ## 2. 실행 계약
 
+[공통 기술 계약](./contracts.md) §2~4를 적용한다. JSON Schema Draft 2020-12, schema_version/workflow_version/node_schema_version, typed node/edge ports, 별도 presentation metadata 및 canonical execution hash를 사용한다. Pydantic Event Envelope 및 mode별 local inbox/outbox, Decimal 문자열/UTC 계약을 준수한다.
+
 ### 평가 이벤트 및 즉시 갱신
 
 run 단위 durable evaluation_seq를 트랜잭션에서 할당한다. 입력 이벤트는 committed observation/event ID로 dedupe하고 evaluation_at UTC 및 snapshot_version/input observation IDs를 기록한다. 동일 시점의 이미 수신 가능한 이벤트는 durable ingress/queue 순서, 안정적 event_id로 tie-break하며 DB sequence 할당 순서를 commit 순서로 가정하지 않는다. 소스 event_at과 available_at을 구분하고 available_at <= evaluation_at인 최신 유효 데이터를 사용한다. 늦거나 정정된 이벤트는 새 평가/감사에만 반영한다. 과거 주문·hit·확정된 평가를 소급 재작성하지 않는다.
@@ -34,6 +36,8 @@ Node registry: Market/Indicator/Group/Prediction/Condition/Logic/Control/Statefu
 raw/effective condition은 데이터 freshness/권한·위험 게이트와 구분한다. 유효 래치가 있어도 주문 시 stale/권한/위험/중단 gate를 통과해야 한다. 트리거 hit counting은 명세의 달성 사건 및 재무장 규칙 적용(동일 TRUE 샘플 반복을 N회로 세지 않음). 상승 후 하락/하락 후 상승 극값, 가격 기준 시각, cooldown, debounce, 상태 초기화는 node config+state version으로 명시한다.
 
 ## 3. 실행 및 복구
+
+실행·승인·주문·위험·outbox/inbox는 해당 mode DB에 배치한다. 공통 정의는 app DB에서 version/참조 예약 후 불변 snapshot으로 가져오고, 시장 원본은 observation ID 및 revision을 고정한다. cross-DB 단일 트랜잭션은 사용하지 않는다. [DB 계약](./contracts.md) §5.
 
 order idempotency key는 canonical(mode,account_ref,workflow_id,workflow_version,run_id,reset_epoch,activation_id,node_id,action_ordinal)의 안정적 해시로 생성하고 payload hash는 별도로 저장·비교한다. 동일 키/동일 payload는 기존 intent 반환, 다른 payload는 CONFLICT. activation_id/action_ordinal은 상태 전이와 함께 영속화하여 crash/replay 시 변경하지 않는다. 수동/AI 요청은 actor/account/mode/client request key와 payload hash를 사용한다. 신규 활성화에서만 신규 키를 발급하며 reset은 기존 키·주문 예약·체결 이력을 삭제하지 않는다.
 

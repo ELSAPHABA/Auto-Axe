@@ -17,6 +17,8 @@
 
 ## 2. 인증 기술
 
+웹 세션은 [공통 기술 계약](./contracts.md) §6의 PostgreSQL BFF 세션, MCP OAuth 토큰과 stdio identity는 별개다. 공통 DTO/Graph schema/event 계약은 동일하지만 MCP JSON-RPC 형식은 유지한다.
+
 Keycloak을 자체 호스팅 OIDC/OAuth IdP 초기 선택. Caddy reverse proxy TLS termination + 내부 private network. MCP는 OAuth 2.1 요구를 적용하는 Resource Server로 구성하고 Python SDK token verifier와 검증된 JWT/JWKS library(예: PyJWT[crypto]) 또는 introspection을 사용. Keycloak 지원만으로 MCP 완전 호환을 보장하지 않으며 protected resource metadata, authorization server discovery, PKCE S256, resource/audience, client registration/redirect, revocation, Host별 OAuth 플로우 검증 후 공개한다. DCR 필요 Host는 관리자 승인된 최소 scope 등록 정책 및 호환성 테스트 후 허용. 지원 안 되는 Host는 우회 없이 비활성.
 
 Web UI: same-origin backend session/BFF, Authorization Code + PKCE, HttpOnly Secure SameSite cookie, CSRF 보호(쓰기), logout/revocation, browser에는 브로커 비밀·장기 refresh token 전달 금지. token/session storage 및 rotation은 서버측, MCP 클라이언트는 별도 OAuth client 및 audience/scope. stdio는 제한된 로컬 서비스 identity/OS 권한으로 공통 인가를 거치며 자동 관리자 아님.

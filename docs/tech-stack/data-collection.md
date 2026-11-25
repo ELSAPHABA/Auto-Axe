@@ -39,6 +39,8 @@ ScrapeRequest는 사용자 URL 대신 source_id, approved adapter version, 조�
 
 ## 2. 파이프라인
 
+수집 관측 및 상태 이벤트는 [Common Event Envelope](./contracts.md) §3, 숫자/시간은 §4를 적용한다. market DB에 관측 및 outbox를 원자 커밋한다. Scrapling worker는 private FastAPI Job/Result API로 pull/claim/heartbeat/result를 수행하고 mTLS 서비스 identity, lease/nonce, schema/권한 검증을 적용한다(§7). 기존 수집 권한·격리 정책은 유지한다.
+
 ### 공급원 선택 및 신선도
 
 네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.

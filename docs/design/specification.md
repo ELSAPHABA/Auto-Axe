@@ -14,6 +14,8 @@ Auto-Axe는 NH나무 OpenAPI 기반 알고리즘·패턴 매매 퀀트 시스템
 
 ## 2. 논리 아키텍처
 
+구현 공통 계약은 [공통 기술 계약](../tech-stack/contracts.md)으로 통일한다. PostgreSQL 단일 인스턴스 내 market/app/Keycloak 및 모드별 Database/Role 분리, 모드별 Workflow·주문·위험·outbox 원자성, DB 간 versioned snapshot/reference 및 outbox/inbox를 적용한다.
+
 ```mermaid
 flowchart LR
   A[시장 WebSocket] --> C[수집 어댑터]
@@ -93,6 +95,8 @@ Binance Spot BTCUSDT 및 TradFi Futures 5종은 독립 상품으로 구독한다
 주기는 프로젝트 제안이며 공급자의 갱신 보장이 아니다. [상세 정책](../indicator-collection/Free_Data_Collection.md).
 
 ## 4. 데이터 모델
+
+REST OpenAPI 3.1, Versioned JSON Schema 그래프, Pydantic Common Event Envelope, 금융 Decimal/통계 Float64, UTC 및 typed ID 계약을 [공통 기술 계약](../tech-stack/contracts.md)에 따른다.
 
 논리 스키마이며 특정 DB 엔진 확정이 아니다. 기존 SQL 예시는 [Collector_Design.md](../indicator-collection/Collector_Design.md)를 참조한다.
 
@@ -190,6 +194,8 @@ flowchart LR
 
 ### 6.2 실행 상태 전달
 
+SSE ready 이후 REST snapshot과 delta의 aggregate version을 대조하며 연결 복구/누락 시 snapshot 재조회한다. BFF PostgreSQL 세션 및 권한 검사, UI와 Workflow 실행 독립. [SSE 계약](../tech-stack/contracts.md) §8.
+
 서버의 실제 실행 상태로 메인 활성 Workflow 정의 수를 집계한다. 실행/감시/활성 대기 상태만 포함하고, 중복 실행은 정의 ID로 중복 제거한다. 하위 호출 및 과거 백테스트는 제외하고 LIVE/PAPER_LOCAL/PAPER_BROKER/DRY_RUN과 실행 인스턴스 수를 구분한다. 상세 조회는 선택된 run_id 기준으로 조건별 결과·충족 이력·경로·원본 시각·사유를 반환한다. REST 스냅샷 및 SSE 상태 이벤트로 갱신하고 이벤트 순서, 재접속, stale을 처리한다. 공급자 WebSocket과 UI SSE를 분리한다.
 
 ### 6.3 조건 충족 유지 및 영업일 리셋
@@ -248,13 +254,6 @@ flowchart LR
 
 ## 9. 구현 및 검증 단계
 
-| 단계 | 범위 | 상태 |
-|---|---|---|
-| 1 | Binance 시세·롱숏, yfinance 일부 분봉, Treasury 수집 예제 | 기존 PoC 및 일부 실측 검증 |
-| 2 | 소스 레지스트리, 스케줄러, 저장소, 품질 검증 통합 | 목표 설계 |
-| 3 | 주식 1Hz 누적량, 재무·기술지표, Nasdaq 연동, DRAM·SEIBro, 위칭 | 상세 문서화; 운영 구현 및 필요한 실측·권한 확인 미완료 |
-| 4 | 비주얼 Workflow 편집기·조건 엔진·모의 실행·분석/백테스트 | 전체 기능 및 그룹 집계 승인·문서화, 구현 미완료 |
-| 4a | 금요일 종가매수 데이터셋·통계·모델·검증·전용 UI·Workflow 연동 | 승인 설계, 미구현; 별도 9개 Phase 명세 |
-| 5 | nhplug-sdk 기반 NH나무 매매 연동 및 리스크·체결 대사 | 기술 채택 확정; 구현·API 지원 범위·모의 검증 및 LIVE 활성화 승인 필요 |
+전역 구현 순서 및 완료 기준은 [검증 전략 및 단계별 기술 도입](../tech-stack/testing-roadmap.md)의 Phase 0~8을 단일 기준으로 적용한다. Phase 0 기술 검증/개발 환경, Phase 1 수집·저장, Phase 2 전체 지표·대시보드, Phase 3 Workflow/그룹, Phase 4 전체 트리거·퀀트, Phase 5 Executor/모의투자, Phase 6 통합 MCP, Phase 7 운영·보안 검증, Phase 8 별도 승인 이후 LIVE 활성화. 선행 의존성을 충족하면 일부 병렬 개발 가능. 기존 PoC는 운영 구현 완료로 보지 않는다.
 
 단위 테스트는 필드 파싱·정규화·피처 계산, 통합 테스트는 연결 종료·중복·정정·휴장·권한 실패를 포함한다. 실시간 후보는 실제 장중 수신 빈도와 지연을 측정한다. [실행 예제](../examples/realtime_collector.py) · [검증 가이드](../indicator-collection/Realtime_Quickstart.md).

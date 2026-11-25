@@ -78,6 +78,8 @@ flowchart LR
 
 ### 4.1 신원과 세션
 
+웹 BFF 세션은 autoaxe_app의 PostgreSQL 서버 세션을 권위 저장소로 사용한다. Keycloak DB와 분리하고 opaque session ID hash, token 암호화, idle/absolute expiry·rotation·revocation 및 CSRF를 적용한다. Valkey는 선택적 보조 cache이며 권한 철회를 우회하지 않는다. [세션 계약](./contracts.md) §6.
+
 - Keycloak 계정은 초기 관리자 bootstrap 이후 임시 관리자 비밀 제거. 관리자 및 거래 승인자 MFA 필수, 일반 사용자는 MFA/passkey 권장 또는 정책상 강제. 공개 자가가입 기본 off. brute-force 제한·잠금 복구·감사.
 - 브라우저 BFF: Authorization Code + PKCE, state/nonce, redirect URI exact allowlist; 서버 세션, HttpOnly/Secure/SameSite cookie, 로그인 후 세션 ID 회전, CSRF token 및 Origin 검증. access/refresh token 서버측 보호, localStorage 금지. logout/계정 폐기·scope 변경 시 접근 회수.
 - 원격 MCP: 기존 [MCP 보안](./mcp-security.md) 적용. OAuth discovery/resource/audience, PKCE, issuer/signature/expiration/scope/client 검증, 클라이언트 승인 및 폐기. 세션 ID는 인증이 아니다. 신원 위임 및 서비스 계정 별도.
@@ -103,6 +105,8 @@ Pydantic strict schema, Decimal precision/범위/enum, query 기간·페이지·
 
 ## 5. Scrapling 수집 보안
 
+스크래퍼와 broker의 계약은 [공통 기술 계약](./contracts.md) §7의 private FastAPI pull/claim/heartbeat/result + mTLS 서비스 인증 및 lease/fencing 검증으로 통일한다. worker DB 권한 없음; 요청/결과는 typed DTO만 허용한다.
+
 사용자 지정 [Scrapling](https://github.com/D4Vinci/Scrapling)을 사용한다. HTTP/Selector 우선, JS 렌더링은 필요한 승인 대상에만 분리 실행. upstream 기능 자체가 접근 허가를 의미하지 않는다. CAPTCHA/유료벽/인증·차단 우회, stealth/fingerprint 변조·proxy rotation, 외부 CDP, Scrapling 내장 MCP/CLI 서비스 공개를 금지한다.
 
 - 등록된 source_id와 adapter version, 승인된 조회 parameter만 받는다. registry에 allowlisted scheme/host/port/path, subresource host, permitted methods, permission evidence/expiry, rate limit, data storage/reuse policy 기록. 기본 off, robots 및 이용약관·권한 재검토. 403/CAPTCHA/로그인벽은 중단; 429는 제한된 Retry-After backoff.
@@ -116,6 +120,8 @@ Pydantic strict schema, Decimal precision/범위/enum, query 기간·페이지·
 상세 수집 기술 및 소스는 [data-collection.md](./data-collection.md). 브라우저 모드의 정상 작동/권한/실제 네트워크 경계가 불확실하면 비활성 상태로 유지하며 허용된 수동 fallback을 사용한다.
 
 ## 6. 데이터·비밀·DB 보호
+
+[DB/Role 계약](./contracts.md) §5에 따라 Database 단위 분리, 모드별 credential/CONNECT 제한, migration/runtime/read/Executor 권한 분리를 적용한다. cross-DB 단일 ACID를 가정하지 않으며 승인 revoke/fence를 해당 mode gate에 반영한다. 권한/동기화 불명 시 신규 주문 차단.
 
 | 등급 | 예시 | 통제 |
 |---|---|---|

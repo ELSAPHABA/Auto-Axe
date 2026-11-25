@@ -101,6 +101,8 @@ flowchart LR
 
 ## 7. 프로젝트 구조 및 기술 스택
 
+[공통 기술 계약](../tech-stack/contracts.md)의 versioned Workflow JSON Schema, Pydantic DTO/Event Envelope, Decimal/UTC, DB/Role 경계를 공통 사용한다. REST OpenAPI와 MCP JSON-RPC 프로토콜 형식은 구분하되 도메인 계약과 인가는 동일하다.
+
 모드 계약은 BACKTEST/DRY_RUN/PAPER_LOCAL/PAPER_BROKER/LIVE이며 MCP는 직접 LIVE 실행/주문 권한을 가지지 않는다. 독립 사전 승인 Workflow와 MCP 연결 수명은 분리하고 권한 철회·공통 인가 장애를 [보안 명세](./security.md)에 따라 처리한다.
 
 ```text

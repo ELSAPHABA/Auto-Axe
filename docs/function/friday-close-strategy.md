@@ -1,5 +1,7 @@
 # 금요일 종가매수 (Friday Close Strategy) 기능 및 분석 시스템 명세
 
+본 전략의 개발 작업은 전역 [Phase 0~8 로드맵](../tech-stack/testing-roadmap.md)의 Phase 4(분석·예측·백테스트·전용 UI) 중심이며, 데이터 기반은 Phase 1~2, Workflow 연결은 Phase 3~4, 모의 주문 검증은 Phase 5, LIVE 검증은 Phase 8에 매핑한다. 아래 전략별 순서는 하위 작업 순서이며 전역 Phase 번호가 아니다. 공통 데이터/이벤트/모드 계약은 [공통 기술 계약](../tech-stack/contracts.md)을 따른다.
+
 > 별도 전략 카테고리, 데이터 분석, 확률 예측, 전용 UI 및 Workflow 연동의 구현 기준이다. 운영 수집·학습·백테스트·실주문 및 실측 성과는 아직 없다. 기술 스택은 구현 기준이며 모델 파라미터·매매 임계값은 검증 후 결정한다.
 
 ## 1. 목적과 범위
