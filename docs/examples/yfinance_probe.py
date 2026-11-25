@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Optional yfinance availability probe, for personal/research use only.
-
-NO promise of real-time exchange entitlement; check source timestamps/delays.
+"""
 Command:
   python docs/examples/yfinance_probe.py --interval 1m --period 5d
   python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
