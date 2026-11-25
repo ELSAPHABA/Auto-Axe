@@ -65,7 +65,7 @@ scope: indicator:read; 대규모 분석은 indicator:analyze 추가. 권한/역�
 | workflow_list_node_types | category?, schema_version? | 노드·타입·포트 / read |
 | workflow_validate | workflow_id/version 또는 graph | 오류 위치·의존성·위험 / read |
 | workflow_get_dependencies | workflow_id, version?, direction | 정방향·역방향 참조 / read |
-| workflow_get_status | workflow_id, run_id? | 서버 조건식 결과·경로·충족 시각 / read |
+| workflow_get_status | workflow_id, run_id? | 서버 조건식 결과·경로·충족 시각, 원본/유효 조건값·달성 횟수·래치/만료·현재 주기·다음 리셋 / read |
 | workflow_get_active | mode?, cursor | 활성 정의 수·실행 수 / read |
 | workflow_get_logs | run_id, cursor, level? | 평가·주문 상태·감사 참조 / read |
 | workflow_get_versions | workflow_id, cursor | 버전 / read |
@@ -79,6 +79,8 @@ scope: indicator:read; 대규모 분석은 indicator:analyze 추가. 권한/역�
 | workflow_stop | run_id, reason | 중단 래치·대사 상태 / workflow:stop |
 
 LIVE 시작/배포는 실제 주문 지원과 별도 승인 전 차단. MCP는 승인 자체를 부여하지 않는다. [Workflow 명세](../function/trading-workflow.md): 순차/AND/OR/분기/Interrupt, 조건 전용 참조 호출, 버전 고정·순환 방지·참조 중 삭제 금지. 기존 그래프에서 AND로 연결된 조건은 모두 TRUE, OR는 하나 이상 TRUE일 때 해당 복합 조건 충족이며 조회 결과를 대시보드와 동일하게 반환한다. 하위 호출과 복수 실행의 중복 집계 금지. 조건 참조에서 실제 주문 부작용 금지.
+
+workflow_create/update/import/export/get/validate의 그래프 계약에 조건별 satisfaction_policy(LATCHED/CONTINUOUS, required_hits, hold_until)와 Workflow reset_policy(reset_business_days=1/5/20/직접 N, calendar_id/version, timezone)를 포함한다. 서버에서 양의 정수·기간·달력·버전 및 모드 유효성을 검증한다. 기존 실행은 불변 버전을 유지한다. 조회 상태는 raw_result/effective_result, hit_count, latched_at, expires_at, reset_epoch, next_reset_at 및 기존 연결식 결과를 포함하며 UI와 동일하다. MCP 설정 변경으로 주문 원장·리스크·중단 래치를 초기화하거나 즉시 LIVE 실행을 허용하지 않는다.
 
 ## 5. Prediction
 
