@@ -15,6 +15,10 @@ flowchart LR
   API --> S[Shared Application Service]
   MCP --> S
   C[Async Collector] --> DB[(PostgreSQL)]
+  C --> SB[Private scrape job broker]
+  SB --> SW[Isolated Scrapling worker]
+  SW --> EG[Restricted egress gateway]
+  EG --> PUB[Approved public sources]
   S --> DB
   S --> NH[Private nhplug-mcp adapter]
   NH --> N[NH read APIs]
@@ -36,6 +40,7 @@ flowchart LR
 | api | REST, 세션/권한, SSE 스트림, 조회/변경 명령. 수집·학습·매매를 요청 스레드에서 직접 실행하지 않음 |
 | mcp | 로컬 stdio 또는 원격 Streamable HTTP, 10개 도메인 등록, 공통 서비스 |
 | collector | 장시간 WS, REST 폴링, 허용 파서, 정규화·품질·batch writer |
+| scrape-worker | Scrapling 전용 격리 프로세스, source_id 기반 제한 job, DB·거래 비밀 접근 없음; 검증된 후보만 broker 반환 |
 | scheduler | 거래소 달력 및 발표 일정 기반 durable job 생성, reset 이벤트 예약, 중복 방지 |
 | workflow | 활성 run 평가, 상태/체크포인트, 주문 의도 생성 및 중단 처리 |
 | worker | 백테스트, 피처, 모델, 수집 재실행 등 CPU/IO job; 동시 실행 제한 |
@@ -101,5 +106,7 @@ auto-axe/
 | ADR-006 | 별도 주문 Executor | 조회 MCP 제한과 실주문 권한 분리, fail closed |
 | ADR-007 | 단일 통합 MCP + Keycloak/Caddy | 원격·로컬 지원, 표준 인증, 내부 권한 검증 |
 | ADR-008 | CPU 연구 스택 및 Parquet | 작은 주간 표본·재현성 우선, GPU/분산 ML 미채택 |
+| ADR-009 | Scrapling 수집 프레임워크 | 사용자 지정; 직접 Playwright scraper 교체, HTTP 우선 및 별도 격리 렌더링 |
+| ADR-010 | Defense in Depth 및 외부 기본 차단 | Caddy/Keycloak + host firewall + scraper/Executor 격리, [보안](./security.md) |
 
 확장 조건은 [인프라](./infrastructure.md) 및 [검증](./testing-roadmap.md) 참조. 새 ADR은 요구사항, 후보, 선택, 트레이드오프, 실측 근거, 롤백 경로를 기록한다.

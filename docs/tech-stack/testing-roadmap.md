@@ -10,7 +10,7 @@
 | 공급자 계약 | 허용 fixture, respx/httpx mock, WS fake server, response schema/version, 429/5xx/late/gap |
 | 프론트 E2E | Playwright; 편집/참조/활성 상태/SSE/reconnect/접근성/반응형 |
 | MCP | MCP Inspector, 실제 Host의 stdio/Streamable HTTP/OAuth, 권한·취소·capabilities |
-| 보안/공급망 | Trivy/SBOM, secret scan, dependency audit, 악성 request/Origin/SSRF/role tests |
+| 보안/공급망 | Trivy/SBOM, Gitleaks, pip-audit/npm audit, OWASP ZAP staging, 악성 request/Origin/SSRF/role tests, scraper egress 및 격리 테스트; [SEC 수용 기준](./security.md) |
 | 성능 | k6 또는 Locust(초기 k6), 합성 tick/1Hz/그래프/동시성, latency/backlog/resource |
 | Trading | fake SDK, sandbox contract, stop race, timeout/UNKNOWN/partial fill/reconciliation, 모드 분리 |
 | 운영 | process kill/restart, DB restore/PITR, replay, migration, credential rotation, degraded mode |
@@ -36,7 +36,7 @@
 ## 3. 우선 검증할 미확정 사항
 
 - 정확한 Python/Node 및 SDK major/minor 교집합, MCP revision/Host OAuth discovery·등록·audience 상호운용성.
-- MEXC Protobuf 전환/실제 구독·지연, yfinance NVDA/QLD 1Hz 샘플 원본 빈도, 공급자 이용·저장·자동거래 권한, 승인형 스크래퍼 파서.
+- MEXC Protobuf 전환/실제 구독·지연, yfinance NVDA/QLD 1Hz 샘플 원본 빈도, 공급자 이용·저장·자동거래 권한, 승인형 Scrapling 파서·실제 릴리스/브라우저 sandbox 및 egress 통제 호환성.
 - 정확한 NHPLUG 주문 API·상품/모의 지원, 수수료·계좌별 한도·체결 대사 및 idempotency 기능, 종목 master 형식.
 - 시계열 행수/retention·저장 및 백업 규모, PostgreSQL queue p95·동시성, 목표 장비/예산/도메인, RPO/RTO.
 - 주간 모델에 충분한 point-in-time history 확보, 백테스트 baseline과 검증 임계값, 뉴스 감정 모델 권한·평가.

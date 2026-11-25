@@ -250,3 +250,7 @@ flowchart LR
 | 5 | nhplug-sdk 기반 NH나무 매매 연동 및 리스크·체결 대사 | 기술 채택 확정; 구현·API 지원 범위·모의 검증 및 LIVE 활성화 승인 필요 |
 
 단위 테스트는 필드 파싱·정규화·피처 계산, 통합 테스트는 연결 종료·중복·정정·휴장·권한 실패를 포함한다. 실시간 후보는 실제 장중 수신 빈도와 지연을 측정한다. [실행 예제](../examples/realtime_collector.py) · [검증 가이드](../indicator-collection/Realtime_Quickstart.md).
+
+## 10. 기술 스택 및 보안 구현 기준
+
+[기술 스택 설계안](../tech-stack/README.md)과 [전체 플랫폼 보안 설계](../tech-stack/security.md)를 참조한다. 데이터 수집의 직접 브라우저 자동화 프레임워크는 사용자 지정 [Scrapling](https://github.com/D4Vinci/Scrapling)으로 선정하며, 승인된 수집·저장 범위 및 기존 외부 MCP/실거래 비활성 원칙을 유지한다.

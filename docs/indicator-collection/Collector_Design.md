@@ -103,7 +103,7 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 ## 4. 무료 스크래핑 어댑터
 
 1. **공식 기계 판독 링크가 있으면 먼저 사용**: SEC Atom, 회사 IR RSS, 연준/ECB/BOJ RSS, BLS ICS, Treasury XML, Cboe EOD CSV.
-2. HTML 외에는 없는 공공발표/회사 IR 페이지에서 `requests + BeautifulSoup`, `ETag/If-Modified-Since`, 429 backoff, 셀렉터 테스트 적용.
+2. HTML 외에는 없는 공공발표/회사 IR 페이지에서 `정책 적용 HTTP 클라이언트 + Scrapling Selector`, `ETag/If-Modified-Since`, 429 backoff, 셀렉터 테스트 적용.
 3. 페이지에서 기준시각이 빠진 경우 임의 추정하지 않고 `source_time_unknown`/수동 검수.
 4. HTML DOM 변경으로 선택자가 0개를 반환하면 **성공 처리 금지**, `manual_required` 로 남겨 원문을 확인.
 5. 원문 링크·시각·해시를 남기고 SEC는 식별 UA·10req/s 이하, BLS 무료 일일 호출량 준수.
@@ -143,3 +143,5 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 - `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
 - `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
 - [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](../examples/realtime_collector.py).
+
+2026-11-25 기술 변경: 신규 스크래핑 어댑터는 [Scrapling](../tech-stack/data-collection.md)을 채택하며 전용 격리 worker와 요청 정책을 [보안 설계](../tech-stack/security.md)에 따라 구현한다. 기존 PoC는 변경하지 않는다.

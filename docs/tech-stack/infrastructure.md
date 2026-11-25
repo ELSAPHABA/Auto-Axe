@@ -9,6 +9,7 @@ Linux 단일 서버 또는 개인 홈서버/VM + Docker Engine/Compose를 초기
 | caddy + web | edge; 공개 HTTPS, SPA 정적 파일 |
 | api, mcp | app; private upstream, mcp external off 기본 |
 | collector, scheduler, workflow, worker, relay | app/data; provider egress 필요한 역할만 |
+| scrape-broker / scraper-worker / egress-gateway | scraper 전용 격리 zone, source allowlist와 검증된 typed result; worker에 DB·브로커 자격증명 없음 |
 | postgres | private data; named volume, DB role 분리 |
 | keycloak | private auth/data, 별도 database/role |
 | nhplug-read | private broker-read, 별도 계정 credential |
@@ -22,7 +23,7 @@ local/dev: fixtures + PostgreSQL + API/web, 필요 시 Keycloak 및 모의 execu
 
 ## 2. 빌드 및 CI/CD
 
-Python uv lock, Node pnpm lock, runtime major pin, image digest 및 공급망 스캔. multi-stage Dockerfile, non-root user, read-only filesystem 가능한 역할, cap_drop, resource limit, tmpfs, 최소 네트워크, liveness/readiness 구분. GPU 없는 CPU 이미지 기본, Playwright 브라우저 의존성은 승인된 scraping worker image에 격리 가능.
+Python uv lock, Node pnpm lock, runtime major pin, image digest 및 공급망 스캔. multi-stage Dockerfile, non-root user, read-only filesystem 가능한 역할, cap_drop, resource limit, tmpfs, 최소 네트워크, liveness/readiness 구분. GPU 없는 CPU 이미지 기본, Scrapling 수집 의존성 및 필요한 브라우저 전이 의존성은 승인된 scraper-worker image에 격리한다. Playwright는 UI E2E 용도로만 직접 사용한다.
 
 GitHub Actions:
 - PR: Ruff format/lint, mypy, pytest/Hypothesis, PostgreSQL Testcontainers integration, TypeScript check, ESLint/Prettier, Vitest, Playwright, OpenAPI generated type drift, markdown link check.
@@ -52,3 +53,7 @@ Prometheus metrics + Grafana dashboard + structlog JSON logs, OpenTelemetry SDK 
 DB/collector/worker의 p95, backlog, disk/retention, 동시 사용자, 비용을 기록하고 병목이 확인될 때 수직 확장 → worker 분리/replica → DB 튜닝/파티션 → 필요 시 Valkey 또는 별도 queue/TSDB/객체 저장소. Kafka/Temporal/K8s/managed cloud는 load test·운영 인력·장애 격리 이점이 비용을 상회할 때 ADR. 고가용성이 필요한 LIVE 단계에는 별도 executor host, DB HA/복제, 백업/복구·failover 대사 설계 검토. 상태 머신/계좌의 단일 제출 권한을 유지하며 이중 실행 금지.
 
 [Docker Compose](https://docs.docker.com/compose/) · [GitHub Actions](https://docs.github.com/actions) · [Prometheus](https://prometheus.io/docs/) · [Grafana](https://grafana.com/docs/) · [OpenTelemetry](https://opentelemetry.io/docs/)
+
+## 5. 보안 운영 기준
+
+[전체 플랫폼 보안 설계](./security.md)의 SEC 요구사항을 적용한다. 기본 외부 ingress 차단, 관리 VPN 또는 사설망, host nftables/동등 방화벽과 Docker forwarding 정책을 실제 테스트한다. 스크래퍼는 전용 제한 egress gateway 이외의 외부 통신 및 내부 서비스 접근을 차단하고, broker는 고정 job/result 계약만 허용한다. 운영 비밀은 역할별 mount 및 회전, off-host 암호화 백업, 이미지 서명/취약점 검사, 보안 사고 대응 훈련을 적용한다. 외부 MCP 및 LIVE 기본 비활성 유지.

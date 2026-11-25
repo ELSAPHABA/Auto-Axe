@@ -27,14 +27,14 @@
 
 ## 3. 스크래핑 설계
 
-목표 수집 방식은 `SCRAPE`: 공개 홈페이지 HTML을 일반 HTTP GET으로 받아 Python requests + BeautifulSoup 또는 pandas 기반으로 파싱한다. 웹 열람 도구에서 대상 텍스트는 확인했으나 raw HTTP/DOM 구조 및 정확한 CSS selector는 실측하지 않았다. 셀 인덱스나 CSS ID를 고정 추정하지 않는다.
+목표 수집 방식은 `SCRAPE`: 공개 홈페이지 HTML을 일반 HTTP GET으로 받아 정책이 적용된 HTTP 클라이언트와 Scrapling Selector를 기반으로 파싱한다. 웹 열람 도구에서 대상 텍스트는 확인했으나 raw HTTP/DOM 구조 및 정확한 CSS selector는 실측하지 않았다. 셀 인덱스나 CSS ID를 고정 추정하지 않는다.
 
 1. HTTP 200 및 정상 HTML 응답 확인.
 2. 제목이 정확히 `Module Spot Price`인 섹션과 인접한 Last Update 및 표를 식별한다. `DRAM Spot Price`나 다른 표의 동일한 열 이름은 제외한다.
 3. 헤더의 공백·개행을 정규화한 뒤 `Item`, `Session Average`의 열 위치를 이름으로 찾는다. rowspan/colspan 등은 실제 DOM에 맞게 정규화한다.
 4. 지정된 두 원문 Item과 정규화 공백 기준으로 정확히 일치하는 행을 각각 1개 확인한다. `Session Average` 텍스트를 Decimal로 파싱한다. `Weekly High/Low`, `Session High/Low`, `Average Change`는 목표 열이 아니다.
 5. 양 행의 존재·중복·수치 형식·업데이트 시각·양수 여부를 검증하고 원본 문자열을 보존한다. 행이나 값이 누락되면 0으로 채우지 않는다. `SCHEMA_CHANGED`, `MISSING_VALUE`, `PERMISSION_REQUIRED`, `FETCH_FAILED` 등으로 구분한다. 통화와 가격 단위는 제공자 공식 표기 확인 전 확정하지 않는다.
-6. 초기 HTTP 결과에 정상 표가 없다면 일반 브라우저 렌더링(Playwright)을 검토한다. 로그인 벽, 유료 멤버십, CAPTCHA, 403/429 등을 우회하지 않고 중단하거나 허용 범위에서 백오프한다. 숨은 API는 역공학하지 않는다.
+6. 초기 HTTP 결과에 정상 표가 없다면 일반 브라우저 렌더링(Scrapling, 승인 및 격리 검증 후)을 검토한다. 로그인 벽, 유료 멤버십, CAPTCHA, 403/429 등을 우회하지 않고 중단하거나 허용 범위에서 백오프한다. 숨은 API는 역공학하지 않는다.
 
 ### 파서 핵심 예시 (DOM 식별 이후, 네트워크 호출 없는 예제)
 
@@ -106,3 +106,5 @@ def extract_module_averages(rows):
 - [Spot Price Notice](https://www.dramexchange.com/Service/Spot_Price_Notice) — 일반 가격 세션·회원 등급별 시각, 모듈 주간 주기와 구분
 - [Terms of Use](https://www.dramexchange.com/About/TermsOfUse)
 - [전체 지표 목록](./Indicator_Data_Sources.md) · [무료 수집 카탈로그](./Free_Data_Collection.md) · [수집기 설계](./Collector_Design.md)
+
+2026-11-25 기술 변경: [Scrapling 수집 표준](../tech-stack/data-collection.md)을 따른다. 기존 아래/위 예제의 파싱 로직은 산식·필드 검증 참고용이며, 운영 파서는 Scrapling으로 구현하고 실제 HTML fixture로 재검증한다.

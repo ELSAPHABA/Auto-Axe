@@ -1,6 +1,6 @@
 # Auto-Axe 기술 스택
 
-> 2026-11-25 · 구현 기준 기술 설계안(v0.1). 기존 승인 기능을 변경하지 않는다. 본 문서에서 새로 선정한 기술은 사용자 검토 대상이며 설치·벤치마크·구현 완료를 의미하지 않는다. 기존 문서의 기술 후보/미확정 표현은 이 기술 설계안의 선택으로 구체화하되, 기능·보안·수집 권한의 기존 제약은 유지한다.
+> 2026-11-25 · 구현 기준 기술 설계안(v0.2). 기존 승인 기능을 변경하지 않는다. 본 문서에서 새로 선정한 기술은 사용자 검토 대상이며 설치·벤치마크·구현 완료를 의미하지 않는다. 기존 문서의 기술 후보/미확정 표현은 이 기술 설계안의 선택으로 구체화하되, 기능·보안·수집 권한의 기존 제약은 유지한다.
 
 ## 1. 선정 원칙
 
@@ -17,13 +17,13 @@
 | 런타임 | Python 3.12, uv, Node.js 24 LTS, pnpm | 실제 SDK·OS 호환성 확인 후 기준 조정 |
 | Backend | FastAPI, Uvicorn, Pydantic, SQLAlchemy 2.x, psycopg 3, Alembic | 부하 확인 후 프로세스 확장 |
 | Frontend | React, TypeScript, Vite, React Router, TanStack Query, Zustand, CSS variables/Tailwind CSS | @xyflow/react, ELK.js, Lightweight Charts, Apache ECharts, TanStack Table |
-| 수집 | asyncio, httpx, websockets, yfinance, feedparser, icalendar, BeautifulSoup/lxml | Playwright, protobuf, 공식 API별 어댑터 |
+| 수집 | asyncio, httpx, websockets, yfinance, feedparser, icalendar, [Scrapling](https://github.com/D4Vinci/Scrapling) | lxml (XML), protobuf, 공식 API별 어댑터 |
 | 저장 | PostgreSQL 17, native partitioning, JSONB, Parquet, PyArrow, DuckDB | Valkey (캐시·실시간 알림), 별도 분석 DB는 병목 입증 시 |
 | 실행/작업 | 자체 Python 상태 머신, PostgreSQL transactional outbox·durable job table, APScheduler(스케줄 계산/기동 보조), exchange-calendars | 메시지 브로커 또는 Temporal은 별도 ADR 이후 |
 | 분석/ML | NumPy, pandas, SciPy, statsmodels, scikit-learn | PyMC, XGBoost, LightGBM, CPU 우선 |
 | NH나무 | 공식 nhplug-mcp(별도 Node.js 프로세스), nhplug-sdk/PyPI nhplug(격리 Executor) | API별 실제 지원 및 모의투자 검증 |
 | MCP | 공식 Python MCP SDK, stdio / HTTPS Streamable HTTP, FastAPI 공통 Application Service | Host·SDK·protocol revision 호환성 고정 |
-| 인증 | Keycloak(OIDC/OAuth), Caddy HTTPS reverse proxy, 서버 RBAC+리소스 정책 | VPN, WAF, 관리형 IdP 대체는 별도 ADR |
+| 인증·보안 | Keycloak(OIDC/OAuth), Caddy HTTPS reverse proxy, RBAC+리소스 정책, nftables, 격리 scraper, OWASP ASVS 기반 검수 | WireGuard 관리 VPN, SOPS+age, WAF/CrowdSec는 운영 요건에 따라 |
 | 인프라 | Linux, Docker Engine, Docker Compose, GitHub Actions, GHCR | 운영 확장 시 관리형 DB/객체 저장소 등 |
 | 관측/QA | pytest, Hypothesis, Ruff, mypy, Vitest, Playwright, Testcontainers, Prometheus, Grafana, OpenTelemetry | Loki/Tempo는 필요한 시점에 |
 
@@ -42,6 +42,7 @@
 | [quant-analytics.md](./quant-analytics.md) | 그룹, 피처, 금요일 예측, 백테스트, 뉴스 |
 | [trading-integration.md](./trading-integration.md) | NHPLUG 및 격리 주문 실행 |
 | [mcp-security.md](./mcp-security.md) | MCP SDK, 외부 인증·인가·네트워크 |
+| [security.md](./security.md) | 전체 플랫폼 위협 모델, Zero Trust 경계, 비밀, 스크래핑·주문 안전, 운영·사고 대응 |
 | [infrastructure.md](./infrastructure.md) | Compose, CI/CD, 운영, 확장 |
 | [testing-roadmap.md](./testing-roadmap.md) | 테스트 전략, 단계별 개발, 검수·미결정 사항 |
 
@@ -50,3 +51,5 @@
 [시스템 설계](../design/specification.md) · [프론트엔드 명세](../design/frontend.md) · [전체 기능](../function/specification.md) · [Workflow](../function/trading-workflow.md) · [주식 그룹](../function/stock-groups.md) · [금요일 전략](../function/friday-close-strategy.md) · [무료 수집 정책](../indicator-collection/Free_Data_Collection.md) · [MCP 명세](../mcp/README.md) · [NHPLUG](../nhplug/README.md)
 
 기존 문서가 정의하는 요구사항 및 사용자 승인 범위가 우선한다. 기술 선택은 실제 호환성·비용·성능·보안 검증을 통과한 후 고정하고 변경 시 ADR에 근거를 남긴다.
+
+2026-11-25 변경: 데이터 수집에서 Playwright 직접 사용 대신 Scrapling을 채택한다. Scrapling fetchers extra의 브라우저 전이 의존성은 허용된 렌더링 필요 시 별도 검증하며 Playwright는 프론트엔드 E2E 도구로 유지한다. [보안 설계](./security.md)는 기존 MCP 보안 및 거래 안전 요구사항을 전체 플랫폼으로 확장한다.

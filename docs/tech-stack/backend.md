@@ -63,3 +63,7 @@ SSE는 동일 origin 인증 세션, Last-Event-ID, heartbeat, backpressure/최�
 ## 5. 공식 참조
 
 [FastAPI](https://fastapi.tiangolo.com/) · [SQLAlchemy asyncio](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html) · [Pydantic](https://docs.pydantic.dev/) · [Alembic](https://alembic.sqlalchemy.org/) · [PostgreSQL SELECT](https://www.postgresql.org/docs/17/sql-select.html) · [APScheduler](https://apscheduler.readthedocs.io/)
+
+## 6. 보안 연계
+
+[전체 플랫폼 보안 설계](./security.md)의 SEC-01~SEC-10을 적용한다. 공통 인가 계층에서 REST/MCP/Job 동일 정책, CSRF·입력 검증·리소스 단위 권한·rate limit을 적용한다. 수집 broker는 등록 source_id 기반 제한 계약만 허용하고 scraper 결과를 신뢰하지 않으며 schema·권한·출처를 재검증한 후 원장에 적재한다.

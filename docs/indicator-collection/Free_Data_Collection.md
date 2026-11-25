@@ -184,3 +184,7 @@ SEIBro의 국가·조회기간별 해외주식 TOP50 매수·매도·순매수 �
 - [Real_Time_Data_Sources.md](./Real_Time_Data_Sources.md): 실시간·준실시간 가격 수집.
 - [YFinance_Data_Validation.md](./YFinance_Data_Validation.md): yfinance 실제 검증 기록.
 - [Binance_API_Coverage.md](./Binance_API_Coverage.md): Binance API 검증 결과.
+
+## 기술 구현 연계 (2026-11-25)
+
+자동 스크래핑의 기본 프레임워크는 [Scrapling](../tech-stack/data-collection.md)이다. 이 선택은 무료 소스·권한·원본 정의·수동 fallback 정책을 변경하지 않는다. [전체 보안 설계](../tech-stack/security.md)의 격리·egress·권한 검증을 적용한다.

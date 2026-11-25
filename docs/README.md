@@ -18,3 +18,5 @@
 ## 기술 스택
 
 - [기술 스택 및 구현 기준 설계안](./tech-stack/README.md)
+
+- [전체 플랫폼 보안 설계](./tech-stack/security.md)
