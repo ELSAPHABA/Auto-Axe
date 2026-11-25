@@ -86,7 +86,7 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 
 ## 3. 무료 수집 스케줄 (제안, 게시기관 보장 주기가 아님)
 
-네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패 또는 권한·접근 제한으로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 자동화·저장·활용 권한 확인 전에는 네이버 요청을 실행하지 않으며 접근 제한을 우회하지 않는다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
 
 조건 충족 시 타 조건의 즉시 갱신 요청을 허용 범위 내 처리하며 [신선도 및 갱신 표준](../tech-stack/data-collection.md)의 TTL·single-flight·timeout을 적용한다.
 
