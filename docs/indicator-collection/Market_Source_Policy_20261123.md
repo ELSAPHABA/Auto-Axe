@@ -21,7 +21,7 @@
 | 나스닥 100 선물·연동 신호 | 신규 지표 | **MEXC `NAS100_USDT` 무료 Futures WebSocket(개발/검증 후보)**; Binance `QQQUSDT` 별도 보조, yfinance `NQ=F` 지연 CME 기준 | `NASDAQ100_MEXC_PERP_USDT` / 별도 2시리즈 | MEXC는 지수 연동 영구선물, Binance는 QQQ ETF 연동 계약, Yahoo는 CME 실제 NQ 지연 시세. WS 수신 미검증; [조사 문서](./Nasdaq100_Futures_Data_Sources.md) |
 | VIX | yfinance `^VIX` | yfinance `^VIX` 유지 | `VIX` | Cboe VIX 지수 (지연 가능) |
 | 미국 국채 3개월 | yfinance `^IRX` | 변경 없음 | `UST_3M` | Yahoo 13주물 금리지표 |
-| 미국 국채 2년 | Treasury `BC_2YEAR` | **네이버 증권 `US2YT=RR`** *(승인 시에만)* | `UST_2Y` | 네이버 게시 2년물 수익률(%) |
+| 미국 국채 2년 | Treasury `BC_2YEAR` | **네이버 증권 `US2YT=RR`** | `UST_2Y` | 네이버 게시 2년물 수익률(%) |
 | 미국 국채 5년 | yfinance `^FVX` | 변경 없음 | `UST_5Y` | Yahoo 5년물 금리지표 |
 | 미국 국채 10년 | yfinance `^TNX` | 변경 없음 | `UST_10Y` | Yahoo 10년물 금리지표 |
 | 미국 국채 30년 | yfinance `^TYX` | 변경 없음 | `UST_30Y` | Yahoo 30년물 금리지표 |
