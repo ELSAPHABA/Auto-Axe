@@ -19,22 +19,22 @@
 
 [DRAMeXchange Price Information](https://www.dramexchange.com/Intelligence/PriceInformation)은 **Module Spot Price를 주간 갱신**으로 설명한다. 일반 DRAM 칩 현물가격의 일 3회 갱신 정책을 모듈에 적용하지 않는다. 홈페이지에서 모듈 표의 독립적인 `Last Update: ... (GMT+8)` 표시와 해당 두 행을 확인했다. 2026-11-24 조사에서 검색 인덱스에 11월 9일·16일 갱신본 등 서로 다른 캐시가 관측되어 최신 가격을 확정하지 않는다.
 
-- 허용된 경우 기본 조회 스케줄: 일 1회(예: 대만시간 15:00, 한국시간 16:00), 실제 주간 갱신만 신규 관측으로 적재. 이는 프로젝트의 점검 시각이지 제공자 보장 갱신 시각이 아니다.
+- 기본 조회 스케줄: 일 1회(예: 대만시간 15:00, 한국시간 16:00), 실제 주간 갱신만 신규 관측으로 적재. 이는 프로젝트의 점검 시각이지 제공자 보장 갱신 시각이 아니다.
 - `Module Spot Price` 섹션 자체의 Last Update를 소스 시각으로 사용. 다른 섹션의 시각이나 HTTP Date와 혼동 금지.
 - `Asia/Taipei` (GMT+8)에서 UTC로 변환하고 `Asia/Seoul` 표시를 지원. UTC 수집 시각은 별도로 저장.
 - 같은 원본 갱신시각이면 신규 주간 가격으로 중복 저장하지 않는다. 같은 시각의 정정 값은 revision으로 기록한다. 값은 같아도 원본 시각이 바뀌면 새 발표로 저장한다.
 - 일중/초단위 실시간 지표가 아니다. 일별 분석에서는 마지막 공개 관측값과 그 원본 시각을 유지하며 오래된 값임을 표시한다.
 
-## 3. 스크래핑 설계 (권한 승인 후)
+## 3. 스크래핑 설계
 
 목표 수집 방식은 `SCRAPE`: 공개 홈페이지 HTML을 일반 HTTP GET으로 받아 Python requests + BeautifulSoup 또는 pandas 기반으로 파싱한다. 웹 열람 도구에서 대상 텍스트는 확인했으나 raw HTTP/DOM 구조 및 정확한 CSS selector는 실측하지 않았다. 셀 인덱스나 CSS ID를 고정 추정하지 않는다.
 
-1. 사용 권한 확인 및 `robots.txt` 재점검 후 허용된 요청만 수행. HTTP 200 및 정상 HTML 응답 확인.
+1. HTTP 200 및 정상 HTML 응답 확인.
 2. 제목이 정확히 `Module Spot Price`인 섹션과 인접한 Last Update 및 표를 식별한다. `DRAM Spot Price`나 다른 표의 동일한 열 이름은 제외한다.
 3. 헤더의 공백·개행을 정규화한 뒤 `Item`, `Session Average`의 열 위치를 이름으로 찾는다. rowspan/colspan 등은 실제 DOM에 맞게 정규화한다.
 4. 지정된 두 원문 Item과 정규화 공백 기준으로 정확히 일치하는 행을 각각 1개 확인한다. `Session Average` 텍스트를 Decimal로 파싱한다. `Weekly High/Low`, `Session High/Low`, `Average Change`는 목표 열이 아니다.
 5. 양 행의 존재·중복·수치 형식·업데이트 시각·양수 여부를 검증하고 원본 문자열을 보존한다. 행이나 값이 누락되면 0으로 채우지 않는다. `SCHEMA_CHANGED`, `MISSING_VALUE`, `PERMISSION_REQUIRED`, `FETCH_FAILED` 등으로 구분한다. 통화와 가격 단위는 제공자 공식 표기 확인 전 확정하지 않는다.
-6. 초기 HTTP 결과에 정상 표가 없다면 허용된 범위의 일반 브라우저 렌더링(Playwright)을 검토한다. 로그인 벽, 유료 멤버십, CAPTCHA, 403/429 등을 우회하지 않고 중단하거나 허용 범위에서 백오프한다. 숨은 API는 역공학하지 않는다.
+6. 초기 HTTP 결과에 정상 표가 없다면 일반 브라우저 렌더링(Playwright)을 검토한다. 로그인 벽, 유료 멤버십, CAPTCHA, 403/429 등을 우회하지 않고 중단하거나 허용 범위에서 백오프한다. 숨은 API는 역공학하지 않는다.
 
 ### 파서 핵심 예시 (DOM 식별 이후, 네트워크 호출 없는 예제)
 
@@ -76,7 +76,7 @@ def extract_module_averages(rows):
 | 필드 | 값/정의 |
 |---|---|
 | provider | `DRAMeXchange` (TrendForce) |
-| collection_method | `SCRAPE` (승인 후), 허용된 수동 입력 시 `MANUAL` |
+| collection_method | `SCRAPE`, 수동 입력 시 `MANUAL` |
 | series_id | 지정된 두 ID |
 | item_name | 원본 Item |
 | section | `Module Spot Price` |
@@ -92,13 +92,10 @@ def extract_module_averages(rows):
 
 중복 키는 `provider + series_id + source_updated_at` (정정 시 revision). 원본 시각이 백테스트 시점 이후인 자료는 사용하지 않는다. 필요 시 전회 대비 가격 변동률을 두 시계열 각각 계산하되, 신규 공개 자료가 있을 때만 갱신하고 원본의 Average Change 필드와 별도 이름으로 관리한다.
 
-## 5. 무료 범위 및 권한
+## 5. 범위
 
-- 홈페이지에 두 행 및 Session Average가 공개 표시되는 것은 확인했다. 공개 열람과 자동 수집/장기 저장/재배포 허용 여부는 별개다.
-- [Terms of Use](https://www.dramexchange.com/About/TermsOfUse) 5항 d~h 및 6.1~6.3: 서비스 방해 및 보안 침해 제한, 미래 사건 관련 베팅·예측시장 등 특정 투기 활동에 콘텐츠 이용 금지, 콘텐츠 복제·가공·제3자 유통 등에 사전 서면 동의 요구. Auto-Axe의 분석 목적, 자동 수집·저장·파생지표 활용 범위를 제공자에 확인한다. 출처 표기만으로 허용을 가정하지 않는다.
-- [robots.txt](https://www.dramexchange.com/robots.txt)는 이번 웹 조사에서 조회되지 않아 내용 확인 불가. 허용/차단을 단정하지 않는다.
+- 홈페이지에 두 행 및 Session Average가 공개 표시되는 것은 확인했다.
 - 상세 [Module Spot Price](https://www.dramexchange.com/Price/Module_Spot) 페이지는 조사에서 로그인 페이지로 이동했다. 공개 홈페이지만 목표로 하며 제한된 상세자료·유료 히스토리 다운로드는 사용하지 않는다.
-- 운영 상태: `permission_required`, 기본 자동 실행 비활성. 예시 환경설정 `AUTO_AXE_DRAMEXCHANGE_SCRAPE_AUTHORIZED=0`; 무료이며 목적에 맞는 허가가 확인된 경우에만 활성화한다. 허용되지 않으면 결측 유지, 허용된 범위에서 수동 열람/입력만 검토. 약관 제한은 수동 입력으로 우회하지 않는다.
 - 현재 작업 범위는 docs 명세 등록이며, 운영 코드 및 스케줄은 미구현.
 
 ## 출처
