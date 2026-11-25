@@ -43,11 +43,10 @@
 
 ## 4. 스크래핑 설계 — 구현 전 검증 사항
 
-- **예정 방식: 허가된 공개 화면 스크래핑**. 실제 HTML 엔트리 `/websquare/control.jsp`는 HTTP 200으로 약 1KB **WebSquare 로더**만 반환하며 테이블 데이터는 정적 HTML에 없다. 화면 정의 XML `BIP_CNTS10013V.xml`은 2026-11-23 확인했다.
+- **예정 방식: 공개 화면 스크래핑**. 실제 HTML 엔트리 `/websquare/control.jsp`는 HTTP 200으로 약 1KB **WebSquare 로더**만 반환하며 테이블 데이터는 정적 HTML에 없다. 화면 정의 XML `BIP_CNTS10013V.xml`은 2026-11-23 확인했다.
 - 웹 화면을 정상적으로 렌더링하는 **Playwright 브라우저 자동화**로 현황구분→세부구분→조회기간/기준일→국가→조회 순서에 따라 화면 표시 테이블을 읽는 방법을 우선 설계한다. **셀렉터·전송 요청 본문·쿠키 정책은 브라우저 실제 세션에서 검증한 뒤 확정**하며, 지금은 미검증이다.
-- 화면 XML에는 `submission_getImptFrcurStkSetlAmtList`라는 결제금액 관련 전송 정의가 보인다. 이는 **화면 내부 구현 단서**일 뿐 별도 승인된 공개 REST API를 증명하지 않으며, 자동화가 가능한 공식 API라고 주장하지 않는다. 서버 요청을 무단 대량 재현하지 않는다.
-- `https://seibro.or.kr/robots.txt`는 확인 당시 **HTTP 200, 길이 0바이트**였다. **빈 robots.txt는 자동 수집·영구 보관·상업적 이용에 대한 허가를 뜻하지 않는다.** SEIBro 이용약관/저작권/자동 추출 정책 및 데이터 이용권 확인을 수집기 활성화의 선행 조건으로 기록한다.
-- **현재 상태:** `scraping_permission=pending_review`, `implementation_status=not_implemented`. 허용 여부·호출 제한 검증 전에는 실제 자동 스크래퍼를 기본 실행하지 않고 **SEIBro 화면에서 수동 입력**한다. 사용자 동의·수동 확인 없이 로그인/캡차/차단을 우회하지 않는다.
+- 화면 XML에는 `submission_getImptFrcurStkSetlAmtList`라는 결제금액 관련 전송 정의가 보인다.
+- `https://seibro.or.kr/robots.txt`는 확인 당시 **HTTP 200, 길이 0바이트**였다.
 - 갱신 주기는 페이지 제공 시점 및 결제 데이터 반영 지연을 관측한 뒤 결정한다. **실시간/분봉 지표가 아니다.** 일정 간격으로 페이지를 재조회한다고 새 결제값이 생성되는 것은 아니다.
 
 ## 5. 수집 레코드 권장 스키마
