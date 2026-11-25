@@ -4,7 +4,7 @@
 
 ## 수집 정책
 
-네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패 또는 권한·접근 제한으로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 자동화·저장·활용 권한 확인 전에는 네이버 요청을 실행하지 않으며 접근 제한을 우회하지 않는다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
 
 VIX 원본 TTL은 10초이며 [전체 신선도 표준](../tech-stack/data-collection.md)을 적용한다.
 
@@ -77,7 +77,7 @@ python docs/examples/realtime_collector.py naver-2y
 
 ## 서학개미 해외주식 매수·매도 결제 통계
 
-[한국예탁결제원 SEIBro 해외주식 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921)을 수집 대상으로 한다. **미국 등 국가별·기간별 매수결제, 매도결제, 순매수결제(USD)**를 추적하는 결제 기반 통계다. **WebSquare 브라우저 스크래핑 대상으로 지정**했으며 서비스 이용권·수집 허용 여부 및 실제 데이터 파싱은 아직 미검증이므로 **코드 실행은 미구현**, 그 전에는 수동 관찰한다. TOP50를 전체 서학개미 투자 총액으로 해석하지 않는다.
+[한국예탁결제원 SEIBro 해외주식 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921)을 수집 대상으로 한다. **미국 등 국가별·기간별 매수결제, 매도결제, 순매수결제(USD)**를 추적하는 결제 기반 통계다. **WebSquare 브라우저 스크래핑 대상으로 지정**. TOP50를 전체 서학개미 투자 총액으로 해석하지 않는다.
 
 - [SEIBro 수집 필드·조회 옵션·권한 확인 명세](./SEIBro_Overseas_Stock_Flows.md)
 
