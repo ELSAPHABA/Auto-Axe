@@ -19,7 +19,7 @@
 
 ## DRAM 모듈 가격 수집 (추가 설계)
 
-- DRAMeXchange 홈페이지 `Module Spot Price` 표의 지정 UDIMM 16GB/RDIMM 32GB 두 행 `Session Average`를 승인 후 스크래핑한다. 상품별 별도 `series_id`, 원본 Last Update(GMT+8), 수집 시각·단위·정정 이력을 보존한다.
+- DRAMeXchange 홈페이지 `Module Spot Price` 표의 지정 UDIMM 16GB/RDIMM 32GB 두 행 `Session Average`를 스크래핑한다. 상품별 별도 `series_id`, 원본 Last Update(GMT+8), 수집 시각·단위·정정 이력을 보존한다.
 - 일 1회 점검하되 주간 원본 갱신만 새 발표로 적재한다. DOM 구조·중복/누락 및 수집 권한 검증 실패 시 비활성 또는 결측 처리. [상세 명세](./DRAMeXchange_Module_Spot_Prices.md).
 
 ## 1. 모듈 구성
@@ -86,7 +86,7 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 |---|---|---|
 | Binance Spot·TradFi Futures WS (기본 시장가격) | 거래 발생 시 이벤트 기반 | 체결시각/연결 상태/휴장·유동성 확인, 백오프·누락 보완 | 
 | yfinance VIX·3M/5Y/10Y/30Y | 1~5분(제안) 최신봉 조회 | Yahoo 지연·장시간 확인 |
-| 네이버 2Y | 승인된 수집 주기 | `US2YT=RR` 원본 시각·지연 |
+| 네이버 2Y | 수집 주기 | `US2YT=RR` 원본 시각·지연 |
 | Treasury 공식 국채 2년물 + 5종 교차검증 | 게시 후 일 1회 | 2Y 일별값, 공식 5종 별도 검증 |
 | Coinbase BTC/USD WS (보조) | 필요할 때 스트리밍 | USD와 USDT 혼합 금지, 누락·재연결 관리 |
 | Gold API 현물 참고 | 필요할 때만 폴링 | Binance 금 연동 선물과 별도 저장 |
@@ -129,7 +129,7 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 | 만기 | 우선 소스 | 보조 공식 일별 |
 |---|---|---|
 | 3개월 | yfinance `^IRX` | Treasury `BC_3MONTH` |
-| 2년 | **네이버 `US2YT=RR` 승인 시** | 무허가 시 Treasury `BC_2YEAR` 일별 |
+| 2년 | 네이버 `US2YT=RR` | Treasury `BC_2YEAR` 일별 |
 | 5년 | yfinance `^FVX` | Treasury `BC_5YEAR` |
 | 10년 | yfinance `^TNX` | Treasury `BC_10YEAR` |
 | 30년 | yfinance `^TYX` | Treasury `BC_30YEAR` |
