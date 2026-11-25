@@ -59,9 +59,9 @@ CNN_FEAR_GREED,SENTIMENT,https://edition.cnn.com/markets/fear-and-greed,,2026-11
 
 ## 사용자 지정 원본 URL (2026-11-22 반영)
 
-- `CNN_FEAR_GREED`: **https://edition.cnn.com/markets/fear-and-greed**. 데이터 출처가 지정되었지만 CNN 약관이 자동 데이터 스크래핑을 금지하므로 명시적 허가 전 **수동 입력**. 기존 `www.cnn.com` 링크는 사용하지 않는다.
+- `CNN_FEAR_GREED`: **https://edition.cnn.com/markets/fear-and-greed**. 기존 `www.cnn.com` 링크는 사용하지 않는다.
 - `PENTAGON_PIZZA`: **https://www.pizzint.watch/**. 기존 `pentagon.pizza`는 대상에서 제외. 공개 JSON `/api/dashboard-data`.
-- `VIX_INTRADAY`, `UST_10Y_INTRADAY`, `WTI_FUTURES_INTRADAY`, `BRENT_FUTURES_INTRADAY`: `yfinance` 조회로 1분봉을 얻는 사례를 검증했으나 실시간성·Yahoo 자동 수집 사용권이 확인될 때까지 **운영 대체 미승인**. [검증 문서](./YFinance_Data_Validation.md).
+- `VIX_INTRADAY`, `UST_10Y_INTRADAY`, `WTI_FUTURES_INTRADAY`, `BRENT_FUTURES_INTRADAY`: `yfinance` 조회로 1분봉을 얻는 사례를 검증.
 
 
 ## 2026-11-22 yfinance 우선 전환 이후 수동의 의미
