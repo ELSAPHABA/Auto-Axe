@@ -15,12 +15,12 @@
 | 나스닥 100 선물·연동 가격 | **MEXC Futures `NAS100_USDT` WebSocket 후보(지수 연동 영구선물)**; Binance Futures `QQQUSDT`(QQQ ETF 연동 영구선물) 참고; yfinance `NQ=F`(CME 실제 선물 지연 1분봉) 비교 | **MEXC 직접 실시간 수신 미검증**, WebSocket Protobuf 전환 2026-12-01 예정. 서로 다른 계약 가격이며 NQ=F 무지연 아님. [수집 방안](./Nasdaq100_Futures_Data_Sources.md) |
 | VIX | yfinance `^VIX` | Cboe 원지수 후보, 지연 가능. `UVXYUSDT`는 대체 불가 |
 | 미국 국채 3개월 | yfinance `^IRX` | 13-week Bill 지표, 지연 가능 |
-| 미국 국채 2년 | Naver `US2YT=RR` **승인 후에만 수집** | [원본 페이지](https://m.stock.naver.com/marketindex/bond/US2YT=RR). `robots.txt` 차단으로 현재 기본은 Treasury `BC_2YEAR` 공식 일별 |
+| 미국 국채 2년 | Naver `US2YT=RR` | [원본 페이지](https://m.stock.naver.com/marketindex/bond/US2YT=RR). `robots.txt` 차단으로 현재 기본은 Treasury `BC_2YEAR` 공식 일별 |
 | 미국 국채 5년 | yfinance `^FVX` | 지연 가능 |
 | 미국 국채 10년 | yfinance `^TNX` | 지연 가능 |
 | 미국 국채 30년 | yfinance `^TYX` | 지연 가능 |
-| CNN 공포·탐욕 | [CNN](https://edition.cnn.com/markets/fear-and-greed) | 자동 스크래핑 허가 전 수동 |
-| 해외주식 매수·매도 결제 통계 (서학개미 수급) | [SEIBro 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921) | 국가(미국 우선)·조회기간별 매수결제/매도결제/순매수결제 USD. **WebSquare 화면 스크래핑 예정**; 자동 허가 검토 전 수동, 실제 수집 미구현. TOP50는 전체 해외주식 총액이 아니며 체결 아닌 결제 기준. [상세 명세](./SEIBro_Overseas_Stock_Flows.md) |
+| CNN 공포·탐욕 | [CNN](https://edition.cnn.com/markets/fear-and-greed) | |
+| 해외주식 매수·매도 결제 통계 (서학개미 수급) | [SEIBro 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921) | 국가(미국 우선)·조회기간별 매수결제/매도결제/순매수결제 USD. **WebSquare 화면 스크래핑**; TOP50는 전체 해외주식 총액이 아니며 체결 아닌 결제 기준. [상세 명세](./SEIBro_Overseas_Stock_Flows.md) |
 | DDR5 UDIMM 16GB 4800/5600 · RDIMM 32GB 4800/5600 | [DRAMeXchange](https://www.dramexchange.com/) `Module Spot Price`의 `Session Average` 스크래핑 (권한 확인 후) | 두 독립 모듈 현물가격 지표; 주간 갱신, 표의 Last Update 보존. [명세](./DRAMeXchange_Module_Spot_Prices.md) |
 | 펜타곤 피자지수 | [PizzINT](https://www.pizzint.watch/) | 수집 권한 확인 전 수동 |
 | 기업 가이던스 | SEC EDGAR/기업 IR | 원문과 추출 수치 구분 |
@@ -29,7 +29,7 @@
 | 미국 트리플·쿼드러플 위칭 | OCC/OIC·Cboe·CME (지수선물 및 개별주식선물 포함) | 실제 분기 동시 만기 상품군 3/4종 확인, 별도 이벤트·DTE·미확인 상태 저장. [상세 명세](./US_Equity_Witching_Calendar.md) |
 | 중앙은행 금리 (Fed·BoJ·BoE·ECB) | 각 중앙은행 공식 발표/공개 시계열 | 실시간 시장 금리와 다름 |
 
-**두바이유는 수집 대상에 포함하지 않는다.** 시장가격은 Binance 공개 시세, VIX·3M/5Y/10Y/30Y 수익률은 yfinance, 2Y는 네이버 원본 허가 시 스크래핑 / 무허가 동안 Treasury 공식 데이터가 기준이다.
+**두바이유는 수집 대상에 포함하지 않는다.** 시장가격은 Binance 공개 시세, VIX·3M/5Y/10Y/30Y 수익률은 yfinance, 2Y는 네이버 증권.
 
 [최신 소스 정책](./Market_Source_Policy_20261123.md) · [수집기](../examples/realtime_collector.py).
 
