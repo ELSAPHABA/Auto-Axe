@@ -132,6 +132,46 @@ flowchart LR
 - UI 삭제 비활성화뿐 아니라 서버 트랜잭션/제약에서 참조 생성과 삭제의 경쟁 조건을 차단한다. 권한 확인 후 삭제를 허용하며 과거 실행 감사 및 재현에 필요한 불변 버전은 별도로 보존한다. 과거 감사 기록 자체는 살아 있는 사용 참조와 구별한다.
 - 직접/간접 참조 목록과 영향 범위를 조회할 수 있다. 참조 대상이 누락되거나 권한/버전이 유효하지 않으면 저장·배포/실행 검증에서 차단하고 임의 TRUE/FALSE로 대체하지 않는다.
 
+### 2.5 조건별 충족 유지 정책 및 달성 횟수
+
+각 조건 블록은 기존 LEVEL/EDGE 평가 방식과 별도로 충족 유지 정책(satisfaction_policy)을 설정한다. 원본 조건의 현재 평가값(raw_result)과 Workflow에서 사용하는 유효 충족값(effective_result)을 구분한다.
+
+| 정책 | 설정 | 동작 |
+|---|---|---|
+| LATCHED (달성 후 충족 유지) | required_hits: 양의 정수 1~N, hold_until: 리셋까지 또는 별도 유효 기한 | 유효 달성 사건이 required_hits에 도달하면 TRUE를 래치한다. 이후 원본 조건이 FALSE가 되어도 유효 기한과 현재 리셋 주기 내에서는 TRUE 유지 |
+| CONTINUOUS (실시간 충족 유지) | 현재 조건의 평가 방식 및 데이터 신선도 | 현재 조건이 TRUE인 동안만 TRUE. FALSE로 변하면 즉시 FALSE, 판정 불가 시 UNKNOWN. 누적 횟수나 과거 래치로 충족을 유지하지 않음 |
+
+기존 조건의 기본값은 CONTINUOUS로 한다. 순차 단계의 기존 충족 이력은 별도 보존하므로 과거 통과 기록을 삭제하지 않는다. LATCHED의 기본 required_hits=1, 기본 hold_until=다음 Workflow 리셋. 별도 유효 기한은 N분/시간/영업일 또는 명시적 만료 시각으로 설정하고, 래치 성립 시점부터 계산하는 상대 기간과 절대 시각을 구분한다. 유효 종료는 조건별 만료와 Workflow 주기 종료 중 먼저 도달하는 시각이다.
+
+- LEVEL은 활성화 시 신선한 TRUE를 최초 1회 인정할 수 있다. 이후에는 유효 FALSE→TRUE 전이(재무장)를 별도 달성으로 센다. EDGE는 실제 경계 통과 사건을 센다. 뉴스/공시/예측 등 독립 이벤트형 조건은 유일한 원본 이벤트 ID마다 최대 1회 센다. 동일 TRUE 지속, 동일 이벤트 재전송, 로컬 폴링, 서버 재시작, UNKNOWN→TRUE만으로 달성 횟수를 늘리지 않는다.
+- N회는 기본적으로 동일 리셋 주기 내 누적 달성 횟수이며 연속 N틱이 아니다. N번째 사건에서 래치를 성립시키고 횟수는 목표치에서 포화 처리한다. 별도 만료 시에는 해당 래치·횟수를 초기화하고 새 유효 달성 사건부터 재집계한다. 직전 TRUE를 반복해서 새 달성으로 인정하지 않는다.
+- LATCHED에서 아직 목표 횟수에 미달한 상태는 미충족(유효하게 판정할 수 있는 경우) 또는 UNKNOWN(평가 불가)으로 표시한다. 래치 성립 후 원본 데이터가 stale/UNKNOWN이더라도 과거 달성 이력 자체는 만료 전까지 보존하고 UI에 현재 데이터 품질을 별도 표시한다. 실제 주문에 필요한 품질·리스크·중단 게이트는 언제나 독립 검사하며 래치로 우회하지 않는다.
+- 기존 AND/OR 및 분기는 effective_result를 사용한다. 순차 조건은 기존 활성화/통과 이력을 유지하되, CONTINUOUS로 설정한 선행 조건이 현재 실행 경로에서 계속 요구되는 경우 후속 진행 및 주문 직전에 다시 검사하여 미충족/UNKNOWN이면 대기 또는 설정된 예외 경로로 처리한다. 이미 실행한 분기·주문·체결을 소급 취소하지 않는다.
+- 하위 Workflow의 참조 조건도 부모 블록에서 정책을 선택할 수 있다. 자식 실행 내부의 횟수와 래치는 호출별로 격리하며 원본의 독립 실행과 공유하지 않는다.
+- 독립 위험 관리·Kill Switch·주문 안전 게이트는 과거 달성 상태로 허용하지 않는다. 자동 리셋이 중단 래치를 해제하거나 미체결 주문을 취소/재주문하지 않는다.
+
+예: required_hits=2인 LATCHED 조건이 월요일 1회, 화요일 1회 달성하면 화요일부터 리셋/만료까지 충족이다. 수요일 현재값이 FALSE가 되어도 유지한다. CONTINUOUS 조건은 수요일 FALSE일 때 미충족이다.
+
+### 2.6 Workflow 영업일 기준 자동 리셋
+
+Workflow 설정에서 reset_policy를 선택한다. 기존 1회 실행/반복 실행, Cooldown, Timeout과 독립된 조건 상태의 수명 정책이다.
+
+| 프리셋 | reset_business_days |
+|---|---:|
+| 당일 | 1 |
+| 일주일 | 5 |
+| 한 달 | 20 |
+| 직접 입력 | 사용자 지정 양의 정수 N |
+
+기본 프리셋은 1영업일이며, 5/20영업일은 달력 주/월이 아닌 실제 거래 세션 개수다. 사용자 설정으로 리셋 주기를 변경할 수 있다. calendar_id(기준 거래소), calendar_version, timezone을 명시한다. 미국 주식 Workflow는 해당 미국 거래소 달력을 기본으로 하고, 교차시장/24시간 시장 신호를 포함해도 지정한 기준 달력으로 계산한다. 달력 정보 미확인 시 임의 평일 계산으로 대체하지 않는다.
+
+- 기본 주기는 활성화된 첫 유효 거래 세션을 1일차로 포함하여 N번째 세션의 공식 정규장 마감에 종료한다. 장중 시작한 세션도 1일차이며, 장외 시작 시 다음 유효 세션부터 집계한다. 주말·휴장 제외, 조기 폐장은 1영업일, DST/시간대 반영. 기본 집계는 유효 세션 안의 사건에 한정하며 별도 시간외 평가 정책을 설정한 경우에도 주기 경계·사건 귀속을 명시한다.
+- 마감 시각에 해당 주기의 유효 종료를 원자적으로 처리하고 다음 주기는 다음 거래 세션 개장부터 시작한다. 경계 시각에 동시에 도착하는 이벤트는 종료된 주기를 재활성화하지 않는다. 다음 영업일에 새 횟수 집계/감시를 시작한다.
+- 리셋 대상: 조건 달성 횟수, 충족 래치·만료, 현재 유효 조건 결과(새 평가 전 미평가), 순차 단계 및 분기/합류 진행, 추적 기준값·고저점·조건 타이머, 하위 조건 호출의 주기별 상태. 완료된 실행 이력, 평가 로그, 주문 의도·접수·체결 원장, 보유량, 미체결 주문, 계좌 위험 한도, 중복 주문 방지 키, 중단 래치는 보존한다.
+- 정상적으로 감시 중인 반복 실행은 리셋 후 새 주기에서 처음부터 감시한다. 1회 실행 종료·일시정지·중단·오류 상태를 자동 시작시키지 않는다. 리셋 자체는 매수/매도 신호가 아니며 기존 승인·위험·주문 제한을 초기화하지 않는다.
+- 서버 스케줄러가 주기 ID(reset_epoch), 시작/종료 시각, 다음 리셋 시각을 관리하고 상태를 영속화한다. 중복 스케줄/재시작/누락 리셋은 동일 epoch 기준 멱등 처리한다. 마감 이후 도착한 이전 주기의 이벤트는 감사 기록으로 남기되 현재 횟수·래치를 변경하지 않는다. 처리 지연 중에는 새 주문을 보류한다.
+- 실행 중 설정 변경은 새 Workflow 버전으로 저장하고 기존 실행에 소급 적용하지 않는다. 백테스트·모의 실행·LIVE는 동일 달력/정책을 사용하며 백테스트에서는 재생 시각으로 리셋을 평가한다.
+
 ## 3. 노드 카탈로그
 
 | 노드 분류 | 예시 | 역할 |
@@ -270,8 +310,8 @@ ComfyUI/n8n 스타일의 드래그 가능한 블록과 방향성 연결선. 기�
 - 그룹 관리 및 StockGroup/GroupMetric/GroupCondition 노드를 지원한다. 그룹·지표·기간·가중치·coverage를 설정하고 구성종목 및 평가 근거를 조회한다.
 - 포트 타입(이벤트, boolean/UNKNOWN, number, 시계열, 제어 흐름, 주문 의도)을 명시하고 호환되지 않는 연결은 거부한다. 실행 제어 연결과 데이터 연결을 구별한다.
 - 노드 상태: 미실행, 조건 감시, 충족, 미충족, UNKNOWN, 실행 중, 완료, 오류, 중단. 색상과 아이콘/문자 동시 표기. 실행 흐름의 실제 경로 및 조건 충족 시각을 강조한다.
-- 노드 설정에는 지표·심볼·소스·집계주기·비교연산·임계값·기준가·시간창·평가 모드·TTL·재무장 등을 표시한다.
-- 저장 가능한 그래프(JSON 제안): workflow_id, version, nodes[{id,type,config,position}], edges[{from_node,from_port,to_node,to_port}], interrupt_rules, execution_policy, risk_profile_ref. 비밀정보/토큰은 그래프에 저장하지 않는다. 배포된 버전은 불변으로 보존한다.
+- 노드 설정에는 지표·심볼·소스·집계주기·비교연산·임계값·기준가·시간창·평가 모드·TTL·재무장 및 충족 유지 방식(LATCHED/CONTINUOUS), 필요 달성 횟수, 유효 기한을 표시한다. Workflow 전역 설정에는 1/5/20/직접 입력 영업일 리셋과 기준 거래소 달력을 표시한다.
+- 저장 가능한 그래프(JSON 제안): workflow_id, version, nodes[{id,type,config,position}], edges[{from_node,from_port,to_node,to_port}], interrupt_rules, execution_policy, reset_policy, risk_profile_ref. 각 조건 config에는 satisfaction_policy를 포함한다. 비밀정보/토큰은 그래프에 저장하지 않는다. 배포된 버전은 불변으로 보존한다.
 - 편집과 실행을 분리한다. 실행 중인 그래프는 저장 당시 버전에 고정되고 편집본 변경은 다음 실행에 반영한다.
 
 ### 7.1 분기 및 재사용 블록 편집
@@ -297,7 +337,8 @@ Workflow 목록에는 이름, 버전, 실행 모드, 실행 상태, 현재 경�
 | ERROR / STOPPED | 평가 오류 또는 중단으로 후속 진행 차단 |
 
 - 상세 화면에는 각 노드의 상태, 현재값, 비교 기준, 조건 충족 시각, 마지막 평가 시각, 데이터 원본 시각, 품질/실패 사유 및 실제 선택된 연결선을 표시한다. 상태형 순차 노드는 과거 충족 래치와 현재 조건값을 구분한다.
-- 진행 요약은 선택 실행의 최상위 조건 노드 중 충족 상태인 수와 전체 조건 노드 수를 기본 표기한다(예: 3/5). 미선택/미평가/UNKNOWN 수와 현재 경로의 충족/평가 대상 수도 별도 제공한다. 중첩 Workflow는 부모 요약에서 1개 조건으로 계산하고 내부 진행도는 별도 표시한다. 전체 조건 수는 AND/OR 등 논리·합류/주문 노드를 포함하지 않는 판정 가능한 조건 블록 기준으로 일관되게 계산한다. 분기 구조이므로 이 비율을 주문 실행 가능성이나 완료율로 해석하지 않는다.
+- 대시보드 진행 요약은 기존 Workflow 그래프에서 AND/OR로 연결된 조건식의 결과를 한 항목으로 표시한다. AND는 모든 유효 입력 TRUE, OR는 하나 이상 TRUE일 때 충족이며 중첩식은 최종 판정 포트 기준이다. 독립 조건은 별도 항목, 하위 Workflow는 부모에서 1개 조건으로 표시한다. 내부 입력은 펼쳐 조회하고 중복 집계하지 않는다. 별도 그룹 엔터티나 관리 기능은 추가하지 않는다. 미평가/미선택/UNKNOWN과 순차 통과 이력을 구분하고 충족 수를 주문 가능성으로 해석하지 않는다.
+- 조건별 원본 현재값(raw_result)과 유효 충족값(effective_result), 유지 방식, 달성 횟수/필요 횟수, 래치 성립 시각, 만료 시각, 현재 주기 및 다음 리셋을 표시한다. LATCHED가 현재 FALSE이나 유효 TRUE인 경우 '달성 후 유지'로 설명하고 CONTINUOUS는 현재 결과를 즉시 반영한다. AND/OR 요약에는 유효 충족값을 사용한다.
 - 상태는 서버의 실행 이벤트와 스냅샷을 구독하여 변경 시 갱신한다(WS/SSE 후보, 재접속 시 전체 스냅샷 및 이벤트 순서 대사). 브라우저 자체 추정이나 이전 값으로 활성/충족 상태를 위장하지 않는다. 연결 지연 시 마지막 상태 및 시각, 연결 끊김을 표시한다.
 
 ## 8. 실행 엔진·저장 구조 (논리 설계)
@@ -311,8 +352,9 @@ UI는 그래프 작성 및 상태 조회, 서버는 이벤트 평가·상태 영
 | workflow_dependencies | parent_workflow_id/version, reference_node_id, target_workflow_id/version, reference_kind, live_reference_status; 역방향 조회 및 삭제 제약 |
 | workflow_condition_results | run_id, node_id, activation_id, child_run_id?, result, evaluated_at, valid_until, quality_status, reason |
 | workflow_branch_states | run_id, activation_id, branch_node_id, selected_ports, skipped_paths, join_policy, join_state, event_id |
-| workflow_status_snapshots | workflow_id, run_id, mode, state, condition_counts, active_path, last_evaluated_at, event_sequence |
-| node_states | run_id, node_id, activation_id, status, activated_at, reference_value, extrema, last_event_id, expires_at |
+| workflow_status_snapshots | workflow_id, run_id, mode, state, condition_counts, expression_results, reset_epoch, next_reset_at, active_path, last_evaluated_at, event_sequence |
+| node_states | run_id, node_id, activation_id, status, activated_at, reference_value, extrema, last_event_id, expires_at, reset_epoch, raw_result, effective_result, satisfaction_policy, required_hits, hit_count, latched_at, last_hit_at, rearmed, last_hit_event_id |
+| workflow_reset_cycles | run_id, reset_epoch, calendar_id/version, timezone, reset_business_days, first_session, last_session, started_at, ends_at, next_reset_at, reset_status, reset_event_id |
 | evaluation_events | event_id, run_id, node_id, evaluated_at, inputs_asof, result, source_refs, reason |
 | order_intents | intent_id, run_id, node_id, broker_symbol, side, quantity, price, risk_decision, status |
 | broker_orders / fills | broker_order_id, intent_id, status, fill_id, fill_qty, fill_price, fees, event_at |
@@ -349,6 +391,8 @@ P0~P2는 개발 순서이며 모든 항목은 승인된 필수 개발 범위다.
 - AND/OR: 3값 논리 및 동시 조건, 중첩 그래프, 합류 시 한 번만 실행.
 - 상승 후 하락/하락 후 상승: 기준가·극값·만료·재설정·순서 검증, 재시작 후 상태 복구.
 - 목표가: 갭으로 경계 통과, 경계값, 최초 관측, 지속 TRUE, 쿨다운, 세션 변경.
+- 충족 유지: 1회/N회 달성, 지속 TRUE·중복 이벤트·UNKNOWN 전이 중복 방지, 래치 후 FALSE 유지, CONTINUOUS FALSE 즉시 해제, 만료와 리셋의 우선순위, 중첩 AND/OR 유효 결과 및 현재 품질 구분.
+- 영업일 리셋: 1/5/20/직접 N, 장중 시작·휴장·조기 폐장·DST, 경계 이벤트·재시작·중복 리셋·지연 관측, 하위 호출 격리, 주문 원장/위험 한도/중단 보존 및 백테스트 재현.
 - Interrupt: 일반 조건과 동시 충족, 대기/분기/주문 제출 경계, 부분체결, 취소 실패, 중단 후 재시작을 검증.
 - 주문: 수량 한도, 보유량, 중복 이벤트, ACK 유실, 브로커 조회, 데이터 stale 및 거래시간 제한.
 - 뉴스: 오래된/중복/무관 기사, 낮은 신뢰도, 모델 오류 및 권한 미확인 시 차단.
