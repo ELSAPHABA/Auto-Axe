@@ -16,12 +16,16 @@ AI 에이전트가 Auto-Axe의 시장 데이터, 지표, 그룹, 전략, 예측,
 | MCP-008 | 도메인별 계약·오류·스키마 버전 및 호환성 검증 |
 | MCP-009 | 프론트엔드 상태/실행 원장과 MCP 결과 일관성, 도메인 제약 유지 |
 | MCP-010 | 신규 플랫폼 기능에 대응하는 Tool/Resource 등록 및 테스트, 미구현 기능 미노출 |
+| MCP-011 | 로컬 및 외부 원격 MCP 접속을 모두 지원; 인증된 외부 AI Host에서 HTTPS Streamable HTTP endpoint 사용 |
+| MCP-012 | 외부 접속 활성화/비활성화, 클라이언트별 권한·승인·폐기, 네트워크 경계·암호화·감사 및 원격 보안 검증 |
 
 ## 2. 아키텍처
 
 ```mermaid
 flowchart LR
-  A[AI Host / MCP Client] --> M[Auto-Axe 통합 MCP]
+  A[외부 AI Host / MCP Client] -->|HTTPS| G[Reverse Proxy / 외부 접속 게이트]
+  G --> M[Auto-Axe 통합 MCP]
+  L[로컬 AI Host] -->|stdio 또는 loopback HTTP| M
   UI[Frontend / REST API] --> S[공통 Application Service]
   M --> P[인증 인가 감사 제한]
   P --> D[10개 내부 도메인 모듈]
@@ -29,7 +33,7 @@ flowchart LR
   S --> E[수집 / Workflow / ML / 백테스트 엔진]
   S --> DB[(데이터 및 실행 원장)]
   S --> J[Job Queue]
-  A --> N[독립 nhplug-mcp 조회 연결]
+  L --> N[독립 nhplug-mcp 조회 연결]
   N --> NH[NHPLUG 조회 API]
   S --> Q[주문 의도 및 리스크 게이트]
   Q --> X[격리된 Trading Executor]
@@ -61,12 +65,31 @@ flowchart LR
 
 ## 4. 통신 및 공통 계약
 
-- 원격 Auto-Axe는 HTTPS Streamable HTTP, 예시 endpoint /mcp. 로컬 개발은 stdio 선택 가능. 정확한 MCP 프로토콜 revision 및 SDK 버전은 대상 Host와 호환성 테스트 후 고정한다. JSON-RPC 및 initialize/capability negotiation은 SDK에 위임한다. 세션 헤더나 실험적 Tasks 기능을 특정 revision에서 당연히 지원한다고 가정하지 않는다.
+- 로컬과 외부 원격 접속을 모두 정식 지원한다. 원격 Auto-Axe는 HTTPS Streamable HTTP, 예시 endpoint /mcp. 로컬은 stdio 또는 인증된 loopback HTTP를 지원한다. 정확한 MCP 프로토콜 revision 및 SDK 버전은 대상 Host와 호환성 테스트 후 고정한다. JSON-RPC 및 initialize/capability negotiation은 SDK에 위임한다. 세션 헤더나 실험적 Tasks 기능을 특정 revision에서 당연히 지원한다고 가정하지 않는다.
 - Tools 명명: domain_action_object (snake_case). JSON Schema로 입력/출력 검증; 지원 가능한 경우 structuredContent 및 호환용 text content를 제공한다. 도구 설명 및 annotations는 힌트이며 권한 검증을 대체하지 않는다.
 - 일반 결과 계약: request_id, status, data, warnings, source_refs, observed_at/as_of, received_at, quality_status, schema_version. 페이지 조회에는 limit/cursor/next_cursor, 데이터가 없으면 null 및 사유. 수치·단위·상품 유형·원본 시각을 보존한다.
 - 오류: INVALID_ARGUMENT, NOT_FOUND, FORBIDDEN, CONFLICT, IN_USE, CYCLE_DETECTED, STALE_DATA, PERMISSION_REQUIRED, NOT_IMPLEMENTED, BROKER_UNAVAILABLE, APPROVAL_REQUIRED, RATE_LIMITED, JOB_FAILED. 프로토콜 오류와 도메인 실행 오류를 구별하고 구조화된 사유 및 안전한 재시도 여부를 반환한다.
 - 읽기/쓰기/삭제의 의미와 부작용을 도구별 명시. 쓰기에는 expected_version 및 idempotency_key(해당 기능에서 필요)를 검증하고 동일 키/다른 payload는 충돌 처리한다. 임의 SQL, shell, 파일 경로, 외부 URL 실행 도구는 금지.
 - 지원되지 않는 도구를 동작하는 것처럼 등록하지 않는다. 고정된 공개 카탈로그가 필요한 프로토콜에서는 호출 단계에서 접근 및 기능 상태를 검사한다. 사용 가능 기능은 system_get_capabilities로 확인할 수 있다.
+
+### 4.1 로컬 및 외부 MCP 접속 (확정 요구사항)
+
+단일 Auto-Axe MCP의 Tool/Resource/Prompt와 Application Service를 공유하며 접속 방식 때문에 도메인 서버를 추가 분리하지 않는다.
+
+| 접속 방식 | 연결 및 사용 범위 |
+|---|---|
+| 로컬 stdio | 동일 호스트의 MCP Client가 제한된 프로세스로 실행; OS 신원·로컬 권한 적용 |
+| 로컬 HTTP | loopback 주소(예: http://127.0.0.1:8000/mcp); HTTP 인증 및 Host/Origin 검사 |
+| 외부 원격 HTTP | 인증된 외부 PC·서버·클라우드 AI Host에서 HTTPS Streamable HTTP로 연결; 예시 https://mcp.example.com/mcp |
+| 사설 원격 | VPN/사설망을 사용하는 선택적 배포 방식; 해당 네트워크에 연결 가능한 Host에 한함 |
+
+외부 접속은 관리자가 명시적으로 활성화하고 설정한 도메인과 TLS 인증서로 제공한다. 초기값은 외부 비활성이다. 활성화한 경우 외부 네트워크에서 실제 MCP 프로토콜 연결 및 승인 범위 내 Tool/Resource 호출이 가능해야 한다. 클라우드 AI Host를 사용할 경우 해당 Host에서 도달 가능한 인증된 HTTPS endpoint가 필요하다. VPN 전용 주소가 모든 클라우드 Host에서 접근 가능하다고 가정하지 않는다.
+
+- 인터넷 진입점은 Reverse Proxy/API Gateway 등 HTTPS 경계 하나로 제한하고 내부 MCP 프로세스·DB·큐·관리 포트는 직접 공개하지 않는다. 기존 10개 내부 모듈과 별도 nhplug-sdk Trading Executor 구조는 유지한다.
+- 로컬 stdio와 원격 프로세스가 공통 서비스 및 저장소를 사용하므로 실행 버전·권한·조건 상태·주문 원장을 이중 관리하지 않는다. 로컬 연결도 무제한 관리자 권한으로 간주하지 않는다.
+- 외부 Host는 endpoint 등록 → 프로토콜 초기화/인증 → 사용자 동의 및 scope 부여 → 허용 기능 조회·호출 순으로 사용한다. Host별 OAuth 및 Streamable HTTP 지원 여부는 실제 호환성 검증이 필요하다.
+- 접속 설정은 외부 활성 여부, 공개 base URL, 허용 클라이언트, scope, 네트워크 정책, TLS, 제한 및 감사 설정을 관리한다. 토큰·비밀값은 공개 설정에 포함하지 않는다. 상세 요구사항은 [보안 명세](./security.md) §2.1~2.3 참조.
+- 원격 접속 지원은 Auto-Axe 통합 MCP에 대한 요구사항이다. 독립 nhplug-mcp의 stdio 포트/자격증명이나 nhplug-sdk 실행 계층을 외부에 직접 공개하지 않는다.
 
 ## 5. 비동기 작업 및 운영
 
@@ -113,10 +136,10 @@ Python 공식 MCP SDK, FastAPI, Pydantic, 내부 Application Service 호출을 �
 
 | 단계 | 범위 | 수용 기준 |
 |---|---|---|
-| 1 | MCP 공통 기반 및 읽기 도구 | Host handshake, schema, 인증, pagination, 품질/시각 |
+| 1 | MCP 공통 기반 및 읽기 도구 | 로컬 stdio/loopback 및 외부 HTTPS handshake, schema, 인증, pagination, 품질/시각 |
 | 2 | 그룹·Workflow 초안/검증 | 버전·참조 삭제 제한·순환 검증·AND/OR 상태 일치 |
 | 3 | 모의 실행·예측·백테스트·Job | 비동기 상태 및 취소, 시점 정합성, 연구/실행 모델 분리 |
-| 4 | 수집/운영 및 권한·감사 강화 | 호출 제한, 허가 미확인 소스 차단, 접근 제어 테스트 |
+| 4 | 수집/운영 및 원격 접속 보안 | TLS, OAuth, 클라이언트 승인/폐기, 네트워크 격리, 호출 제한, 허가 미확인 소스 차단, 외부 접속·접근 제어 테스트 |
 | 5 | nhplug-mcp 독립 조회 연결 | 버전 고정, mock/read-only 검증, 계좌 정보 마스킹 |
 | 6 | nhplug-sdk 기반 Trading Executor 구현 및 검증 | API 계약·모의 주문·위험·대사 검증 및 별도 활성화 승인 전 LIVE 차단 |
 
