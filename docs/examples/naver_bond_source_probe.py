@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""Authorization-gated Naver US 2Y data probe (never bypass robots or security).
-
-The site currently advertises Disallow: / to all crawlers. An explicit
-AUTO_AXE_NAVER_SCRAPE_AUTHORIZED=1 flag requires separately obtained permission.
-Run for technical review only where permitted, not to discover a bypass.
-"""
 import datetime as dt
 import json
 import os
