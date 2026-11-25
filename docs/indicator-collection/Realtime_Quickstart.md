@@ -16,10 +16,10 @@ python docs/examples/realtime_collector.py binance-futures
 # Binance가 원본 지표를 지원하지 않는 경우: VIX, 국채 3M/5Y/10Y/30Y
 python docs/examples/realtime_collector.py yf-market --symbols VIX UST_3M UST_5Y UST_10Y UST_30Y --period 1d --bar-interval 1m
 
-# 국채 2Y 지정 출처 네이버 US2YT=RR (robots 전체 차단; 승인 없는 한 실행 불가)
+# 국채 2Y 지정 출처 네이버 US2YT=RR
 python docs/examples/realtime_collector.py naver-2y
 
-# 승인 전 기본 fallback: 미국 재무부 공식 국채 2Y 포함 5개 만기 일별
+# fallback: 미국 재무부 공식 국채 2Y 포함 5개 만기 일별
 python docs/examples/realtime_collector.py treasury-five
 
 # 금 현물 추정가격은 선택적 참고 시리즈 (기본 금 영구선물과 별개)
