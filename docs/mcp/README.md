@@ -14,7 +14,7 @@
 
 ## 핵심 결정
 
-- Auto-Axe MCP는 플랫폼 기능을 하나의 MCP endpoint로 제공한다. 10개 논리 모듈은 독립 서버가 아니다.
+- Auto-Axe MCP는 플랫폼 기능을 하나의 통합 MCP 서버로 제공한다. 10개 논리 모듈은 독립 서버가 아니다. 로컬 stdio/loopback HTTP와 외부 HTTPS Streamable HTTP 접속을 모두 지원한다. 외부 접속은 관리자가 명시적으로 활성화하고 OAuth 인증, TLS, 클라이언트별 권한/철회, 네트워크 격리 및 감사 정책을 적용한다. 독립 nhplug-mcp와 주문 실행 계층은 직접 외부 공개하지 않는다.
 - 프론트엔드/API와 MCP는 공통 Application Service를 호출한다. DB, 브로커 자격증명, 임의 명령 실행을 직접 노출하지 않는다.
 - 외부 [nhplug-mcp](https://github.com/PLUG-OpenAPI/nhplug-mcp)는 별도 연결·프로세스로 사용한다. 확인된 버전은 조회 전용으로 주문을 거부한다. 실제 주문은 사용자 승인에 따라 공식 [nhplug-sdk](https://github.com/PLUG-OpenAPI/nhplug-sdk) 기반 독립 Trading Executor가 담당한다. 구현·모의 검증 및 별도 실거래 활성화 승인 전 LIVE 제출은 비활성이다.
 - 사용자/에이전트의 권한 범위 내에서 플랫폼의 모든 승인된 업무 기능과 리소스에 접근할 수 있도록 점진적으로 구현한다. 모든 에이전트에게 전권을 부여한다는 뜻은 아니다.
