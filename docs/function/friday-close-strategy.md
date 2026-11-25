@@ -1,6 +1,6 @@
 # 금요일 종가매수 (Friday Close Strategy) 기능 및 분석 시스템 명세
 
-> 상태: 사용자 승인 설계 · 2026-11-24. 별도 전략 카테고리, 데이터 분석, 확률 예측, 전용 UI 및 Workflow 연동을 개발 범위로 확정한다. 데이터 수집·모델 학습·백테스트·실주문 구현 및 실측 성과는 아직 없다. 기술 스택·모델별 파라미터·매매 임계값은 검증 후 결정한다.
+> 별도 전략 카테고리, 데이터 분석, 확률 예측, 전용 UI 및 Workflow 연동의 구현 기준이다. 운영 수집·학습·백테스트·실주문 및 실측 성과는 아직 없다. 기술 스택은 구현 기준이며 모델 파라미터·매매 임계값은 검증 후 결정한다.
 
 ## 1. 목적과 범위
 
@@ -266,23 +266,24 @@ flowchart LR
 
 예시 임계값 65% 이상 및 비용 차감 기대수익 양수는 UI/논리 예시이며 검증된 기준이 아니다. 매수와 월요일 청산 조건은 Workflow에서 별도로 설정한다. 전체 중단, 중복 방지, 체결 대사, 모의 검증 등 기존 [Workflow 안전 요구사항](./trading-workflow.md)을 동일하게 적용한다.
 
-## 12. 추천 기술 스택
+## 12. 구현 기술 스택
 
-| 계층 | 후보 |
+[퀀트 분석 기술 명세](../tech-stack/quant-analytics.md)를 따른다.
+
+| 계층 | 기본 기술 및 조건부 확장 |
 |---|---|
-| 수집 | yfinance, 기존 Auto-Axe 수집기 및 공식 자료 |
-| 전처리 | pandas, NumPy |
+| 수집 | yfinance, Auto-Axe 소스 registry 및 공식 무료 자료 |
+| 전처리·저장 | pandas, NumPy, PyArrow/Parquet, DuckDB |
 | 통계 | SciPy, statsmodels |
-| 기술지표 | pandas-ta 또는 자체 검증된 산식 |
-| 머신러닝 | scikit-learn (Logistic Regression, KNN, Random Forest 등) |
-| 비교 모델 | XGBoost, LightGBM |
-| 베이지안 | PyMC |
-| 설명 | Logistic 계수/입력 기여, SHAP |
-| 백테스트 | VectorBT 또는 자체 이벤트 기반 엔진 (체결 정책 검증) |
-| 모델 관리 | MLflow |
-| 프론트엔드 | 기존 Auto-Axe 디자인 시스템 |
+| 기술지표 | 자체 검증된 산식 (pandas rolling/EMA) |
+| 기본 모델 | scikit-learn L2 Logistic Regression, KNN, Random Forest 비교 |
+| 비교 모델 | XGBoost, LightGBM, PyMC (조건부 검증) |
+| 설명 | Logistic 계수/입력 기여; SHAP은 비교 모델에 필요 시 검증 |
+| 백테스트 | 자체 이벤트 기반 엔진 (동일 Workflow 평가기/virtual clock); vectorized 연구는 보조 |
+| 모델 관리 | PostgreSQL + immutable manifest 및 안전한 artifact; MLflow는 규모 확대 시 |
+| 프론트엔드 | React/TypeScript/Vite 및 공통 디자인·차트 기술 |
 
-무료·오픈소스 사용 가능 범위 및 라이선스를 검토한다. 특정 패키지 버전, 인프라 및 모델 운영 제품은 구현 단계에서 확정한다.
+무료·오픈소스 이용권과 실제 호환성·패키지 버전은 구현 전 확인한다. 모델 채택은 시간순 검증 및 데이터/품질/승인 게이트를 통과해야 한다.
 
 ## 13. 구현 로드맵
 

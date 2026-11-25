@@ -2,6 +2,8 @@
 
 ## 1. 배포 전략
 
+[전체 플랫폼 보안 설계](./security.md)의 SEC 요구사항을 적용한다. 기본 외부 ingress 차단, 관리 VPN 또는 사설망, host nftables/동등 방화벽과 Docker forwarding 정책을 실제 테스트한다. 스크래퍼는 전용 제한 egress gateway 이외의 외부 통신 및 내부 서비스 접근을 차단하고, broker는 고정 job/result 계약만 허용한다. 운영 비밀은 역할별 mount 및 회전, off-host 암호화 백업, 이미지 서명/취약점 검사, 보안 사고 대응 훈련을 적용한다. 외부 MCP 및 LIVE 기본 비활성 유지.
+
 Linux 단일 서버 또는 개인 홈서버/VM + Docker Engine/Compose를 초기 기준으로 한다. CPU/RAM/SSD 및 네트워크 비용을 측정하며 AWS 등 특정 클라우드·Kubernetes·대형 메시지 클러스터를 기본 필수로 두지 않는다. 실제 호스트와 도메인/예산은 사용자 지정 전까지 미확정이다. 단일 호스트는 HA가 아니며 장애 시 안전하게 중단하고 복구한다.
 
 | 서비스 | 프로필/네트워크 |
@@ -53,7 +55,3 @@ Prometheus metrics + Grafana dashboard + structlog JSON logs, OpenTelemetry SDK 
 DB/collector/worker의 p95, backlog, disk/retention, 동시 사용자, 비용을 기록하고 병목이 확인될 때 수직 확장 → worker 분리/replica → DB 튜닝/파티션 → 필요 시 Valkey 또는 별도 queue/TSDB/객체 저장소. Kafka/Temporal/K8s/managed cloud는 load test·운영 인력·장애 격리 이점이 비용을 상회할 때 ADR. 고가용성이 필요한 LIVE 단계에는 별도 executor host, DB HA/복제, 백업/복구·failover 대사 설계 검토. 상태 머신/계좌의 단일 제출 권한을 유지하며 이중 실행 금지.
 
 [Docker Compose](https://docs.docker.com/compose/) · [GitHub Actions](https://docs.github.com/actions) · [Prometheus](https://prometheus.io/docs/) · [Grafana](https://grafana.com/docs/) · [OpenTelemetry](https://opentelemetry.io/docs/)
-
-## 5. 보안 운영 기준
-
-[전체 플랫폼 보안 설계](./security.md)의 SEC 요구사항을 적용한다. 기본 외부 ingress 차단, 관리 VPN 또는 사설망, host nftables/동등 방화벽과 Docker forwarding 정책을 실제 테스트한다. 스크래퍼는 전용 제한 egress gateway 이외의 외부 통신 및 내부 서비스 접근을 차단하고, broker는 고정 job/result 계약만 허용한다. 운영 비밀은 역할별 mount 및 회전, off-host 암호화 백업, 이미지 서명/취약점 검사, 보안 사고 대응 훈련을 적용한다. 외부 MCP 및 LIVE 기본 비활성 유지.

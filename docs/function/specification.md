@@ -1,6 +1,6 @@
 # Auto-Axe 기능 명세서
 
-> 기준일: 2026-11-24 · 기존 지표 수집 정책을 통합한 기능 요구사항. 예제 구현과 운영 기능은 구분한다.
+> 기능 요구사항 기준선. 수집 예제와 운영 기능 구현 상태를 구분한다.
 
 ## 1. 목적 및 범위
 
@@ -167,7 +167,7 @@ ComfyUI/n8n과 유사한 블록 편집 방식으로 사용자가 조건·트리�
 
 ## 9. 통합 MCP 및 AI 에이전트 연동
 
-[상세 명세](../mcp/README.md). 사용자 승인: 단일 Auto-Axe MCP + 내부 10개 도메인 모듈, 별도 nhplug-mcp. Tool/Resource/Prompt를 통해 승인된 플랫폼 기능을 공통 Application Service로 제공한다. 별도 nhplug-mcp는 조회 전용으로 유지하고, 실주문 기술은 사용자 승인된 공식 nhplug-sdk 기반 독립 Trading Executor로 확정한다. 구현·모의 검증 및 실제 거래 활성화 승인 전 LIVE 주문은 차단한다.
+[상세 명세](../mcp/README.md). 단일 Auto-Axe MCP + 내부 10개 도메인 모듈, 별도 nhplug-mcp. Tool/Resource/Prompt를 통해 승인된 플랫폼 기능을 공통 Application Service로 제공한다. 별도 nhplug-mcp는 조회 전용으로 유지하고, 실주문 기술은 사용자 승인된 공식 nhplug-sdk 기반 독립 Trading Executor로 확정한다. 구현·모의 검증 및 실제 거래 활성화 승인 전 LIVE 주문은 차단한다.
 
 | ID | 요구사항 |
 |---|---|

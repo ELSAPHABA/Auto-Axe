@@ -1,8 +1,10 @@
 # Auto-Axe 무료 데이터 수집 명세
 
-> 기준일: 2026-11-24. 유료 데이터 피드는 제외한다. 이 문서는 현재 적용할 지표별 수집 정책을 정의하며, 구현 여부·검증 결과·권한 상태는 각각 구분한다.
+> 무료 데이터 수집 정책 및 지표 카탈로그. 구현·실측·권한 상태를 구분한다.
 
 ## 1. 공통 수집 정책
+
+자동 스크래핑에는 [Scrapling](../tech-stack/data-collection.md)을 사용하며 [전체 보안 설계](../tech-stack/security.md)의 격리·egress·권한 검증을 적용한다.
 
 - 무료 공식 API, WebSocket, 다운로드 파일(RSS/Atom/ICS/CSV/JSON)을 우선한다. 무료 API 키가 필요한 경우도 포함하되 데이터 이용권을 별도로 확인한다.
 - `API` / `WEBSOCKET`: 문서화된 API·공개 스트림. `DERIVED`: 확보한 원본 데이터로 로컬 계산.
@@ -66,7 +68,7 @@ MEXC `NAS100_USDT`는 지수 연동 영구선물이며 실시간 수신·지연�
 - Treasury [일별 공식 파 수익률](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics), [XML 제공 안내](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed): 2Y/10Y 등 단위 `percent`. [FRED DGS2/DGS10](https://fred.stlouisfed.org/series/DGS10)은 무료 개인 조회 참고만. 국채 현물 수익률과 국채 선물 가격은 전혀 다른 값.
 - VIX 및 3M/5Y/10Y/30Y yfinance 분봉은 무지연 실시간 수익률이 아님.
 
-**yfinance 검증 범위:** [YFinance_Data_Validation.md](./YFinance_Data_Validation.md) 참고. 2026-11-22 `^VIX`, `^TNX`, `CL=F`, `BZ=F`의 일봉·1분봉 수신을 확인했으나 **2026-11-23부터 원유·금·BTC의 기본 가격은 Binance로 전환**했다.
+**yfinance 검증 범위:** [YFinance_Data_Validation.md](./YFinance_Data_Validation.md)의 2026-11-22 `^VIX`, `^TNX`, `CL=F`, `BZ=F` 일봉·1분봉 실측을 참고한다. 원유·금·BTC 기본 가격은 Binance, Yahoo 가격은 별도 비교 시계열이다.
 
 ## 3. 미국 주식·ETF 지표
 
@@ -171,7 +173,7 @@ SEIBro의 국가·조회기간별 해외주식 TOP50 매수·매도·순매수 �
 |---|---|---|---|---|
 | 펜타곤 피자지수 | 공개 JSON **/api/dashboard-data** 확인 (robots/Terms 권한 확인 필요) | 기본 제외 | [PizzINT](https://www.pizzint.watch/) 상태·관찰시각·분류를 수동 기록 | 실험적 `MANUAL`; 시장 신호로 자동 주문 금지 |
 
-**지정 수집 대상:** [PizzINT](https://www.pizzint.watch/), `source_url=https://www.pizzint.watch/`. 이전 `pentagon.pizza`는 대상에서 제외한다. 수집 순서: PizzINT 측에 공개 JSON API의 자동 호출 `GET https://www.pizzint.watch/api/dashboard-data` → API 사용 불가능할 때는 HTML. 2026-11-22 직접 요청에서 이 API는 HTTP 200 JSON (`overall_index`, `defcon_level`, `active_spikes`, `timestamp`, `data[].current_popularity`, `data[].is_spike`, `data[].recorded_at`)을 반환했으며 일부 식당 값이 `null`.
+**지정 수집 대상:** [PizzINT](https://www.pizzint.watch/), `source_url=https://www.pizzint.watch/`. `pentagon.pizza`는 수집 대상이 아니다. 수집 순서: PizzINT 측에 공개 JSON API의 자동 호출 `GET https://www.pizzint.watch/api/dashboard-data` → API 사용 불가능할 때는 HTML. 2026-11-22 직접 요청에서 이 API는 HTTP 200 JSON (`overall_index`, `defcon_level`, `active_spikes`, `timestamp`, `data[].current_popularity`, `data[].is_spike`, `data[].recorded_at`)을 반환했으며 일부 식당 값이 `null`.
 
 `activity_label`, `activity_score_if_public`, `observed_at`, `source_url`, `manual_note`만 기록하고 **객관적 예측력/자동매매 신호로 확정하지 않는다**.
 
@@ -184,7 +186,3 @@ SEIBro의 국가·조회기간별 해외주식 TOP50 매수·매도·순매수 �
 - [Real_Time_Data_Sources.md](./Real_Time_Data_Sources.md): 실시간·준실시간 가격 수집.
 - [YFinance_Data_Validation.md](./YFinance_Data_Validation.md): yfinance 실제 검증 기록.
 - [Binance_API_Coverage.md](./Binance_API_Coverage.md): Binance API 검증 결과.
-
-## 기술 구현 연계 (2026-11-25)
-
-자동 스크래핑의 기본 프레임워크는 [Scrapling](../tech-stack/data-collection.md)이다. 이 선택은 무료 소스·권한·원본 정의·수동 fallback 정책을 변경하지 않는다. [전체 보안 설계](../tech-stack/security.md)의 격리·egress·권한 검증을 적용한다.

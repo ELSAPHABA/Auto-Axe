@@ -1,5 +1,3 @@
-> **2026-11-23 변경:** 이하 Yahoo/yfinance 지원 여부는 **이전 실측 조사 기록**이며 현재 금·WTI·Brent·비트코인 **기본 수집 소스는 Binance Spot/TradFi 선물 WS**입니다. 2Y 목표 출처는 네이버 `US2YT=RR` [최신 정책](./Market_Source_Policy_20261123.md).
-
 # yfinance 무료 시장지표 지원 검증
 
 > 검증 기준: 2026-11-22 (한국시간). 사용자 제공 [yfinance API Reference](https://ranaroussi.github.io/yfinance/reference/index.html) 및 개별 Yahoo Finance 종목 페이지를 대조했다. **Yahoo Finance 웹 가격의 실제 수신 여부와 무지연 실시간성은 개별 심볼·거래소·지역·장 상태마다 다르다.** 사용 전 개인용 연구/자동수집 권한을 [yfinance 법적 안내](https://ranaroussi.github.io/yfinance/)에서 확인한다.
@@ -45,15 +43,15 @@ python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
 
 사용 가능한 WebSocket 상품이라도 **거래소 delayed quote 상품은 여전히 delayed**다. 최신 yfinance 버전이 공개 API를 바꾸면 해당 버전 문서 기준 업데이트한다.
 
-## 3. 운영 적합성 및 fallback
+## 3. 공급원별 운영 역할 및 fallback
 
 | 데이터 | 1차 무료 신뢰 소스 | yfinance 용도 | 운영 실패·권한 미확인 시 |
 |---|---|---|---|
-| VIX | [Cboe EOD CSV](https://www.cboe.com/tradable_products/vix/vix_historical_data) | 지연 가능 실험 조회·대조 (`^VIX`) | 장중 수동 |
-| 미 국채 수익률 | [Treasury 일별](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) | 장중 수익률 지표 관찰 (`^TNX` 등) | 장중 수동 |
-| WTI·Brent | [EIA 현물 일별](https://www.eia.gov/opendata/documentation.php) | 선물 동향 별도 관찰 (`CL=F`, `BZ=F`) | 선물/현물 분리해 수동 |
+| VIX | yfinance `^VIX` 기본; [Cboe EOD CSV](https://www.cboe.com/tradable_products/vix/vix_historical_data) | 지연 가능 실험 조회·대조 (`^VIX`) | 장중 수동 |
+| 미 국채 수익률 | yfinance 3M/5Y/10Y/30Y, 2Y 네이버 허가 후; [Treasury 일별](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) | 장중 수익률 지표 관찰 (`^TNX` 등) | 장중 수동 |
+| WTI·Brent | Binance 연동 영구선물 기본; [EIA 현물 일별](https://www.eia.gov/opendata/documentation.php) | 선물 동향 별도 관찰 (`CL=F`, `BZ=F`) | 선물/현물 분리해 수동 |
 
-`source=Yahoo`, `method=yfinance`, `quote_delay_minutes`(실제 알려질 때만), `instrument_type`, `contract`, `last_bar_at`, `downloaded_at`, `data_license_status`, `validated_against`를 기록한다. **플랫폼의 무료 필수 생산 수집원이 아니라 권한·지연 확인을 전제로 한 보조 도구**로 제한한다.
+`source=Yahoo`, `method=yfinance`, `quote_delay_minutes`(실제 알려질 때만), `instrument_type`, `contract`, `last_bar_at`, `downloaded_at`, `data_license_status`, `validated_against`를 기록한다. 권한·지연 확인을 전제로 VIX·국채 3M/5Y/10Y/30Y 및 지정 주식·ETF 지표에 기본 적용하고, 원자재·BTC Yahoo 가격은 별도 비교용으로 제한한다.
 
 ## 4. Yahoo 종목 원본 근거
 
@@ -66,10 +64,10 @@ python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
 - [`BZ=F` Brent Last Day Financial](https://finance.yahoo.com/quote/BZ%3DF/)
 
 
-## 최신 기본 수집 설정: 국채 5개 만기 및 시장가격
+## 5. 추가 심볼 조회 검증
 
-최신 Auto-Axe 기본값은 [YFinance_First_Collection.md](./YFinance_First_Collection.md)가 정의한다. **3개월 `^IRX`, 2년 Treasury `BC_2YEAR`, 5년 `^FVX`, 10년 `^TNX`, 30년 `^TYX`**가 대상이다. 2년 선물 `2YY=F`·`ZT=F`는 현물 파 수익률과 다른 상품이며 직접 대체하지 않는다. 2026-11-22 Yahoo chart 실조회에서 `^UST2Y`, `^US2Y`, `US2Y`는 404; `2YY=F`는 2-Year Yield Futures로 조회됨을 확인했다.
+국채 5개 만기는 3개월 `^IRX`, 2년 네이버 `US2YT=RR`(허가 전 Treasury `BC_2YEAR` 일별 fallback), 5년 `^FVX`, 10년 `^TNX`, 30년 `^TYX`이다. 2년 선물 `2YY=F`·`ZT=F`는 현물 파 수익률과 다르다. 2026-11-22 Yahoo chart 실조회에서 `^UST2Y`, `^US2Y`, `US2Y`는 404; `2YY=F`는 2-Year Yield Futures로 조회됨을 확인했다.
 
-VIX `^VIX`, WTI 선물 `CL=F`, Brent 선물 `BZ=F`, COMEX 금 선물 `GC=F`, Bitcoin `BTC-USD`는 기본 yfinance 가격/캔들 대상이다. **금 현물가격은 yfinance 금 선물과 다르기 때문에 Gold API가 기본**.
+VIX `^VIX`는 기본 지표이고 `CL=F`, `BZ=F`, `GC=F`, `BTC-USD`는 별도 비교 시계열이다. Gold API 현물 추정 참고와 Binance 기본 계약 가격은 분리한다. [적용 정책](./Market_Source_Policy_20261123.md).
 
 2026-11-22 Yahoo chart 직접 조회에서 `^IRX`, `^FVX`, `^TNX`, `^TYX`, `CL=F`, `BZ=F`, `GC=F`, `BTC-USD`는 HTTP 200과 Yahoo 시계열 메타데이터를 반환했다. **모든 심볼에 대해 yfinance 1분봉, WS 실시간 수신, 무지연 보장을 검증했다는 의미는 아니다.** 실시간이 아니라 최신 제공봉 조회임을 UI·DB에 표시한다.

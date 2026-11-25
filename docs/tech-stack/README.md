@@ -1,6 +1,6 @@
 # Auto-Axe 기술 스택
 
-> 2026-11-25 · 구현 기준 기술 설계안(v0.2). 기존 승인 기능을 변경하지 않는다. 본 문서에서 새로 선정한 기술은 사용자 검토 대상이며 설치·벤치마크·구현 완료를 의미하지 않는다. 기존 문서의 기술 후보/미확정 표현은 이 기술 설계안의 선택으로 구체화하되, 기능·보안·수집 권한의 기존 제약은 유지한다.
+> 구현 기술 기준선(v1.0). 승인된 기능·보안·수집 권한 제약을 유지한다. 선정 기술은 구현 기준이며 실제 설치·호환성·벤치마크·배포 완료를 의미하지 않는다.
 
 ## 1. 선정 원칙
 
@@ -27,6 +27,8 @@
 | 인프라 | Linux, Docker Engine, Docker Compose, GitHub Actions, GHCR | 운영 확장 시 관리형 DB/객체 저장소 등 |
 | 관측/QA | pytest, Hypothesis, Ruff, mypy, Vitest, Playwright, Testcontainers, Prometheus, Grafana, OpenTelemetry | Loki/Tempo는 필요한 시점에 |
 
+데이터 수집은 Scrapling을 사용한다. fetchers extra의 브라우저 전이 의존성은 허용된 렌더링 필요 시 검증하며 Playwright는 프론트 E2E 도구로 직접 사용한다. [전체 플랫폼 보안](./security.md)은 MCP·웹·DB·스크래퍼·주문 실행기를 포괄한다.
+
 위 런타임·DB major는 보수적인 초기 목표이며 최신 버전 강제 사용이 아니다. 보안 지원 기간·아키텍처·라이선스·SDK 의존성의 교집합을 설치 검증하고 lockfile/image digest를 고정한다. 외부 데이터 사용권과 툴의 오픈소스 라이선스는 별도 검토한다.
 
 ## 3. 문서 인덱스
@@ -50,6 +52,4 @@
 
 [시스템 설계](../design/specification.md) · [프론트엔드 명세](../design/frontend.md) · [전체 기능](../function/specification.md) · [Workflow](../function/trading-workflow.md) · [주식 그룹](../function/stock-groups.md) · [금요일 전략](../function/friday-close-strategy.md) · [무료 수집 정책](../indicator-collection/Free_Data_Collection.md) · [MCP 명세](../mcp/README.md) · [NHPLUG](../nhplug/README.md)
 
-기존 문서가 정의하는 요구사항 및 사용자 승인 범위가 우선한다. 기술 선택은 실제 호환성·비용·성능·보안 검증을 통과한 후 고정하고 변경 시 ADR에 근거를 남긴다.
-
-2026-11-25 변경: 데이터 수집에서 Playwright 직접 사용 대신 Scrapling을 채택한다. Scrapling fetchers extra의 브라우저 전이 의존성은 허용된 렌더링 필요 시 별도 검증하며 Playwright는 프론트엔드 E2E 도구로 유지한다. [보안 설계](./security.md)는 기존 MCP 보안 및 거래 안전 요구사항을 전체 플랫폼으로 확장한다.
+기능·수집 권한·보안 요구사항을 충족하는 기술 기준을 적용한다. 정확한 버전·운영 파라미터는 호환성·비용·성능·보안 검증 후 고정하고 기준 변경 시 ADR 및 관련 수용 테스트를 함께 개정한다.

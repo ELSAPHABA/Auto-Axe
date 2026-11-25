@@ -1,30 +1,30 @@
-# Auto-Axe 최신 데이터 소스 정책 (2026-11-23)
+# Auto-Axe 시장 데이터 소스 정책
 
-## 1. 변경 범위
+## 1. 적용 범위
 
-2026-11-23 사용자 요청에 따라 yfinance의 **지연 가능 가격 시세** 수집을 Binance의 공개 체결 스트림으로 전환한다. 미국 국채 2년물의 목표 출처는 사용자가 지정한 [네이버 증권 2년물 `US2YT=RR`](https://m.stock.naver.com/marketindex/bond/US2YT=RR)이다.
+시장가격은 Binance 공개 체결 스트림을 기본으로 한다. VIX 및 국채 3M/5Y/10Y/30Y와 미국 주식·ETF의 지정 지표는 yfinance, 국채 2Y의 지정 출처는 [네이버 증권 US2YT=RR](https://m.stock.naver.com/marketindex/bond/US2YT=RR)이다. 네이버는 robots 차단 및 자동 이용 권한 미확인으로 자동화 기본 비활성, Treasury `BC_2YEAR` 공식 일별값을 기본 운영 fallback으로 사용한다. 원본 정의·지연·권한이 다른 시계열은 병합하지 않는다.
 
 ## 2. 대상별 기본 데이터 소스
 
-| 지표 | 기존 기본 | 새 기본 | 새 내부 식별자 | 정확한 상품 정의 |
-|---|---|---|---|---|
-| 금 가격 동향 | yfinance `GC=F` (금 선물), Gold API 현물 추정 | **Binance Futures WS** `XAUUSDT@aggTrade` | `GOLD_BINANCE_PERP` | Binance TradFi 금 연동 영구선물 **USDT 기준** |
-| 은 가격 동향 | 해당 지표 미수집 | **Binance Futures WS** `XAGUSDT@aggTrade` | `SILVER_BINANCE_PERP` | 은 연동 USDT 영구선물 |
-| 구리 가격 동향 | 해당 지표 미수집 | **Binance Futures WS** `COPPERUSDT@aggTrade` | `COPPER_BINANCE_PERP` | 구리 연동 USDT 영구선물 |
-| WTI 가격 동향 | yfinance `CL=F` | **Binance Futures WS** `CLUSDT@aggTrade` | `WTI_BINANCE_PERP` | Binance 원유 연동 영구선물 **USDT 기준** |
-| Brent 가격 동향 | yfinance `BZ=F` | **Binance Futures WS** `BZUSDT@aggTrade` | `BRENT_BINANCE_PERP` | Binance Brent 연동 영구선물 **USDT 기준** |
-| 비트코인 | yfinance `BTC-USD` | **Binance Spot WS** `BTCUSDT@trade` | `BITCOIN_BINANCE_SPOT` | Binance BTC/USDT 현물 **USDT 기준** |
-| 미국 개별주식 PER·PBR·ROE | 신규 지표 | **yfinance `Ticker.info` 후행/예상 PER·PBR·ROE 스냅샷** | `EQUITY_PER_TTM`, `EQUITY_PER_FORWARD`, `EQUITY_PBR`, `EQUITY_ROE` | 일별/실적 갱신시점 분리, ETF 결측 기본. [명세](./YFinance_Valuation_and_Moving_Averages.md) |
-| 이동평균선(SMA·EMA) | 신규 지표 | **yfinance OHLCV로 로컬 산출** | `SMA_N`, `EMA_N` + interval | 확정 일봉/분봉 기준, 조정종가·워밍업 및 백테스트 시점 보존. [명세](./YFinance_Valuation_and_Moving_Averages.md) |
-| 최근 5·10·20거래일 최고·최저가 | 신규 기술지표 | **yfinance `High`·`Low` 일봉 → rolling 최댓값·최솟값 로컬 계산** | `HIGH_5D/10D/20D`, `LOW_5D/10D/20D` | 실제 거래 세션 N개 기준. 일봉 확정 후 당일 포함, 장중 비교는 직전 N개 확정봉 기준. [명세](./YFinance_Valuation_and_Moving_Averages.md) |
-| 미국 주식·ETF 초단위 누적 거래량 (NVDA·QLD 등) | 신규 수집 요구 | **yfinance WebSocket `day_volume` + 로컬 1초 주기 스냅샷** | `US_STOCK_DAILY_CUM_VOLUME_1S` + symbol | 원본 WS 이벤트 주기는 불규칙, 새 값 없으면 `stale/no_update`로 직전 값 표시; 진정한 무지연 초봉 또는 SIP 통합 체결량 아님. [명세](./YFinance_1s_Stock_Cumulative_Volume.md) |
-| 나스닥 100 선물·연동 신호 | 신규 지표 | **MEXC `NAS100_USDT` 무료 Futures WebSocket(개발/검증 후보)**; Binance `QQQUSDT` 별도 보조, yfinance `NQ=F` 지연 CME 기준 | `NASDAQ100_MEXC_PERP_USDT` / 별도 2시리즈 | MEXC는 지수 연동 영구선물, Binance는 QQQ ETF 연동 계약, Yahoo는 CME 실제 NQ 지연 시세. WS 수신 미검증; [조사 문서](./Nasdaq100_Futures_Data_Sources.md) |
-| VIX | yfinance `^VIX` | yfinance `^VIX` 유지 | `VIX` | Cboe VIX 지수 (지연 가능) |
-| 미국 국채 3개월 | yfinance `^IRX` | 변경 없음 | `UST_3M` | Yahoo 13주물 금리지표 |
-| 미국 국채 2년 | Treasury `BC_2YEAR` | **네이버 증권 `US2YT=RR`** | `UST_2Y` | 네이버 게시 2년물 수익률(%) |
-| 미국 국채 5년 | yfinance `^FVX` | 변경 없음 | `UST_5Y` | Yahoo 5년물 금리지표 |
-| 미국 국채 10년 | yfinance `^TNX` | 변경 없음 | `UST_10Y` | Yahoo 10년물 금리지표 |
-| 미국 국채 30년 | yfinance `^TYX` | 변경 없음 | `UST_30Y` | Yahoo 30년물 금리지표 |
+| 지표 | 기본 공급원 | 내부 식별자 | 정확한 상품 정의 |
+|---|---|---|---|
+| 금 가격 동향 | **Binance Futures WS** `XAUUSDT@aggTrade` | `GOLD_BINANCE_PERP` | Binance TradFi 금 연동 영구선물 **USDT 기준** |
+| 은 가격 동향 | **Binance Futures WS** `XAGUSDT@aggTrade` | `SILVER_BINANCE_PERP` | 은 연동 USDT 영구선물 |
+| 구리 가격 동향 | **Binance Futures WS** `COPPERUSDT@aggTrade` | `COPPER_BINANCE_PERP` | 구리 연동 USDT 영구선물 |
+| WTI 가격 동향 | **Binance Futures WS** `CLUSDT@aggTrade` | `WTI_BINANCE_PERP` | Binance 원유 연동 영구선물 **USDT 기준** |
+| Brent 가격 동향 | **Binance Futures WS** `BZUSDT@aggTrade` | `BRENT_BINANCE_PERP` | Binance Brent 연동 영구선물 **USDT 기준** |
+| 비트코인 | **Binance Spot WS** `BTCUSDT@trade` | `BITCOIN_BINANCE_SPOT` | Binance BTC/USDT 현물 **USDT 기준** |
+| 미국 개별주식 PER·PBR·ROE | **yfinance `Ticker.info` 후행/예상 PER·PBR·ROE 스냅샷** | `EQUITY_PER_TTM`, `EQUITY_PER_FORWARD`, `EQUITY_PBR`, `EQUITY_ROE` | 일별/실적 갱신시점 분리, ETF 결측 기본. [명세](./YFinance_Valuation_and_Moving_Averages.md) |
+| 이동평균선(SMA·EMA) | **yfinance OHLCV로 로컬 산출** | `SMA_N`, `EMA_N` + interval | 확정 일봉/분봉 기준, 조정종가·워밍업 및 백테스트 시점 보존. [명세](./YFinance_Valuation_and_Moving_Averages.md) |
+| 최근 5·10·20거래일 최고·최저가 | **yfinance `High`·`Low` 일봉 → rolling 최댓값·최솟값 로컬 계산** | `HIGH_5D/10D/20D`, `LOW_5D/10D/20D` | 실제 거래 세션 N개 기준. 일봉 확정 후 당일 포함, 장중 비교는 직전 N개 확정봉 기준. [명세](./YFinance_Valuation_and_Moving_Averages.md) |
+| 미국 주식·ETF 초단위 누적 거래량 (NVDA·QLD 등) | **yfinance WebSocket `day_volume` + 로컬 1초 주기 스냅샷** | `US_STOCK_DAILY_CUM_VOLUME_1S` + symbol | 원본 WS 이벤트 주기는 불규칙, 새 값 없으면 `stale/no_update`로 직전 값 표시; 진정한 무지연 초봉 또는 SIP 통합 체결량 아님. [명세](./YFinance_1s_Stock_Cumulative_Volume.md) |
+| 나스닥 100 선물·연동 신호 | **MEXC `NAS100_USDT` 무료 Futures WebSocket(개발/검증 후보)**; Binance `QQQUSDT` 별도 보조, yfinance `NQ=F` 지연 CME 기준 | `NASDAQ100_MEXC_PERP_USDT` / 별도 2시리즈 | MEXC는 지수 연동 영구선물, Binance는 QQQ ETF 연동 계약, Yahoo는 CME 실제 NQ 지연 시세. WS 수신 미검증; [조사 문서](./Nasdaq100_Futures_Data_Sources.md) |
+| VIX | yfinance `^VIX` | `VIX` | Cboe VIX 지수 (지연 가능) |
+| 미국 국채 3개월 | yfinance `^IRX` | `UST_3M` | Yahoo 13주물 금리지표 |
+| 미국 국채 2년 | **네이버 증권 `US2YT=RR` (허가 후); Treasury `BC_2YEAR` 일별 fallback** | `UST_2Y` | 네이버 게시 2년물 수익률(%) |
+| 미국 국채 5년 | yfinance `^FVX` | `UST_5Y` | Yahoo 5년물 금리지표 |
+| 미국 국채 10년 | yfinance `^TNX` | `UST_10Y` | Yahoo 10년물 금리지표 |
+| 미국 국채 30년 | yfinance `^TYX` | `UST_30Y` | Yahoo 30년물 금리지표 |
 
 - Binance **실시간**은 **해당 Binance 계약/현물 시장의 최신 거래 이벤트**라는 뜻이다. 현물 금(XAU/USD)이나 CME 금·원유 선물 자체의 틱을 대체할 수 없다. 스트림 연결 성공 ≠ 지연 0 검증.
 - Binance 원유·금 TradFi 계약은 거래시간·휴장·유동성 제한이 있을 수 있다. 이벤트 수신이 없을 때는 최신 시각만으로 시장이 열렸다고 간주하지 않는다.
@@ -32,7 +32,7 @@
 - 기존 현물 원본값이 필요한 경우 **Gold API 현물 참고값**(별도 `gold-spot-reference`), **EIA WTI/Brent 일별 현물**, **Treasury 공식 5개 만기 일별**, **Cboe VIX EOD**를 원본 시계열로 *분리*한다.
 - **두바이유는 수집 대상에서 제외**되어 있다.
 
-## 3. 네이버 2년물 실증
+## 3. 국채 2년물 수집 및 검증 근거
 
 원본 페이지: [m.stock.naver.com/marketindex/bond/US2YT=RR](https://m.stock.naver.com/marketindex/bond/US2YT=RR).
 
@@ -43,7 +43,7 @@
 - 주요 필드: `closePrice`(수익률 숫자 문자열), `localTradedAt`(타임존 포함 관측시각), `priceDataType`, `delayTime`, `marketStatus`, `name`.
 - 실측 응답 예시는 `closePrice="4.6490"`, `localTradedAt="2026-11-20T17:05:00-05:00"`, `priceDataType="REALTIME"`, `delayTime=0`이었다.
 
-## 4. 코드 구현
+## 4. 수집 PoC 실행
 
 ```bash
 python -m pip install -r docs/examples/requirements.txt
@@ -61,20 +61,20 @@ python docs/examples/realtime_collector.py yf-market
 python docs/examples/realtime_collector.py treasury-five
 ```
 
-`binance-live`는 Binance Spot `BTCUSDT@trade` 및 Futures `XAUUSDT/CLUSDT/BZUSDT@aggTrade`를 **동시 처리**, WebSocket 재연결 및 트레이드 ID·거래량·타임스탬프 보존. 실운영에는 거래 시간 정책 확인, 누락 구간 REST 백필, 연결 상태 감지, 레이트 리밋 준수가 추가 필요하다.
+`binance-live`는 Binance Spot `BTCUSDT@trade` 및 Futures `XAUUSDT/XAGUSDT/COPPERUSDT/CLUSDT/BZUSDT@aggTrade`를 **동시 처리**, WebSocket 재연결 및 트레이드 ID·거래량·타임스탬프 보존. 실운영에는 거래 시간 정책 확인, 누락 구간 REST 백필, 연결 상태 감지, 레이트 리밋 준수가 추가 필요하다.
 
-## 5. 출처
+## 5. 거래 통계
+
+Binance 공식 롱숏 4종(전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율)은 BTCUSDT 선물 및 금·은·구리·WTI·Brent 연동 선물의 `/futures/data/*` 공개 REST 최소 5분 집계로 수집한다. BTC 가격은 Spot, 비율은 Futures로 별도 표기한다. Taker 거래량 비율은 포지션 비율이 아니며 WS 실시간 틱으로 표시하지 않는다. [API·실측 및 실행 명세](./Binance_Metals_LongShort_20261123.md).
+
+```bash
+python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300
+```
+
+## 6. 출처
 
 - [Binance Spot market-data documentation](https://developers.binance.com/en/docs/products/spot/web-socket-streams)
 - [Binance USDⓈ-M Futures market streams](https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/Introduction)
 - [Binance API 검증 및 관련 계약 차이](./Binance_API_Coverage.md)
 - [네이버 원본 2년물](https://m.stock.naver.com/marketindex/bond/US2YT=RR)
 - [U.S. Treasury 공식 일별 수익률 XML](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed)
-
-## 구리·은 및 Binance 롱숏 비율 추가 (2026-11-23)
-
-- **구리:** Binance Futures `COPPERUSDT`, 내부 `COPPER_BINANCE_PERP`; **은:** `XAGUSDT`, 내부 `SILVER_BINANCE_PERP`. 두 종목 모두 실측 `TRADING / TRADIFI_PERPETUAL`, REST 1분봉 지원. 기존 Binance Futures `@aggTrade` 실시간 스트림의 구독 목록에 추가했다. USDT 표시 영구선물은 원자재 현물 또는 거래소 만기선물과 다르다.
-- **공식 롱숏 비율 4종:** 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율. Binance `/futures/data/*` 무료 공개 REST의 **최소 5분 집계**로 수집한다. 실시간 WS 틱이 아니며, Taker 매수·매도 비율은 포지션 롱숏 비율과 다르다.
-- `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
-- `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
-- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](../examples/realtime_collector.py).

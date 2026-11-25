@@ -27,6 +27,8 @@
 
 ## 3. 스크래핑 설계
 
+[Scrapling 수집 표준](../tech-stack/data-collection.md)을 적용한다. 아래 파서 예시는 필드·산식 검증 참고용이며 운영 파서는 실제 HTML fixture를 기반으로 검증한다.
+
 목표 수집 방식은 `SCRAPE`: 공개 홈페이지 HTML을 일반 HTTP GET으로 받아 정책이 적용된 HTTP 클라이언트와 Scrapling Selector를 기반으로 파싱한다. 웹 열람 도구에서 대상 텍스트는 확인했으나 raw HTTP/DOM 구조 및 정확한 CSS selector는 실측하지 않았다. 셀 인덱스나 CSS ID를 고정 추정하지 않는다.
 
 1. HTTP 200 및 정상 HTML 응답 확인.
@@ -106,5 +108,3 @@ def extract_module_averages(rows):
 - [Spot Price Notice](https://www.dramexchange.com/Service/Spot_Price_Notice) — 일반 가격 세션·회원 등급별 시각, 모듈 주간 주기와 구분
 - [Terms of Use](https://www.dramexchange.com/About/TermsOfUse)
 - [전체 지표 목록](./Indicator_Data_Sources.md) · [무료 수집 카탈로그](./Free_Data_Collection.md) · [수집기 설계](./Collector_Design.md)
-
-2026-11-25 기술 변경: [Scrapling 수집 표준](../tech-stack/data-collection.md)을 따른다. 기존 아래/위 예제의 파싱 로직은 산식·필드 검증 참고용이며, 운영 파서는 Scrapling으로 구현하고 실제 HTML fixture로 재검증한다.

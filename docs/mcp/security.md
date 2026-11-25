@@ -1,5 +1,7 @@
 # MCP 인증·인가·승인 및 보안 명세
 
+[전체 플랫폼 보안](../tech-stack/security.md)과 [MCP 기술 명세](../tech-stack/mcp-security.md)의 Caddy/Keycloak, 네트워크·인증 및 출시 게이트를 적용한다. 이 문서는 MCP 도메인 권한과 동작 제약을 정의한다.
+
 ## 1. 신뢰 경계
 
 Auto-Axe MCP는 플랫폼의 사용자 권한 범위 내 업무 접근 인터페이스다. AI Host의 모델 판단, 도구 승인 UI, Tool annotations 및 프롬프트는 서버 인가를 대체하지 않는다. 독립 nhplug-mcp는 별도 자격증명·프로세스·네트워크 경계에서 조회만 수행한다. 실주문 실행 서비스는 공식 nhplug-sdk 기반 독립 Trading Executor로 확정하며, 구현·모의 검증 및 실거래 활성화 승인 전 비활성이다.

@@ -1,6 +1,6 @@
 # Auto-Axe 실시간·준실시간 무료 가격 데이터
 
-> 2026-11-23 업데이트. **Binance 실시간 거래소 WebSocket을 가격 수집 우선 소스로 전환**했다. 단, 거래소 실시간 시세가 다른 거래소 원자산의 시세라는 뜻은 아니며 상품별 세션·지연을 따로 기록한다.
+> Binance 공개 WebSocket은 시장가격의 기본 공급원이다. 해당 계약의 실제 체결만 실시간으로 취급하고 세션·원본 시각·지연을 구분한다.
 
 | 항목 | 기본 스트림 | 데이터 정의 |
 |---|---|---|
@@ -11,6 +11,7 @@
 | WTI 연동 가격 | `wss://fstream.binance.com/market/stream?streams=clusdt@aggTrade` | Binance `CLUSDT` 영구선물 체결 |
 | Brent 연동 가격 | `wss://fstream.binance.com/market/stream?streams=bzusdt@aggTrade` | Binance `BZUSDT` 영구선물 체결 |
 | 비트코인 | `wss://data-stream.binance.vision/stream?streams=btcusdt@trade` | Binance Spot BTC/USDT 체결 |
+| Binance 선물 롱숏 4종 | 공개 REST 최소 5분 집계 | 계정·포지션·Taker 거래량 지표, WS 틱 아님. [상세](./Binance_Metals_LongShort_20261123.md) |
 | 나스닥 100 지수 연동 영구선물(후보) | MEXC Futures `NAS100_USDT` WebSocket (Protobuf 사양 확인 필요) | 무료 저지연 후보, 실시간 메시지 직접 검증 전. 실제 CME NQ와 별개 |
 | 나스닥 100 관련 QQQ 연동 선물(보조) | Binance Futures `QQQUSDT` WebSocket (구독 동작 검증 전) | QQQ ETF 연동 영구선물; NQ·NDX 수준과 별개 |
 | 실제 CME 나스닥 100 선물(지연) | yfinance `NQ=F` 1분봉 | Yahoo의 CME 지연 시세; 라이선스된 실시간 피드가 아님 |
@@ -25,16 +26,9 @@
 실행:
 ```bash
 python docs/examples/realtime_collector.py binance-live
+python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300
 python docs/examples/realtime_collector.py yf-market --symbols VIX UST_3M UST_5Y UST_10Y UST_30Y
 python docs/examples/realtime_collector.py treasury-five
 ```
 
-[최신 상세 설계](./Market_Source_Policy_20261123.md) · [Binance 검증](./Binance_API_Coverage.md).
-
-## 구리·은 및 Binance 롱숏 비율 추가 (2026-11-23)
-
-- **구리:** Binance Futures `COPPERUSDT`, 내부 `COPPER_BINANCE_PERP`; **은:** `XAGUSDT`, 내부 `SILVER_BINANCE_PERP`. 두 종목 모두 실측 `TRADING / TRADIFI_PERPETUAL`, REST 1분봉 지원. 기존 Binance Futures `@aggTrade` 실시간 스트림의 구독 목록에 추가했다. USDT 표시 영구선물은 원자재 현물 또는 거래소 만기선물과 다르다.
-- **공식 롱숏 비율 4종:** 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율. Binance `/futures/data/*` 무료 공개 REST의 **최소 5분 집계**로 수집한다. 실시간 WS 틱이 아니며, Taker 매수·매도 비율은 포지션 롱숏 비율과 다르다.
-- `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
-- `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
-- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](../examples/realtime_collector.py).
+[시장 데이터 소스 정책](./Market_Source_Policy_20261123.md) · [Binance 검증](./Binance_API_Coverage.md).

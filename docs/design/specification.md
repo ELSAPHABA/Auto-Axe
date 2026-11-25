@@ -1,10 +1,10 @@
 # Auto-Axe 시스템 설계 명세서
 
-> 기준일: 2026-11-24 · 설계 초안. 기존 지표 수집 명세를 통합한 목표 아키텍처이며 운영 시스템 구현 완료를 의미하지 않는다.
+> 구현 기준 시스템 아키텍처. 현재 저장소의 실행 코드는 무료 시장 데이터 수집·검증 PoC이며 운영 시스템은 미구현이다.
 
 ## 1. 목적 및 범위
 
-Auto-Axe는 NH나무 OpenAPI 기반 알고리즘·패턴 매매 퀀트 시스템을 목표로 한다. 현재 저장소에서 확인되는 구현 범위는 무료 시장 데이터 수집 및 검증용 Python 예제다. 본 설계는 수집, 정규화, 저장, 피처 산출, 분석 및 향후 매매 연동의 경계를 정의한다. 노드 기반 Workflow의 전체 승인 기능, 사용자 정의 주식 그룹 집계·트리거 및 금요일 종가매수 확률 예측 시스템을 정의한다. 세부 주문 API, 전략 템플릿, 배포 인프라, DB 제품, UI 기술은 아직 확정하지 않는다.
+Auto-Axe는 NH나무 OpenAPI 기반 알고리즘·패턴 매매 퀀트 시스템을 목표로 한다. 현재 저장소에서 확인되는 구현 범위는 무료 시장 데이터 수집 및 검증용 Python 예제다. 본 설계는 수집, 정규화, 저장, 피처 산출, 분석 및 향후 매매 연동의 경계를 정의한다. 노드 기반 Workflow의 전체 승인 기능, 사용자 정의 주식 그룹 집계·트리거 및 금요일 종가매수 확률 예측 시스템을 정의한다. 구현 기술은 [기술 스택](../tech-stack/README.md)을 따른다: Python/FastAPI, React/TypeScript/Vite, PostgreSQL 17, 자체 상태 머신 및 durable job/outbox, Docker Compose, Caddy/Keycloak, Scrapling. 정확한 SDK/API 필드·버전 호환성·배포 호스트·전략 파라미터는 구현 전 검증한다.
 
 - [기능 명세](../function/specification.md)
 - [금요일 종가매수 분석·예측 명세](../function/friday-close-strategy.md)
@@ -119,6 +119,8 @@ UTC 저장, 미국 동부시간 DST 및 거래소 세션 달력 적용, DRAM GMT
 
 ## 5. 장애 대응 및 보안
 
+[전체 플랫폼 보안 설계](../tech-stack/security.md)를 적용한다. 수집에는 [Scrapling](../tech-stack/data-collection.md) 격리 worker와 제한 egress를 사용한다. 외부 웹 UI/원격 MCP 및 LIVE 활성화는 별도 권한·검증·승인 전 차단한다.
+
 - 429는 Retry-After, 5xx는 지수 백오프, 403·CAPTCHA·권한 실패는 우회 없이 중단한다.
 - 동일 정의의 허용된 무료 소스만 failover 대상으로 사용한다. 다른 상품은 별도 참고 시계열이다.
 - WS 연결 종료는 disconnected, 신규 데이터 없음은 no_update/stale, 최초 미수신은 no_data로 구분한다.
@@ -157,7 +159,7 @@ flowchart LR
 - NH 관련 외부 MCP는 독립 조회 전용 nhplug-mcp로 유지한다. 실제 주문은 사용자 승인된 공식 nhplug-sdk 기반 독립 Trading Executor를 통해 실행하도록 확정한다. 구현·모의 검증 및 실거래 활성화 승인 전 LIVE 제출은 차단한다. [NH 연동](../mcp/nhplug-integration.md). 주문 종목 매핑, 리스크 검증, 중복 방지, 응답 유실 대사 및 모의 검증을 필수 구현 요구사항으로 둔다.
 - [주식 그룹](../function/stock-groups.md)은 그룹 정의/버전/구성종목·가중치, 집계 스냅샷 및 상태형 조건을 영속화한다. 동일 as-of·세션·기준가격의 구성종목 수익률을 집계하고 coverage/신선도 검증 후 Workflow에 전달한다. 그룹 버전은 실행에 고정하며 신호와 주문 종목을 분리한다.
 - 승인된 전체 P0~P2 기능(편집기, 제어 노드, 기술·거시·뉴스 트리거, 백테스트, 주문·위험 제어, 다중 전략, 알림·성과)을 개발 범위에 포함한다.
-- 모의 실행·백테스트와 실거래 상태·자격증명을 분리한다. 구체 엔진·큐·DB·브로커 API 계약은 추가 확정 대상이다.
+- 모의 실행·백테스트와 실거래 상태·자격증명을 분리한다. 자체 Python 상태 머신·PostgreSQL durable queue/outbox·영속 상태를 적용하고 브로커 API의 정확한 계약은 공식 명세와 모의투자로 검증한다.
 
 ### 6.1 조건 분기·재사용·참조 무결성
 
@@ -182,7 +184,7 @@ flowchart LR
 
 ### 6.2 실행 상태 전달
 
-서버의 실제 실행 상태로 메인 활성 Workflow 정의 수를 집계한다. 실행/감시/활성 대기 상태만 포함하고, 중복 실행은 정의 ID로 중복 제거한다. 하위 호출 및 과거 백테스트는 제외하고 LIVE/PAPER/DRY_RUN과 실행 인스턴스 수를 구분한다. 상세 조회는 선택된 run_id 기준으로 조건별 결과·충족 이력·경로·원본 시각·사유를 반환한다. 스냅샷 및 WS/SSE 상태 이벤트를 통해 갱신하고 이벤트 순서, 재접속, stale을 처리한다. 구체 전송 기술은 구현 시 확정한다.
+서버의 실제 실행 상태로 메인 활성 Workflow 정의 수를 집계한다. 실행/감시/활성 대기 상태만 포함하고, 중복 실행은 정의 ID로 중복 제거한다. 하위 호출 및 과거 백테스트는 제외하고 LIVE/PAPER/DRY_RUN과 실행 인스턴스 수를 구분한다. 상세 조회는 선택된 run_id 기준으로 조건별 결과·충족 이력·경로·원본 시각·사유를 반환한다. REST 스냅샷 및 SSE 상태 이벤트로 갱신하고 이벤트 순서, 재접속, stale을 처리한다. 공급자 WebSocket과 UI SSE를 분리한다.
 
 ### 6.3 조건 충족 유지 및 영업일 리셋
 
@@ -236,7 +238,7 @@ flowchart LR
   R --> X[격리 Trading Executor]
 ```
 
-로컬뿐 아니라 외부 PC·서버·클라우드 AI Host에서 접속할 수 있도록 한다. 원격 endpoint는 관리자가 활성화한 HTTPS 주소 한 개를 기본으로 사용한다. TLS, OAuth Resource Server, 클라이언트 등록/권한/폐기, scope 및 리소스 소유권, Host/Origin 검사, rate limit, 외부 접속 감사, 장애 시 fail closed를 적용한다. 프록시 뒤 내부 포트·DB·nhplug-mcp·nhplug-sdk 실행 서비스는 공개하지 않는다. 사설망/VPN은 선택적 배포 정책이며 인증을 대체하지 않는다. 구체 도메인·인증 서버·프록시 및 제한 수치는 구현 시 확정한다. [MCP 통신](../mcp/specification.md) · [외부 접속 보안](../mcp/security.md).
+로컬뿐 아니라 외부 PC·서버·클라우드 AI Host에서 접속할 수 있도록 한다. 원격 endpoint는 관리자가 활성화한 HTTPS 주소 한 개를 기본으로 사용한다. TLS, OAuth Resource Server, 클라이언트 등록/권한/폐기, scope 및 리소스 소유권, Host/Origin 검사, rate limit, 외부 접속 감사, 장애 시 fail closed를 적용한다. 프록시 뒤 내부 포트·DB·nhplug-mcp·nhplug-sdk 실행 서비스는 공개하지 않는다. 사설망/VPN은 선택적 배포 정책이며 인증을 대체하지 않는다. 인증 서버는 Keycloak, HTTPS 프록시는 Caddy를 사용하며 구체 도메인·설정·제한 수치는 배포 전 검증한다. [MCP 통신](../mcp/specification.md) · [외부 접속 보안](../mcp/security.md).
 
 ## 9. 구현 및 검증 단계
 
@@ -250,7 +252,3 @@ flowchart LR
 | 5 | nhplug-sdk 기반 NH나무 매매 연동 및 리스크·체결 대사 | 기술 채택 확정; 구현·API 지원 범위·모의 검증 및 LIVE 활성화 승인 필요 |
 
 단위 테스트는 필드 파싱·정규화·피처 계산, 통합 테스트는 연결 종료·중복·정정·휴장·권한 실패를 포함한다. 실시간 후보는 실제 장중 수신 빈도와 지연을 측정한다. [실행 예제](../examples/realtime_collector.py) · [검증 가이드](../indicator-collection/Realtime_Quickstart.md).
-
-## 10. 기술 스택 및 보안 구현 기준
-
-[기술 스택 설계안](../tech-stack/README.md)과 [전체 플랫폼 보안 설계](../tech-stack/security.md)를 참조한다. 데이터 수집의 직접 브라우저 자동화 프레임워크는 사용자 지정 [Scrapling](https://github.com/D4Vinci/Scrapling)으로 선정하며, 승인된 수집·저장 범위 및 기존 외부 MCP/실거래 비활성 원칙을 유지한다.

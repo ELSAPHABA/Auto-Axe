@@ -1,6 +1,6 @@
 # yfinance 기업 가치·수익성 지표 및 이동평균선 수집·산출 명세
 
-> Auto-Axe 무료 지표 수집 정책 · 2026-11-24 · 상태: **문서화 완료 / 실제 수집기 구현 및 NVDA·QLD 응답 검증 미완료**
+> 운영 수집기 및 NVDA·QLD 실제 응답 검증 미완료.
 
 ## 1. 기본 원칙
 
@@ -177,4 +177,4 @@ technical_indicators:
 - [pandas rolling mean 공식 문서](https://pandas.pydata.org/docs/reference/api/pandas.core.window.rolling.Rolling.mean.html) · [pandas EWM 공식 문서](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.ewm.html)
 - [관련 지표 목록](./Indicator_Data_Sources.md) · [실시간 가격·거래량](./Real_Time_Data_Sources.md) · [전체 수집 정책](./Market_Source_Policy_20261123.md)
 
-현재 **문서 등록만 수행**. `docs/examples/realtime_collector.py`에는 신규 `fundamentals`/MA 명령을 추가하지 않는다. 운영 구현 전에 Yahoo 현재 필드가 해당 종목에서 실제 반환되는지 테스트하고 시계열 적재·재배포 사용권을 확인한다.
+`fundamentals`/MA 운영 수집기는 미구현이며 기존 PoC에는 해당 명령이 없다. 운영 구현 전에 Yahoo 현재 필드가 해당 종목에서 실제 반환되는지 테스트하고 시계열 적재·재배포 사용권을 확인한다.

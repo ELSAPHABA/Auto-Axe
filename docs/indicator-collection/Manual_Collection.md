@@ -1,8 +1,6 @@
-> **2026-11-23 최신 전환:** 금/WTI/Brent/비트코인의 가격 동향은 Binance 무료 실시간 Spot/TradFi 계약을 기본으로 사용합니다. VIX·국채 3M/5Y/10Y/30Y는 yfinance(지연 가능)이고 2Y는 [네이버 지정 페이지](https://m.stock.naver.com/marketindex/bond/US2YT=RR)의 자동 수집이 목표입니다.  아래의 이전 yfinance fallback 설명은 변경 이력입니다. [최신 명세](./Market_Source_Policy_20261123.md).
-
 # Auto-Axe 수동 수집 레지스트리 및 입력 절차
 
-> 기준일 2026-11-22. **무료 공식 API/WS 또는 웹 수집으로 같은 정의와 시각의 값을 확보할 수 없을 때만** 수동 기록한다. 값 입력이 자동 수집으로 허위 표시되면 안 된다.
+> 무료 자동 수집으로 동일 정의와 시각의 데이터를 얻을 수 없을 때, 허용 범위에서만 수동 기록한다. 수동 입력을 자동 수집으로 표시하지 않는다. [시장 데이터 소스 정책](./Market_Source_Policy_20261123.md)을 따른다.
 
 ## 수동 항목 목록
 
@@ -11,8 +9,9 @@
 | `DRAM_DDR5_UDIMM_16GB_SESSION_AVG` / `DRAM_DDR5_RDIMM_32GB_SESSION_AVG` | [DRAMeXchange](https://www.dramexchange.com/) Module Spot Price | 지정 Item, Session Average, 섹션 Last Update, 단위 확인 | 주간 발표 확인 | 수동 적재도 허용 범위 확인 필수; 권한 미확인 시 비활성. [명세](./DRAMeXchange_Module_Spot_Prices.md) |
 | `CNN_FEAR_GREED` | [CNN Fear & Greed](https://edition.cnn.com/markets/fear-and-greed) | `score` (0~100), `category`, 화면 기준시각·조회시각 | 정기 점검(예: 미국 장 중/종료 후) | CNN 제공 점수 vs 자체 심리지표 |
 | `SEIBRO_OVS_STOCK_TOP50_SETTLEMENT` | [SEIBro 해외주식 종목별내역 TOP50](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921) | 국가·조회기간·조회기준일·매수결제/매도결제/순매수결제(USD), 종목코드·종목명·순위 | 결제 결과 게시 후 수동 조회 | **전체 시장 합계나 실시간 체결 데이터 아님.** [상세](./SEIBro_Overseas_Stock_Flows.md) |
-| `PENTAGON_PIZZA` | [pentagon.pizza](https://www.pizzint.watch/) | 화면의 활동 상태/공개 지수(있는 경우), 측정시각·관찰 메모 | 필요시 | Google Maps 외부 축적 금지; 독립·검증된 경제지표 아님 |
+| `PENTAGON_PIZZA` | [PizzINT](https://www.pizzint.watch/) | 화면의 활동 상태/공개 지수(있는 경우), 측정시각·관찰 메모 | 필요시 | Google Maps 외부 축적 금지; 독립·검증된 경제지표 아님 |
 | `VIX_INTRADAY` | [Cboe VIX](https://www.cboe.com/tradable_products/vix/) | 표기된 VIX 수준, 사이트 시각·지연표시 | 장중값이 꼭 필요할 때 | 공식 Cboe **일별 CSV**와 별도 |
+| `UST_2Y_INTRADAY` | [네이버 지정 페이지](https://m.stock.naver.com/marketindex/bond/US2YT=RR) | 수익률 %, 원본 시각·지연 | 자동화 허가 전 허용 수동 조회 | 기본 운영은 Treasury BC_2YEAR 일별; 금리 선물로 대체 금지 |
 | `UST_10Y_INTRADAY` | [Treasury 공식 일별](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics) 외 수동 장중 수익률 출처 | 원본 출처, 현물/지표형, 10Y %, 화면 지연 | 장중 추적 필요 시 | 국채 현물 수익률 vs 선물 가격 |
 | `WTI_FUTURES_INTRADAY` | 공개적으로 열람 가능한 거래소/상품 페이지 | 가격 USD/bbl, 거래소·선물 월물, 지연표시 | 장중값이 필요할 때 | EIA WTI 현물 **일별**과 별도 |
 | `BRENT_FUTURES_INTRADAY` | ICE 등 상품 표시 화면 | 가격 USD/bbl, 거래소·월물·지연 | 장중값이 필요할 때 | 현물 Brent 일별과 별도 |
@@ -57,15 +56,4 @@ CNN_FEAR_GREED,SENTIMENT,https://edition.cnn.com/markets/fear-and-greed,,2026-11
 
 - **피자:** Google Popular Times 수치용 무료 구조화 API 미확인. Google Maps 스크래핑으로 이 문제를 해결하지 않는다.
 
-## 사용자 지정 원본 URL (2026-11-22 반영)
-
-- `CNN_FEAR_GREED`: **https://edition.cnn.com/markets/fear-and-greed**. 기존 `www.cnn.com` 링크는 사용하지 않는다.
-- `PENTAGON_PIZZA`: **https://www.pizzint.watch/**. 기존 `pentagon.pizza`는 대상에서 제외. 공개 JSON `/api/dashboard-data`.
-- `VIX_INTRADAY`, `UST_10Y_INTRADAY`, `WTI_FUTURES_INTRADAY`, `BRENT_FUTURES_INTRADAY`: `yfinance` 조회로 1분봉을 얻는 사례를 검증.
-
-
-## 2026-11-22 yfinance 우선 전환 이후 수동의 의미
-
-- `VIX_INTRADAY`·`UST_3M/5Y/10Y/30Y`·`WTI_FUTURES_INTRADAY`·`BRENT_FUTURES_INTRADAY`·`BTC-USD`·`GC=F`는 **yfinance 조회가 기본**이다. 수동 표는 허가/접속·신뢰도 문제의 **fallback** 기록을 뜻한다.
-- `UST_2Y`는 **Treasury 공식 2년물 일별**. Yahoo 2년물 선물은 수익률 원본이 아니므로 수동 화면상 시장 금리 값과 혼합하지 않는다.
-- [최신 소스 정책](./YFinance_First_Collection.md).
+기본 시장가격은 Binance Spot BTC 및 금·은·구리·WTI·Brent 연동 영구선물이다. yfinance VIX·국채 3M/5Y/10Y/30Y는 지연 가능 지표이며 주식·ETF 지정 데이터에도 사용한다. 수동 WTI/Brent 실제 만기선물 및 현물, Yahoo 비교값은 Binance 계약과 독립 시계열이다. 네이버 2Y 자동 수집은 허가 전 비활성, Treasury BC_2YEAR 일별 fallback. CNN/PizzINT/SEIBro/DRAM의 자동·수동 저장 및 활용 모두 권한 범위를 확인한다. PizzINT는 자동 주문 신호에서 제외한다.

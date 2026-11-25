@@ -1,6 +1,6 @@
 # NH투자증권 nhplug-mcp 및 nhplug-sdk 연동 명세
 
-> 2026-11-25 GitHub 원본 확인. 사용자 지정 외부 MCP는 [PLUG-OpenAPI/nhplug-mcp](https://github.com/PLUG-OpenAPI/nhplug-mcp)이다. 확인한 main commit: c61e38ca37de801911ac6c29a685077802513d44, package/server version 0.1.0. 현재 **조회 전용**이라 실제 주문 실행을 지원하지 않는다. 2026-11-25 사용자 승인에 따라 실제 주문은 공식 nhplug-sdk 기반 독립 실행 서비스로 구현한다. MCP의 조회 제한은 유지한다.
+> 2026-11-25 GitHub 원본 확인. 사용자 지정 외부 MCP는 [PLUG-OpenAPI/nhplug-mcp](https://github.com/PLUG-OpenAPI/nhplug-mcp)이다. 확인한 main commit: c61e38ca37de801911ac6c29a685077802513d44, package/server version 0.1.0. 현재 **조회 전용**이라 실제 주문 실행을 지원하지 않는다. 실제 주문은 공식 nhplug-sdk 기반 독립 실행 서비스로 구현한다. MCP의 조회 제한은 유지한다.
 
 ## 1. 확인된 upstream 기능
 
@@ -68,7 +68,7 @@ N2 사용 시 BASE/AUTH를 N2 공식 도메인으로 함께 맞춘다. 허용 �
 - HTTP/JSON-RPC 성공만으로 업무 성공을 단정하지 않는다. upstream은 rsp_cd/rsp_msg 업무 판정을 그대로 전달하므로 API별 공식 규격에 따라 해석한다. 호출 제한·인증 실패·데이터 없음 및 조회 기준시각을 보존한다.
 - 오류 시 BROKER_UNAVAILABLE/STALE_DATA/UNKNOWN 등으로 처리한다. 조회 실패를 주문 성공·잔고 0으로 변환하지 않는다. upstream 변경 시 schema drift, allowlist, 주문 차단, 모의 환경 테스트를 다시 수행한다.
 
-## 5. 실제 주문 실행 — nhplug-sdk 채택 확정
+## 5. 실제 주문 실행 — nhplug-sdk
 
 사용자 승인에 따라 실제 매수·매도 주문은 공식 [nhplug-sdk](https://github.com/PLUG-OpenAPI/nhplug-sdk)를 활용한다. nhplug-mcp는 조회 전용으로 유지한다. SDK 채택은 기술 및 개발 범위 확정이며 실거래 활성화 승인이 아니다.
 

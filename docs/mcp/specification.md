@@ -99,7 +99,7 @@ flowchart LR
 
 시장 및 지표 조회 → 그룹 분석 → 월요일 예측 조회 → 노드 카탈로그 조회 → Workflow 초안 생성 → 검증 → Dry-run → 백테스트 Job → 성과/위험 보고 → 사용자의 승인 및 모의 실행. 실행 중인 버전은 AI가 수정해도 바뀌지 않는다. 승인된 Workflow의 실행 역시 실제 제출 계층의 별도 지원과 승인 없이는 LIVE 주문을 보낼 수 없다.
 
-## 7. 프로젝트 구조 및 기술 후보
+## 7. 프로젝트 구조 및 기술 스택
 
 ```text
 backend/
@@ -130,7 +130,7 @@ tests/mcp/
 docs/mcp/
 ```
 
-Python 공식 MCP SDK, FastAPI, Pydantic, 내부 Application Service 호출을 초기 후보로 한다. Redis/Job queue, PostgreSQL, Docker, pytest, MCP Inspector, Prometheus/Grafana는 운영 기술 후보이며 기존 시스템의 DB/큐 선택을 임의 확정하지 않는다. 처음에는 모듈러 모놀리스로 배포하고, 병목·권한·장애 격리 필요 시 도메인 내부 서비스 분리. 외부 endpoint는 기본 유지하며 독립 주문 실행 계층은 별도 신뢰 경계다.
+공식 Python MCP SDK, FastAPI, Pydantic, 공통 Application Service, PostgreSQL durable job queue/transactional outbox, Docker Compose, pytest, MCP Inspector, Prometheus/Grafana를 사용한다. Caddy/Keycloak으로 원격 인증을 적용한다. Valkey는 선택적 캐시/알림으로만 사용한다. 초기 모듈러 모놀리스 및 역할별 프로세스로 구성하고 병목·권한·장애 격리 필요 시 분리한다. 외부 endpoint는 유지하며 독립 주문 실행 계층은 별도 신뢰 경계다. [기술 명세](../tech-stack/mcp-security.md) · [전체 보안](../tech-stack/security.md).
 
 ## 8. 구현 단계 및 수용 기준
 

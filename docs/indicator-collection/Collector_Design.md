@@ -1,8 +1,8 @@
 # Auto-Axe 무료 수집기 설계 및 운영 표준
 
-> **2026-11-23 현재:** Binance 무료 실시간 시세는 BTC 현물·금/WTI/Brent 연동 영구선물 기본, yfinance는 VIX·국채 3M/5Y/10Y/30Y만 담당. 2년 국채는 네이버 증권 수집. [최신 소스 정책](./Market_Source_Policy_20261123.md).
+> [시장 데이터 소스 정책](./Market_Source_Policy_20261123.md), [기술 스택](../tech-stack/data-collection.md) 및 [보안](../tech-stack/security.md)을 구현 기준으로 한다. Binance BTC Spot 및 금·은·구리·WTI·Brent 연동 선물, yfinance VIX·국채 3M/5Y/10Y/30Y·주식/ETF 지정 지표, 네이버 2Y(허가 전 Treasury 일별 fallback)를 사용한다.
 
-## yfinance 기업 재무지표 조회와 이동평균선 산출 (추가 설계)
+## yfinance 기업 재무지표 조회와 이동평균선 산출
 
 - **PER 후행·예상, PBR, ROE**는 개별 기업 종목의 `Ticker.info`에서 조회해 값·조회시각·재무기준시점·후행/예상 여부를 보존한다. 필드가 누락되면 결측 처리하고 **QLD 같은 ETF의 기업 ROE**를 강제로 생성하지 않는다.
 - **최저가·최고가 6종:** yfinance 일봉 `Low`/`High`의 최근 5·10·20개 확정 거래 세션 rolling min/max를 로컬 계산. 실제 거래 세션만 세고 주말·휴장을 포함한 달력상 일수는 사용하지 않는다. 마감 후 산출과 장중 비교(직전 N개 완성봉)를 분리하여 룩어헤드·진행봉 오염을 막는다.
@@ -10,14 +10,14 @@
 - 기업 재무지표는 일별 조회·실적 발표 후 갱신을 기본으로, 기술적 지표는 봉 확정 후 계산한다. 과거 백테스트에 현재 `Ticker.info`를 소급 적용하면 미래정보 누수가 발생한다.
 - [필드·계산식·Python 예제](./YFinance_Valuation_and_Moving_Averages.md). 현재 운영 수집기에는 미구현.
 
-## 미국 주식·ETF 누적 거래량 1초 스냅샷 (추가 설계)
+## 미국 주식·ETF 누적 거래량 1초 스냅샷
 
 - NVDA·QLD 등 미국 주식/ETF는 **yfinance WebSocket `day_volume` 이벤트 수신**을 별도 피드로 운영한다.
 - 1초 기록은 **로컬 샘플러**가 담당한다. 새로운 WebSocket 업데이트가 없으면 원본 누적값과 원본 타임스탬프를 유지하고 `no_update/stale`로 표기한다. **Yahoo 1Hz 데이터 전송이나 무지연 시세를 보장하지 않는다.**
 - `[symbol, source_event_at, received_at, sampled_at, day_volume, status]`를 보존하며 거래량 리셋·역순 메시지·휴장·재연결을 별도 검증한다.
 - [yfinance 주식·ETF 누적 거래량 1Hz 수집 명세](./YFinance_1s_Stock_Cumulative_Volume.md). **현재 운영 코드 미구현**.
 
-## DRAM 모듈 가격 수집 (추가 설계)
+## DRAM 모듈 가격 수집
 
 - DRAMeXchange 홈페이지 `Module Spot Price` 표의 지정 UDIMM 16GB/RDIMM 32GB 두 행 `Session Average`를 스크래핑한다. 상품별 별도 `series_id`, 원본 Last Update(GMT+8), 수집 시각·단위·정정 이력을 보존한다.
 - 일 1회 점검하되 주간 원본 갱신만 새 발표로 적재한다. DOM 구조·중복/누락 및 수집 권한 검증 실패 시 비활성 또는 결측 처리. [상세 명세](./DRAMeXchange_Module_Spot_Prices.md).
@@ -26,7 +26,7 @@
 
 ```mermaid
 flowchart LR
-  A[Binance BTC Spot / 금·WTI·Brent 연동 선물 WS] --> N
+  A[Binance BTC Spot / 금·은·구리·WTI·Brent 연동 선물 WS] --> N
   X[yfinance VIX·3M·5Y·10Y·30Y 최신봉] --> N[normalize UTC / event & observed time]
   B[미 재무부 공식 2Y 일별 등 무료 REST] --> N
   C[공식 RSS/Atom/ICS Fed/SEC/IR/BLS] --> N
@@ -38,10 +38,14 @@ flowchart LR
 ```
 
 - 수집기의 `provider`, `collection_method=API|WEBSOCKET|SCRAPE|MANUAL`, `source_url`, `frequency`, `cost=0`, `terms_check_at`, `quality_status` 고정 기록.
-- **Binance 실시간:** `BTCUSDT` Spot과 `XAUUSDT`·`CLUSDT`·`BZUSDT` 영구선물은 별도 `series_id`, 시장 종류, USDT 호가통화, 원본 시각을 보존한다. VIX·국채 3M/5Y/10Y/30Y만 yfinance(지연 가능). **2Y 국채:** 네이버 증권 `US2YT=RR`. `Gold API`는 별도의 현물 참고 값이다.
+- **Binance 실시간:** `BTCUSDT` Spot과 `XAUUSDT`·`XAGUSDT`·`COPPERUSDT`·`CLUSDT`·`BZUSDT` 영구선물은 별도 `series_id`, 시장 종류, USDT 호가통화, 원본 시각을 보존한다. VIX·국채 3M/5Y/10Y/30Y 및 지정 주식·ETF는 yfinance(지연 가능). **2Y 국채:** 네이버 증권 `US2YT=RR`(허가 전 Treasury 일별 fallback). `Gold API`는 별도의 현물 참고 값이다.
 - API 장애 → 동일 정의 데이터 fallback → 스크래핑 → 수동. 같은 자산이라도 선물과 현물처럼 `instrument_type`이 다르면 서로 fallback으로 섞지 않는다.
 
 ## 2. 저장 스키마
+
+Binance 공식 롱숏 4종(전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율)은 BTCUSDT 선물 및 금·은·구리·WTI·Brent 연동 선물의 `/futures/data/*` 공개 REST 최소 5분 집계로 수집한다. BTC 가격은 Spot, 비율은 Futures로 별도 표기한다. Taker 거래량 비율은 포지션 비율이 아니며 WS 실시간 틱으로 표시하지 않는다. [API·실측 및 실행 명세](./Binance_Metals_LongShort_20261123.md).
+
+아래 SQL은 기존 수집 PoC의 논리 레코드 예시이며 운영 DB는 [PostgreSQL 스키마](../tech-stack/data-storage.md)를 기준으로 구현한다.
 
 ```sql
 CREATE TABLE indicator_observations (
@@ -85,8 +89,9 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 | 어댑터 | 권장 실행 | 변동 시 |
 |---|---|---|
 | Binance Spot·TradFi Futures WS (기본 시장가격) | 거래 발생 시 이벤트 기반 | 체결시각/연결 상태/휴장·유동성 확인, 백오프·누락 보완 | 
+| Binance 선물 롱숏 4종 | 5분 이상 집계 주기 | 전체 계정·상위 계정·상위 포지션·Taker 거래량 구분 |
 | yfinance VIX·3M/5Y/10Y/30Y | 1~5분(제안) 최신봉 조회 | Yahoo 지연·장시간 확인 |
-| 네이버 2Y | 수집 주기 | `US2YT=RR` 원본 시각·지연 |
+| 네이버 2Y | 승인 전 자동화 비활성; 승인 후 원본 갱신·rate limit에 맞춤 | `US2YT=RR` 원본 시각·지연 |
 | Treasury 공식 국채 2년물 + 5종 교차검증 | 게시 후 일 1회 | 2Y 일별값, 공식 5종 별도 검증 |
 | Coinbase BTC/USD WS (보조) | 필요할 때 스트리밍 | USD와 USDT 혼합 금지, 누락·재연결 관리 |
 | Gold API 현물 참고 | 필요할 때만 폴링 | Binance 금 연동 선물과 별도 저장 |
@@ -101,6 +106,8 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 구독이 없는 정적 원본을 매초 호출하지 않는다. 공식 무료 API의 권리·요금·호출량과 문서화를 주기적으로 재검토한다.
 
 ## 4. 무료 스크래핑 어댑터
+
+신규 스크래핑 어댑터는 [Scrapling](../tech-stack/data-collection.md)을 사용하고 전용 격리 worker, egress 제한, 권한 검증은 [보안 설계](../tech-stack/security.md)를 따른다. 기존 PoC는 운영 수집기와 구분한다.
 
 1. **공식 기계 판독 링크가 있으면 먼저 사용**: SEC Atom, 회사 IR RSS, 연준/ECB/BOJ RSS, BLS ICS, Treasury XML, Cboe EOD CSV.
 2. HTML 외에는 없는 공공발표/회사 IR 페이지에서 `정책 적용 HTTP 클라이언트 + Scrapling Selector`, `ETag/If-Modified-Since`, 429 backoff, 셀렉터 테스트 적용.
@@ -129,19 +136,9 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 | 만기 | 우선 소스 | 보조 공식 일별 |
 |---|---|---|
 | 3개월 | yfinance `^IRX` | Treasury `BC_3MONTH` |
-| 2년 | 네이버 `US2YT=RR` | Treasury `BC_2YEAR` 일별 |
+| 2년 | 네이버 `US2YT=RR` (허가 후) | Treasury `BC_2YEAR` 일별 |
 | 5년 | yfinance `^FVX` | Treasury `BC_5YEAR` |
 | 10년 | yfinance `^TNX` | Treasury `BC_10YEAR` |
 | 30년 | yfinance `^TYX` | Treasury `BC_30YEAR` |
 
-[최신 기본 수집 명세](./Market_Source_Policy_20261123.md). 국채 금리선물과 현물 수익률을 같은 컬럼에 기록하지 말 것.
-
-## 구리·은 및 Binance 롱숏 비율 추가 (2026-11-23)
-
-- **구리:** Binance Futures `COPPERUSDT`, 내부 `COPPER_BINANCE_PERP`; **은:** `XAGUSDT`, 내부 `SILVER_BINANCE_PERP`. 두 종목 모두 실측 `TRADING / TRADIFI_PERPETUAL`, REST 1분봉 지원. 기존 Binance Futures `@aggTrade` 실시간 스트림의 구독 목록에 추가했다. USDT 표시 영구선물은 원자재 현물 또는 거래소 만기선물과 다르다.
-- **공식 롱숏 비율 4종:** 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율. Binance `/futures/data/*` 무료 공개 REST의 **최소 5분 집계**로 수집한다. 실시간 WS 틱이 아니며, Taker 매수·매도 비율은 포지션 롱숏 비율과 다르다.
-- `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
-- `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
-- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](../examples/realtime_collector.py).
-
-2026-11-25 기술 변경: 신규 스크래핑 어댑터는 [Scrapling](../tech-stack/data-collection.md)을 채택하며 전용 격리 worker와 요청 정책을 [보안 설계](../tech-stack/security.md)에 따라 구현한다. 기존 PoC는 변경하지 않는다.
+[시장 데이터 소스 정책](./Market_Source_Policy_20261123.md). 국채 금리선물과 현물 수익률을 같은 컬럼에 기록하지 말 것.

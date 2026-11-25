@@ -50,6 +50,8 @@
 
 ## 3. 공통 서비스 및 동시성
 
+[전체 플랫폼 보안 설계](./security.md)의 SEC-01~SEC-10을 적용한다. 공통 인가 계층에서 REST/MCP/Job 동일 정책, CSRF·입력 검증·리소스 단위 권한·rate limit을 적용한다. 수집 broker는 등록 source_id 기반 제한 계약만 허용하고 scraper 결과를 신뢰하지 않으며 schema·권한·출처를 재검증한 후 원장에 적재한다.
+
 API와 MCP가 동일 use case를 호출하며 서버에서 인증·인가·소유권·승인·모드·품질을 재검증한다. Repository/UoW 인터페이스로 DB 구현을 격리한다. 버전 증가와 FK/unique 제약으로 경쟁 쓰기 방지. 저장된 Workflow 수정 시 활성 버전 불변. 읽기만 허용된 연결에서 변경 use case 호출 금지. 요청 payload에 임의 SQL·shell·파일 경로·URL을 허용하지 않는다.
 
 ## 4. Durable Job 및 이벤트
@@ -63,7 +65,3 @@ SSE는 동일 origin 인증 세션, Last-Event-ID, heartbeat, backpressure/최�
 ## 5. 공식 참조
 
 [FastAPI](https://fastapi.tiangolo.com/) · [SQLAlchemy asyncio](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html) · [Pydantic](https://docs.pydantic.dev/) · [Alembic](https://alembic.sqlalchemy.org/) · [PostgreSQL SELECT](https://www.postgresql.org/docs/17/sql-select.html) · [APScheduler](https://apscheduler.readthedocs.io/)
-
-## 6. 보안 연계
-
-[전체 플랫폼 보안 설계](./security.md)의 SEC-01~SEC-10을 적용한다. 공통 인가 계층에서 REST/MCP/Job 동일 정책, CSRF·입력 검증·리소스 단위 권한·rate limit을 적용한다. 수집 broker는 등록 source_id 기반 제한 계약만 허용하고 scraper 결과를 신뢰하지 않으며 schema·권한·출처를 재검증한 후 원장에 적재한다.

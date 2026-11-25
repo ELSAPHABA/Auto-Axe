@@ -1,4 +1,4 @@
-# Auto-Axe 수집 지표별 기본 소스 — 2026-11-23
+# Auto-Axe 수집 지표별 기본 소스
 
 | 지표 | 기본 공급원 | 갱신 / 주의 |
 |---|---|---|
@@ -8,6 +8,7 @@
 | WTI 가격 동향 | Binance Futures `CLUSDT` | 원유 연동 영구선물 라이브 틱. NYMEX 선물 아님 |
 | Brent 가격 동향 | Binance Futures `BZUSDT` | 원유 연동 영구선물 라이브 틱. ICE/NYMEX 선물 아님 |
 | 비트코인 | Binance Spot `BTCUSDT` | Spot 실시간 체결, USD가 아닌 USDT 호가 |
+| Binance 롱숏 및 Taker 통계 | Binance Futures `/futures/data/*` | 전체 계정·상위 계정·상위 포지션·Taker 거래량 4종, 최소 5분 집계; BTC 비율은 선물, 가격은 Spot. [상세](./Binance_Metals_LongShort_20261123.md) |
 | 미국 개별주식 PER·PBR·ROE | **yfinance `Ticker.info`: `trailingPE`, `forwardPE`, `priceToBook`, `returnOnEquity`** | 기업별 필드 누락 가능, 후행/예상 PER 구분; ROE 원본은 비율. ETF QLD는 기업 재무비율로 취급하지 않음. [상세](./YFinance_Valuation_and_Moving_Averages.md) |
 | 이동평균선 SMA·EMA | **yfinance `Ticker.history` OHLCV 조회 → 로컬 계산** | 일봉 SMA 5·20·60·120·200 및 EMA, 분봉도 자체 계산. Yahoo `fiftyDayAverage`/`twoHundredDayAverage`는 참고. [상세](./YFinance_Valuation_and_Moving_Averages.md) |
 | 최근 5·10·20거래일 최고가·최저가 | **yfinance `Ticker.history(interval='1d')`의 `High`/`Low` → `rolling().max()`/`min()` 로컬 계산** | 5·10·20개 **실제 거래세션**의 `HIGH_5D/10D/20D`, `LOW_5D/10D/20D` 6개 지표. 마감 후 당일 확정봉 포함; 장중 돌파 기준은 직전 N개 완성봉만 사용. [산출 명세](./YFinance_Valuation_and_Moving_Averages.md) |
@@ -19,7 +20,7 @@
 | 미국 국채 5년 | yfinance `^FVX` | 지연 가능 |
 | 미국 국채 10년 | yfinance `^TNX` | 지연 가능 |
 | 미국 국채 30년 | yfinance `^TYX` | 지연 가능 |
-| CNN 공포·탐욕 | [CNN](https://edition.cnn.com/markets/fear-and-greed) | |
+| CNN 공포·탐욕 | [CNN](https://edition.cnn.com/markets/fear-and-greed) | 허가 전 자동 비활성; 허용 수동 기록 |
 | 해외주식 매수·매도 결제 통계 (서학개미 수급) | [SEIBro 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921) | 국가(미국 우선)·조회기간별 매수결제/매도결제/순매수결제 USD. **WebSquare 화면 스크래핑**; TOP50는 전체 해외주식 총액이 아니며 체결 아닌 결제 기준. [상세 명세](./SEIBro_Overseas_Stock_Flows.md) |
 | DDR5 UDIMM 16GB 4800/5600 · RDIMM 32GB 4800/5600 | [DRAMeXchange](https://www.dramexchange.com/) `Module Spot Price`의 `Session Average` 스크래핑 (권한 확인 후) | 두 독립 모듈 현물가격 지표; 주간 갱신, 표의 Last Update 보존. [명세](./DRAMeXchange_Module_Spot_Prices.md) |
 | 펜타곤 피자지수 | [PizzINT](https://www.pizzint.watch/) | 수집 권한 확인 전 수동 |
@@ -29,14 +30,6 @@
 | 미국 트리플·쿼드러플 위칭 | OCC/OIC·Cboe·CME (지수선물 및 개별주식선물 포함) | 실제 분기 동시 만기 상품군 3/4종 확인, 별도 이벤트·DTE·미확인 상태 저장. [상세 명세](./US_Equity_Witching_Calendar.md) |
 | 중앙은행 금리 (Fed·BoJ·BoE·ECB) | 각 중앙은행 공식 발표/공개 시계열 | 실시간 시장 금리와 다름 |
 
-**두바이유는 수집 대상에 포함하지 않는다.** 시장가격은 Binance 공개 시세, VIX·3M/5Y/10Y/30Y 수익률은 yfinance, 2Y는 네이버 증권.
+**두바이유는 수집 대상에 포함하지 않는다.** 시장가격은 Binance 공개 시세, VIX·3M/5Y/10Y/30Y 수익률은 yfinance, 2Y 지정 출처는 네이버 증권이며 승인 전 Treasury 일별 fallback이다.
 
-[최신 소스 정책](./Market_Source_Policy_20261123.md) · [수집기](../examples/realtime_collector.py).
-
-## 구리·은 및 Binance 롱숏 비율 추가 (2026-11-23)
-
-- **구리:** Binance Futures `COPPERUSDT`, 내부 `COPPER_BINANCE_PERP`; **은:** `XAGUSDT`, 내부 `SILVER_BINANCE_PERP`. 두 종목 모두 실측 `TRADING / TRADIFI_PERPETUAL`, REST 1분봉 지원. 기존 Binance Futures `@aggTrade` 실시간 스트림의 구독 목록에 추가했다. USDT 표시 영구선물은 원자재 현물 또는 거래소 만기선물과 다르다.
-- **공식 롱숏 비율 4종:** 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율. Binance `/futures/data/*` 무료 공개 REST의 **최소 5분 집계**로 수집한다. 실시간 WS 틱이 아니며, Taker 매수·매도 비율은 포지션 롱숏 비율과 다르다.
-- `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
-- `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
-- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](../examples/realtime_collector.py).
+[시장 데이터 소스 정책](./Market_Source_Policy_20261123.md) · [수집기](../examples/realtime_collector.py).

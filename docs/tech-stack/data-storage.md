@@ -2,6 +2,8 @@
 
 ## 1. 기본 선택
 
+[전체 플랫폼 보안 설계](./security.md)의 데이터 등급·DB 역할·암호화·감사·백업 정책을 적용한다. scraper-worker에는 DB credential을 부여하지 않고 broker/검증 계층만 결과를 적재한다. 거래 비밀은 DB 일반 조회와 연구 artifact에서 제외하며 DB 접근 제약과 API 리소스 정책을 함께 검증한다.
+
 PostgreSQL 17 + psycopg 3 + SQLAlchemy/Alembic을 기본 원장으로 한다. native RANGE partitioning, B-tree/BRIN, JSONB, COPY/batch insert로 초기 시계열 요구를 처리한다. TimescaleDB/ClickHouse는 실제 저장량·질의·운영 비용에서 이점이 확인되면 별도 ADR로 검토한다. SQLite는 단위 테스트용 단순 fixture에 한정하고 실제 동시성 테스트는 PostgreSQL에서 실행한다.
 
 Parquet + PyArrow는 연구용 불변 데이터셋/허가된 원본 아카이브, DuckDB는 read-only 분석 query, pandas는 피처/모델 입력. 초기에는 private filesystem volume, 확장 시 S3 호환 object store(사용권·비용 확인)로 변경할 수 있는 artifact interface. Valkey는 선택적 최신값 캐시/알림으로만 사용하고 주문·조건·Job 원장의 유일 저장소로 쓰지 않는다.
@@ -42,7 +44,3 @@ workflow_versions/group_versions는 배포/실행에 고정; dependency FK 및 �
 백업: pg_dump + WAL archiving/PITR 도입 단계 구분, 암호화된 off-host 백업, 복원 테스트. artifact/IdP DB/필수 설정·비밀 복구 절차 별도. 스냅샷과 DB 참조 버전 일치 검증. migration은 staging 복제본에서 expand/contract 테스트, destructive change 이전 backup. RPO/RTO는 [운영 문서](./infrastructure.md)의 목표를 측정하고 복구 후 주문 대사 및 명시적 재무장.
 
 [PostgreSQL partitioning](https://www.postgresql.org/docs/17/ddl-partitioning.html) · [DuckDB Parquet](https://duckdb.org/docs/stable/data/parquet/overview) · [PyArrow](https://arrow.apache.org/docs/python/)
-
-## 6. 보안 연계
-
-[전체 플랫폼 보안 설계](./security.md)의 데이터 등급·DB 역할·암호화·감사·백업 정책을 적용한다. scraper-worker에는 DB credential을 부여하지 않고 broker/검증 계층만 결과를 적재한다. 거래 비밀은 DB 일반 조회와 연구 artifact에서 제외하며 DB 접근 제약과 API 리소스 정책을 함께 검증한다.

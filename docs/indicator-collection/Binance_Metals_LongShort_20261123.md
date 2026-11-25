@@ -1,6 +1,8 @@
-# Binance 구리·은 및 롱숏 지표 수집 검증 (2026-11-23)
+# Binance 구리·은 및 롱숏 지표 수집 및 검증
 
-## 추가 가격 지표
+> 실측일: 2026-11-23. REST 검증과 실제 장시간 WS 수신 검증은 구분한다.
+
+## 금속 가격 지표
 
 Binance USDⓈ-M Futures 공식 `GET /fapi/v1/exchangeInfo`의 실제 응답에서 다음 두 계약은 `TRADING`, `TRADIFI_PERPETUAL`, `USDT` 호가이다. `/fapi/v1/ticker/price` 및 `/fapi/v1/klines?interval=1m&limit=2` 요청도 HTTP 200에 정상 가격/캔들 반환.
 
@@ -24,7 +26,7 @@ Binance USDⓈ-M Futures 공식 `GET /fapi/v1/exchangeInfo`의 실제 응답에�
 
 실제 Binance REST 요청에서 **BTCUSDT, XAUUSDT, XAGUSDT, COPPERUSDT, CLUSDT** 모두 각 네 가지 API가 HTTP 200에 `limit=2`의 데이터 두 행을 반환했다. 샘플 시간 및 값은 실행 시 달라지므로 보관 시 `timestamp`를 사용한다.
 
-실시간 대안으로 Binance의 `@aggTrade` 스트림에서 체결 방향을 `m`(buyer is maker) 등을 활용해 거래자 주도 매수·매도 압력을 **자체 계산**할 수는 있다. 그러나 이는 **공식 롱숏 계정/포지션 비율과 다르며** 어느 거래자가 실제 롱 포지션을 유지하는지는 알 수 없다. 본 PoC에는 공식 5분 통계만 추가했다.
+실시간 대안으로 Binance의 `@aggTrade` 스트림에서 체결 방향을 `m`(buyer is maker) 등을 활용해 거래자 주도 매수·매도 압력을 **자체 계산**할 수는 있다. 그러나 이는 **공식 롱숏 계정/포지션 비율과 다르며** 어느 거래자가 실제 롱 포지션을 유지하는지는 알 수 없다. PoC는 공식 5분 통계를 제공한다.
 
 공개 market-data 접근은 지역·상품·이용조건과 호출 한도에 따라 다르다. 새 시계열 데이터는 `provider`, `symbol`, `kind`, `ratio_definition`, `period`, `source_event_at`, `received_at`, `raw_response_fields`를 기록한다. 5분 주기 자료를 1분마다 요청할 수 있더라도 동일 `timestamp`의 중복 레코드를 쌓지 않는다.
 

@@ -1,6 +1,6 @@
 # Auto-Axe MCP 명세
 
-> 2026-11-25 · 사용자 승인 아키텍처: 단일 통합 Auto-Axe MCP + 내부 도메인 모듈화, NH투자증권 연동용 외부 nhplug-mcp 분리. 아직 구현·배포되지 않았다.
+> 단일 통합 Auto-Axe MCP와 내부 도메인 모듈, 별도 NH 조회용 nhplug-mcp 및 독립 SDK Executor를 구현한다. 운영 구현·배포는 아직 없다.
 
 ## 문서 구성
 

@@ -1,22 +1,25 @@
-# Auto-Axe 무료 데이터 수집 실행 가이드 (2026-11-23)
+# Auto-Axe 무료 데이터 수집 실행 가이드
 
-> 2026-11-22 · **구독비 0원만 대상**. 실제 실시간성·지연을 별도 확인한다. **무료 REST 조회를 초 단위로 반복해도 일별 데이터가 실시간으로 바뀌지 않는다.**
+> 수집 PoC · **구독비 0원만 대상**. 실제 실시간성·지연을 별도 확인한다. **무료 REST 조회를 초 단위로 반복해도 일별 데이터가 실시간으로 바뀌지 않는다.**
 
 ## 0. 기본 수집 — Binance 실시간 + 국채 5만기
 
 ```bash
 python -m pip install -r docs/examples/requirements.txt
 
-# Binance 현물 BTC/USDT 및 금·WTI·Brent 연동 영구선물 체결 실시간 WS
+# Binance 현물 BTC/USDT 및 금·은·구리·WTI·Brent 연동 영구선물 체결 실시간 WS
 python docs/examples/realtime_collector.py binance-live
 
 # Binance 영구선물 최신 가격 REST 1회
 python docs/examples/realtime_collector.py binance-futures
 
+# Binance 선물 롱숏 4종(최소 5분)
+python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300
+
 # Binance가 원본 지표를 지원하지 않는 경우: VIX, 국채 3M/5Y/10Y/30Y
 python docs/examples/realtime_collector.py yf-market --symbols VIX UST_3M UST_5Y UST_10Y UST_30Y --period 1d --bar-interval 1m
 
-# 국채 2Y 지정 출처 네이버 US2YT=RR
+# 국채 2Y 지정 출처 네이버 US2YT=RR (자동화 권한 확인 후에만 실행)
 python docs/examples/realtime_collector.py naver-2y
 
 # fallback: 미국 재무부 공식 국채 2Y 포함 5개 만기 일별
@@ -28,7 +31,7 @@ python docs/examples/realtime_collector.py gold-spot-reference
 
 네이버 모바일 증권의 `US2YT=RR` 화면은 `closePrice`·`localTradedAt` 필드를 제공한다.
 
-**주의:** Binance `XAUUSDT`, `CLUSDT`, `BZUSDT`는 **원자재 연동 영구선물**, `BTCUSDT`는 **USDT 호가 현물**이다. 이들은 Yahoo `GC=F`·`CL=F`·`BZ=F`, 금 현물 또는 BTC/USD와 동일하지 않다. [최신 소스 정책](./Market_Source_Policy_20261123.md).
+**주의:** Binance `XAUUSDT`, `XAGUSDT`, `COPPERUSDT`, `CLUSDT`, `BZUSDT`는 **원자재 연동 영구선물**, `BTCUSDT`는 **USDT 호가 현물**이다. 이들은 Yahoo `GC=F`·`CL=F`·`BZ=F`, 금 현물 또는 BTC/USD와 동일하지 않다. [시장 데이터 소스 정책](./Market_Source_Policy_20261123.md).
 
 ## 1. 설치
 
@@ -179,22 +182,14 @@ python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit 
 숫자 65는 **문법 예시**로 실제 공포·탐욕 점수가 아니다. 실제 입력 시 근거 화면을 확인하고 화면에 공개시각이 있으면 `--as-of 2026-11-22T20:00:00+09:00` 형식으로 입력한다. 없으면 비운다. 기본 출력 `auto_axe_manual_observations.csv`, 등록 직후 `unverified` 상태다. 자세한 컬럼·검증·품목 목록은 [Manual_Collection.md](./Manual_Collection.md).
 
 
-## 10. PizzINT·CNN 지정 출처와 이전 yfinance 조사 기록
+## 10. PizzINT·CNN 원본 및 yfinance 검증
 
 - PizzINT 출처: `https://www.pizzint.watch/`; 공개 데이터 URL `https://www.pizzint.watch/api/dashboard-data`. HTTP 200 JSON 응답과 필드 확인.
 - CNN 원본: `https://edition.cnn.com/markets/fear-and-greed`.
+- PizzINT/CNN 및 네이버의 자동화·저장 권한 미확인 시 실행 금지. [Scrapling 수집 및 보안](../tech-stack/data-collection.md).
 
 ```bash
 python -m pip install yfinance
 python docs/examples/yfinance_probe.py --period 5d --interval 1m
 python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
 ```
-
-
-## 구리·은 및 Binance 롱숏 비율 추가 (2026-11-23)
-
-- **구리:** Binance Futures `COPPERUSDT`, 내부 `COPPER_BINANCE_PERP`; **은:** `XAGUSDT`, 내부 `SILVER_BINANCE_PERP`. 두 종목 모두 실측 `TRADING / TRADIFI_PERPETUAL`, REST 1분봉 지원. 기존 Binance Futures `@aggTrade` 실시간 스트림의 구독 목록에 추가했다. USDT 표시 영구선물은 원자재 현물 또는 거래소 만기선물과 다르다.
-- **공식 롱숏 비율 4종:** 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율. Binance `/futures/data/*` 무료 공개 REST의 **최소 5분 집계**로 수집한다. 실시간 WS 틱이 아니며, Taker 매수·매도 비율은 포지션 롱숏 비율과 다르다.
-- `python docs/examples/realtime_collector.py binance-live`: BTC Spot + 금·은·구리·WTI·Brent 5개 영구선물.
-- `python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m --interval 300`: 6개 Binance 선물 심볼의 롱숏·Taker 통계 5분 간격 조회.
-- [상세 응답 검증과 API 구분](./Binance_Metals_LongShort_20261123.md) · [Python 수집기](../examples/realtime_collector.py).

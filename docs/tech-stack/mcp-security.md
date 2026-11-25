@@ -1,5 +1,7 @@
 # MCP·인증·보안 기술 스택
 
+[Auto-Axe 전체 플랫폼 보안 설계](./security.md)와 함께 적용한다. MCP의 도메인별 scope·리소스 정책, 외부 기본 차단, 직접 LIVE 주문 제출 금지 및 기존 [MCP 보안 요구사항](../mcp/security.md)은 그대로 유지한다. 웹/DB/스크래퍼/공급망/사고 대응 요구는 상위 문서에서 관리한다.
+
 ## 1. MCP
 
 공식 Python MCP SDK를 사용해 단일 Auto-Axe MCP 서버에 10개 도메인(market, indicator, stock_group, workflow, prediction, backtest, portfolio, collector, system, trading intent)을 등록한다. Tools/Resources/Prompts는 [기존 카탈로그](../mcp/tools.md), [Resources/Prompts](../mcp/resources-prompts.md)를 구현한다. FastAPI API와 Pydantic DTO, Application Service, authorization/Job/error contract 공유. SDK와 protocol revision은 실제 지원 Host/Inspector 호환성을 확인하고 lock한다. 직접 JSON-RPC 구현을 피한다. 실험적 MCP Tasks/구독·세션 기능을 무조건 지원한다고 가정하지 않는다.
@@ -39,7 +41,3 @@ secrets는 gitignored .env.example과 실제 secret 파일 분리, 최소 파일
 MCP Inspector 및 실제 로컬/외부 Host에서 initialize/tool/resource/prompt, schema, pagination, long job, cancel/reconnect, 오류 검증. 외부 무인증/만료/철회/잘못된 issuer·audience·scope, 악성 Host/Origin, SSRF, 타 계좌, 과도한 요청, read-only write, 직접 주문, 원격 off, OAuth discovery/PKCE/redirect 검증. 실패 시 원격 기본 차단.
 
 [공식 MCP SDK](https://github.com/modelcontextprotocol/python-sdk) · [MCP authorization](https://modelcontextprotocol.io/specification) · [Keycloak](https://www.keycloak.org/documentation) · [Caddy](https://caddyserver.com/docs/) · [기존 보안 명세](../mcp/security.md)
-
-## 6. 상위 보안 정책
-
-[Auto-Axe 전체 플랫폼 보안 설계](./security.md)와 함께 적용한다. MCP의 도메인별 scope·리소스 정책, 외부 기본 차단, 직접 LIVE 주문 제출 금지 및 기존 [MCP 보안 요구사항](../mcp/security.md)은 그대로 유지한다. 웹/DB/스크래퍼/공급망/사고 대응 요구는 상위 문서에서 관리한다.
