@@ -58,14 +58,13 @@ MEXC `NAS100_USDT`는 지수 연동 영구선물이며 실시간 수신·지연�
 | 지표 | 우선 수집 출처·방법 | 대안 및 보조 경로 | 수동·결측 처리 | 빈도 및 주의사항 |
 |---|---|---|---|---|
 | VIX | **yfinance `^VIX`** (우선) / Cboe 무료 일별 CSV 검증 | Cboe Quote Dashboard 자동 추출 금지 | 데이터 권한·지연 문제 시 장중 수동 | **yfinance 분봉 수신 검증, 무지연 보장 없음** |
-| 미국 국채 금리 3M·2Y·5Y·10Y·30Y | **3M/5Y/10Y/30Y: yfinance `^IRX/^FVX/^TNX/^TYX`; 2Y: 네이버 `US2YT=RR` ** | 네이버 robots 차단으로 무허가 시 [Treasury 공식 XML `BC_2YEAR`](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) 일별 대체 | 2Y 일중값 수동 기록 | Yahoo 지표·네이버 게시 수익률·Treasury 일별값을 별도 표기 |
+| 미국 국채 금리 3M·2Y·5Y·10Y·30Y | **3M/5Y/10Y/30Y: yfinance `^IRX/^FVX/^TNX/^TYX`; 2Y: 네이버 `US2YT=RR` ** | | | Yahoo 지표·네이버 게시 수익률·Treasury 일별값을 별도 표기 |
 
-- **기본:** VIX `yfinance ^VIX`, 국채 3M `^IRX`, 5Y `^FVX`, 10Y `^TNX`, 30Y `^TYX`. **2Y 지정 출처:** [네이버 `US2YT=RR`](https://m.stock.naver.com/marketindex/bond/US2YT=RR). 실측 JSON의 `closePrice`·`localTradedAt`는 확인했으나 `robots.txt` 전체 차단으로 무허가 스크래핑은 비활성화. 허가 전에는 Treasury `BC_2YEAR` 공식 일별값 사용. [최신 정책](./Market_Source_Policy_20261123.md).
+- **기본:** VIX `yfinance ^VIX`, 국채 3M `^IRX`, 5Y `^FVX`, 10Y `^TNX`, 30Y `^TYX`. **2Y 지정 출처:** [네이버 `US2YT=RR`](https://m.stock.naver.com/marketindex/bond/US2YT=RR). 실측 JSON의 `closePrice`·`localTradedAt` 확인.
 
 - VIX [Cboe 공식 EOD CSV](https://www.cboe.com/tradable_products/vix/vix_historical_data): `https://cdn-api.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv`. 시장 운영시간의 실제 스트리밍이 아니다. Cboe Quotes Dashboard에 명시된 **자동화 추출 금지**를 준수한다.
 - Treasury [일별 공식 파 수익률](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics), [XML 제공 안내](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed): 2Y/10Y 등 단위 `percent`. [FRED DGS2/DGS10](https://fred.stlouisfed.org/series/DGS10)은 무료 개인 조회 참고만. 국채 현물 수익률과 국채 선물 가격은 전혀 다른 값.
-- VIX 및 3M/5Y/10Y/30Y yfinance 분봉은 무지연 실시간 수익률이 아님. 2Y는 네이버 자동수집 허가 전까지 Treasury 공식 일별만 사용한다.
-- **FRED 주의:** API 이용약관은 별도의 무허가 데이터 저장/캐싱/DB 편입 및 AI 개발/학습 관련 제한을 명시한다. Auto-Axe의 영속 DB에 FRED 반환값을 무조건 적재하지 말 것. [FRED 이용약관](https://fred.stlouisfed.org/legal/terms/). 가능한 경우 데이터 원 발행기관(EIA/Treasury/BOJ/ECB)의 허용된 공개 다운로드로 대체한다.
+- VIX 및 3M/5Y/10Y/30Y yfinance 분봉은 무지연 실시간 수익률이 아님.
 
 **yfinance 검증 범위:** [YFinance_Data_Validation.md](./YFinance_Data_Validation.md) 참고. 2026-11-22 `^VIX`, `^TNX`, `CL=F`, `BZ=F`의 일봉·1분봉 수신을 확인했으나 **2026-11-23부터 원유·금·BTC의 기본 가격은 Binance로 전환**했다.
 
@@ -77,8 +76,8 @@ MEXC `NAS100_USDT`는 지수 연동 영구선물이며 실시간 수신·지연�
 | 미국 개별주식 PER·PBR·ROE | **yfinance `Ticker.info`: `trailingPE`/`forwardPE`/`priceToBook`/`returnOnEquity`** | 공개 기업 재무제표와 해당 시점 주가로 직접 재산출·검증 가능 | 수집 제한/결측 시 원자료 확인 | 원본 ROE는 ratio, forward PER은 예상 EPS 기반. ETF QLD를 기업 지표로 혼용하지 않음. [설계](./YFinance_Valuation_and_Moving_Averages.md) |
 | 이동평균선(SMA·EMA) | **yfinance `Ticker.history`의 OHLCV** | SMA/EMA 직접 계산 (5·20·60·120·200일 등) | 봉 또는 가격 원본 부재 시 결측 | 종가 기준·배당/분할 조정·확정봉/진행봉을 구별. [설계](./YFinance_Valuation_and_Moving_Averages.md) |
 | 최근 5·10·20거래일 최고·최저가 (미국 주식·ETF) | **yfinance 일봉 `High`/`Low` → rolling max/min 로컬 계산** | 주말·휴장일 제외한 실제 거래일 N개 기준, 일봉 확정 후 저장 | 일봉 미확정·누락 시 결측 처리 | **총 6개 지표** (`HIGH/LOW_5D/10D/20D`). 장중 돌파는 전일 이전 N개 확정봉 기준. [산출 명세](./YFinance_Valuation_and_Moving_Averages.md) |
-| 해외주식 매수·매도 결제 통계 (서학개미 동향) | **[한국예탁결제원 SEIBro 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921)**; 화면 로더·XML 확인, 공식 공개 자동 API 미확인 | WebSquare UI의 기간·국가·매수/매도/순매수 결제금액 **허가된 스크래핑 예정**; 권리 검토 전 비활성 | **SEIBro 화면 수동 기록** | **결제 기준, TOP50, USD; 실시간 체결·개인계정 원장 아님**. [필드·제약](./SEIBro_Overseas_Stock_Flows.md) |
-| 기업 실적 가이던스 | **SEC EDGAR** submissions JSON + 8-K Atom/RSS, 문서/Exhibit 원문 | 회사 공식 IR 보도자료 및 허용된 HTML, RSS 없는 경우 | PDF·콜에서 매출/EPS 전망을 근거 링크와 함께 입력 | `EVENT`: 신규 공시/보도자료 |
+| 해외주식 매수·매도 결제 통계 (서학개미 동향) | **[한국예탁결제원 SEIBro 종목별내역(주식TOP50)](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921)**; 화면 로더·XML 확인, 공식 공개 자동 API 미확인 | WebSquare UI의 기간·국가·매수/매도/순매수 결제금액 스크래핑 | **SEIBro 화면 수동 기록** | **결제 기준, TOP50, USD; 실시간 체결·개인계정 원장 아님**. [필드·제약](./SEIBro_Overseas_Stock_Flows.md) |
+| 기업 실적 가이던스 | **SEC EDGAR** submissions JSON + 8-K Atom/RSS, 문서/Exhibit 원문 | 회사 공식 IR 보도자료 및 HTML, RSS 없는 경우 | PDF·콜에서 매출/EPS 전망을 근거 링크와 함께 입력 | `EVENT`: 신규 공시/보도자료 |
 
 ### 3.1 누적 거래량
 
@@ -114,9 +113,9 @@ SEIBro의 국가·조회기간별 해외주식 TOP50 매수·매도·순매수 �
 | 미국 지표·금리 발표 일정 | [BLS 일정 ICS](https://www.bls.gov/schedule/news_release/bls.ics), FOMC 일정, BEA 발표 일정 | BEA/FOMC/Census 등 공식 HTML/RSS/ICS | 일정 변경·공식 문서 PDF를 수동 입력 | `EVENT`: 공고 즉시 또는 변경시 |
 | 미국 지표 실제 발표값 | [BLS v2 API](https://www.bls.gov/developers/api_signature_v2.htm), BEA API, Census API | BLS [CPI 보도자료](https://www.bls.gov/news.release/cpi.htm), [고용보고서](https://www.bls.gov/news.release/empsit.htm), BEA 공식 발표 HTML | 원문 확인 후 수치·최초 발표·수정여부 수동 입력 | `EVENT`; API가 원문보다 늦을 수 있음 |
 
-- 일정: [BLS 공식 ICS](https://www.bls.gov/schedule/news_release/bls.ics) (CPI/NFP/PPI), [BEA 일정](https://www.bea.gov/news/schedule) (GDP/PCE), [Fed FOMC 일정](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm), [Census 일정](https://www.census.gov/economic-indicators/). ICS 공식 다운로드 → HTML/RSS 허용 파싱 → 수동 순.
+- 일정: [BLS 공식 ICS](https://www.bls.gov/schedule/news_release/bls.ics) (CPI/NFP/PPI), [BEA 일정](https://www.bea.gov/news/schedule) (GDP/PCE), [Fed FOMC 일정](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm), [Census 일정](https://www.census.gov/economic-indicators/). ICS 공식 다운로드 → HTML/RSS 파싱 → 수동 순.
 - 실제 수치: BLS `POST https://api.bls.gov/publicAPI/v2/timeseries/data/` 예 `CUUR0000SA0`(CPI-U), `CES0000000001`(취업자), `LNS14000000`(실업률). [BLS API FAQ](https://www.bls.gov/developers/api_faqs.htm): 미등록/등록 일일 요청 제한 준수. [BLS CPI release](https://www.bls.gov/news.release/cpi.htm) 보도자료는 API 반영 전 원문 확인 가능하지만 페이지의 차기 값 갱신을 무조건 단정하지 않는다.
-- BEA 무료 데이터 API [개발자 페이지](https://www.bea.gov/resources/for-developers), CPI와 PCE는 서로 다른 지표; BEA GDP·PCE 원문 공개 페이지 허용 크롤링. `forecast`(컨센서스)는 공공기관 발표 자료에서 대체로 제공하지 않으므로 **검증된 무료 표준값 부재 시 `manual`**.
+- BEA 무료 데이터 API [개발자 페이지](https://www.bea.gov/resources/for-developers), CPI와 PCE는 서로 다른 지표; BEA GDP·PCE 원문 공개 페이지 크롤링. `forecast`(컨센서스)는 공공기관 발표 자료에서 대체로 제공하지 않으므로 **검증된 무료 표준값 부재 시 `manual`**.
 - `scheduled_at`(예정), `released_at`(공개), `first_seen_at`(수신), `period`(대상월/분기), `actual_first`, `revised`, `previous`, `consensus_if_available` 분리. 미국 동부 시간대 DST 적용.
 
 ### 4.2 중앙은행 정책금리
@@ -125,7 +124,7 @@ SEIBro의 국가·조회기간별 해외주식 TOP50 매수·매도·순매수 �
 |---|---|---|---|---|
 | 미국 기준금리 | Fed [FOMC 공식 결정](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm), [FRED DFEDTARL/U](https://fred.stlouisfed.org/docs/api/fred/) 개인 조회 | FOMC 공개 보도자료 HTML | 공식 결정 성명 및 발효일 기록 | `EVENT`, 후행 공식 시계열 |
 | 일본 기준금리 | [BOJ 무료 2026 통계 API](https://www.stat-search.boj.or.jp/info/api_manual_en.pdf) 실효콜금리 + 정책 결정문 | [BOJ 통화정책 성명](https://www.boj.or.jp/en/mopo/mpmdeci/) 공개 HTML/PDF | PDF 성명 정책 목표금리 수동 확인 | `EVENT` 목표치 / 통계는 일별 실효치 |
-| 영국 기준금리 | [BoE 공개 Bank Rate CSV](https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp) `IUDBEDR` | BoE 공식 MPC 성명 HTML (허용 시) | 정책 결정·발효시점 확인 | `EVENT` / 일별 Bank Rate |
+| 영국 기준금리 | [BoE 공개 Bank Rate CSV](https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp) `IUDBEDR` | BoE 공식 MPC 성명 HTML | 정책 결정·발효시점 확인 | `EVENT` / 일별 Bank Rate |
 | 유로존(ECB) 기준금리 | [ECB SDMX 공개 API](https://data.ecb.europa.eu/help/api/data) DFR | [ECB 공식 결정 RSS](https://www.ecb.europa.eu/home/html/rss.en.html) / 보도자료 | 원문 결정금리 수동 확인 | `EVENT` / 일별 DFR; **EU 전체 단일금리 아님** |
 
 | 기관 | 무료 자동 경로 | 발표 즉시 조치 | 별도 의미 |
