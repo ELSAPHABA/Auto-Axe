@@ -64,3 +64,10 @@
 - 원인: 기본 프로필의 up --build는 선택 프로필의 기존 fixture-collector 이미지를 재빌드하지 않음. 새 Python 소스와 오래된 별도 서비스 이미지가 불일치. 마이그레이션이나 parser 구현 문제가 아님.
 - 해결: 선택 프로필 run에 --build 추가, CI 및 실행 문서에 동일 명령 반영. 기존 DB 볼륨 삭제 또는 임의 이미지 전체 삭제는 불필요하므로 하지 않음.
 - 재검증: 두 cycle 모두 scheduled=1, processed=1, 신규 FIXTURE_PRICE 123.45 USD 두 건 valid 조회, down exit 0, ps -a 비어 있음. 이전 volume 유지. 후속 Phase log에 관측 ID 기록.
+
+## TS-01-10 — 로컬 Git 인증 부재 재발
+
+- 재현: 로컬 구현 commit 1dc4a010cd851d5caf1e4542e0f96f79e197eec2 생성 후 GIT_TERMINAL_PROMPT=0, git -c credential.interactive=never push origin main. exit 128, fatal: Cannot prompt because user interactivity has been disabled; fatal: unable to get password from user.
+- 원인: 기존 TS-00-08과 동일한 로컬 Git 인증 부재. 코드나 원격 branch conflict 문제가 아님.
+- 해결: 자격증명을 읽거나 저장하지 않고 기존 승인된 GitHub 연결로 동일 tree 553eddb8f65941086648e50713fc22431bb6e9f2의 commit f1352a69e6d4115bf016029fc8cee97e29a27a69 생성, 예상 base SHA에 대해 force=false main 갱신. 로컬 원본은 phase1-followup-local-preserved에 보존, fetch 및 diff 동일성 확인 후 rebase에서 동일 patch 자동 skip.
+- 재검증: git diff --exit-code HEAD origin/main, git rebase origin/main exit 0; 재개 시 main/remote HEAD 일치, clean, CI 45854005885 completed/success. 로컬 직접 push 인증 자체는 여전히 미설정이며 향후 필요 시 같은 안전한 절차 사용.

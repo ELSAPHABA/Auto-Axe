@@ -52,4 +52,6 @@ CLI: `uv run --project apps/backend --locked python -m autoaxe.entrypoints.marke
 
 ## 남은 운영 게이트
 
+Phase 1 개발 fixture 종료 검증: 구현 commit f1352a69e6d4115bf016029fc8cee97e29a27a69, backend 66 passed locally, [GitHub Actions 45854005885](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45854005885) completed/success. contracts-backend, frontend(Playwright 포함), fixture-compose, secret-scan 모두 성공. 실제 운영 권한이나 실제 데이터 품질 보증과는 별개.
+
 공급자 이용권/재배포 및 rate limit, Binance spot historical raw ID 권한, Yahoo 실제 지연, Naver 승인형 Scrapling, Treasury 발표 시각/일정, 장시간 외부 collector 서비스 및 실제 소스 reconnect, 운영 retention/load/backup/security, 인증 및 UI는 미검증 또는 후속 구현. 300s scheduler는 fixture로 검증하며 외부 provider 활성화와 별개. 경제·공시·캘린더 PoC는 Phase 2 범위. Treasury daily timestamp 미확인 시 null 및 UNKNOWN 유지; fallback은 표시용이며 장중 동일 소스인 것처럼 수익률 연결 금지. LIVE·실계좌·외부 MCP 계속 차단.
