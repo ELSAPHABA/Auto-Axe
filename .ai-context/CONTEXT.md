@@ -1,0 +1,112 @@
+# Auto-Axe 운영 맥락 — 에이전트 인계
+
+이 문서는 다음 세션에서 가장 먼저 읽는 작업 기준점이다. 원본 설계·요구사항은 Git에 보존된 문서로 연결하며 그 내용을 축소하거나 대체하지 않는다. 이 문서의 계획은 구현 완료나 추가 사용자 승인과 동일하지 않다.
+
+## METADATA (메타데이터)
+
+- Repository: https://github.com/ELSAPHABA/Auto-Axe (공개, ID 1427169047), clone: https://github.com/ELSAPHABA/Auto-Axe.git.
+- 원격 기본 브랜치 main; 분석 기준 HEAD `da26b439e1d2deaabed7138ee3f83897a44e023c`, root tree `188dc0e7c9e66ed7af9cbdb8ab5887eda94a59ee`, docs tree `c75cd03335fedf50655fb76e7cf18d18e2fc25c4`.
+- 갱신 일자: 2026-11-26 KST (사용자 대화 시각 23:25 KST). 세션 ID는 제공되지 않음, 논리 기록 ID planning-baseline-20261126. 이 문서 자체가 포함된 커밋은 Git 이력에서 확인(자기 참조 해시를 문서에 추측 기입하지 않음).
+- GitHub 연결로 원격만 조사. 로컬 checkout/프로세스/스테이징/설치 상태 미관찰.
+
+## TASK (작업 목표)
+
+사용자 요청: Auto-Axe 본격 코드 개발에 앞서 /docs를 분석해 개발 Phase 계획을 수립하고, 매 Phase의 진행 과정과 상황을 상세히 리포지토리에 저장해 완전히 새로운 대화/에이전트에서도 작업을 정확히 재개하도록 한다. 이번 세션은 계획 수립 및 기록 기반 구축에 한정. 실제 Phase 0 코드 구현 요청은 아직 없음.
+
+## USER SPECIFICATION (사용자 명세)
+
+아래 기록 의무는 사용자 직접 요청의 실질적 내용이며 최우선 명세이다. 이후 수정 지시가 있으면 변경 전/후와 최종 확정 사항을 보존한다.
+
+1. 사용자 메시지를 가장 높은 권위로 취급한다. 최초 목표, 모든 주요 요구사항, 제약, 선호, 수정, 승인, 결정, 후속 작업을 보존. 나중 지시가 이전 지시를 바꾸면 변경 내용과 최종 확정 사항 명시.
+2. 관련된 모든 사용자 메시지의 실질적 내용을 보존. 완전히 동일한 의미만 통합; 사소함/미구현을 이유로 삭제 금지.
+3. 기존 맥락 문서를 갱신 전에 반드시 읽고, 이전 요구사항/결정/미해결/이력을 잃지 않도록 병합. 무효 정보는 명시, 중복 방지.
+4. 도구 결과로 완료 판단. 검증 결과, 에이전트 주장, 가설, 제안, 사용자 승인 결정 구별. 확인 안 된 내용 지어내지 않음.
+5. 정확한 식별자(리포지토리 URL, 파일 경로, 함수, 버전, 포트, 해시, ID, 명령, 커밋, 오류) 보존.
+6. 현재 상태 중심. 완료·검증, 진행 중, 정확한 중단 지점, 결정되었으나 미구현, 실패 시도, 미해결 및 남은 일을 분리.
+7. 인과관계(문제→조사→원인→변경→검증), 기각 접근과 이유 보존.
+8. 확인 가능한 repo/branch/work tree/staging/commit/install/deploy/process 상태 기록, 로컬/원격 구분.
+9. 다음 에이전트가 세션을 다시 조사하거나 이미 제공된 사항을 재질문하지 않고 다음 도구 호출을 결정할 정도로 구체적으로 작성.
+10. 단순 요약 아닌 Lossless Operational Compression. 간결성보다 완전성. 큰 작업 세션은 자료량에 따라 약 10,000~30,000토큰을 목표로 하고 커지면 삭제 대신 상호 연결 보조 문서 분할. 이번 초기 계획은 기존 상세 원문을 기준 커밋에 보존하므로 중복 전체 전사 대신 연결.
+11. 원본 tool 실행 기록/인자/반환 전문은 제외, 관련 증거/검증 결과는 보존.
+12. 인증 정보/API 키/access token/private key/secret 설정/무관 민감정보 절대 기록 금지.
+13. Markdown 제목: METADATA, TASK, USER SPECIFICATION, CURRENT STATE, ARCHITECTURE / DECISIONS, DONE, IN PROGRESS, PLANNED / DECIDED, FAILED / UNRESOLVED, FILES, VERIFICATION, ENVIRONMENT / GIT STATE, AGENT STATE, NEXT, DO NOT, SESSION HISTORY. 해당 없는 항목은 생략 가능. Phase별 상세 기록에도 동일 구조 적용.
+
+기존 확정 프로젝트 명세는 [docs/README.md](../docs/README.md)에서 탐색. 특히 무료 데이터만, 승인형 Scrapling, NH 조회 전용 MCP와 독립 공식 SDK Executor, P0~P2 모두 구현, 5 실행 모드, 독립 승인/리스크/Order Coordinator, 단일 통합 MCP, 외부와 LIVE 기본 off. 이들은 repo 문서에 명시된 설계 기준이며 이번 대화에서 별도 재승인된 런타임이나 거래 승인으로 해석하지 않는다.
+
+## CURRENT STATE (현재 상태)
+
+기준 원격 Git tree는 truncated=false. 루트는 .gitignore, LICENSE, README.md, docs/만 존재. 실제 apps/, packages/, infra/, tests/, .github/workflows/, 기존 .ai-context/ 또는 AGENTS.md 없음. docs/examples는 연구/수집 PoC로 실제 운영 서비스가 아니다. 모든 Phase 0~8 NOT_STARTED, actual code not implemented; 설치/CI/외부 source/NH paper/LIVE의 이번 세션 검증은 없음. 기존 문서의 실측 결과는 해당 시점의 기록이며 현재 재현 성공을 의미하지 않는다.
+- 현재 작업 단위: 개발 계획 문서와 인계 기록의 생성 및 원격 반영. 이후 최초 실제 개발 단위는 P0.1.
+- [계획](../docs/development/PHASE_PLAN.md)에서 Phase별 세부 작업/exit/FR 및 SEC 추적 참조. [초기 기록](phases/planning-baseline.md), [양식](PHASE_LOG_TEMPLATE.md).
+
+## ARCHITECTURE / DECISIONS (아키텍처 및 의사결정)
+
+기존 문서가 source of truth. 아래는 탐색용 계약 요약이고 세부는 반드시 연결 원문을 읽는다.
+- [architecture.md](../docs/tech-stack/architecture.md) ADR-001~010: Python 모듈러 모놀리스 + role process, React/Vite/React Flow, PostgreSQL mode databases/roles, durable jobs + outbox/inbox, 자체 상태 머신, 격리 Executor, 단일 MCP/Keycloak/Caddy, CPU/Parquet, Scrapling, defense in depth. Kafka/RabbitMQ/Temporal/K8s/별도 TSDB/Valkey authority/SSR/자체 canvas는 초기 기본 아님; 새 ADR에 근거/rollback 필요.
+- [tech-stack/README](../docs/tech-stack/README.md): Python 3.12/uv, Node 24 LTS/pnpm, PostgreSQL 17 목표, FastAPI/Pydantic/SQLAlchemy 2/psycopg 3/Alembic, React TS Vite/Router/Query/Zustand/Tailwind/@xyflow/react/Lightweight Charts/ECharts/Table+Virtual/RHF+Zod, httpx/websockets/yfinance/feedparser/icalendar/Scrapling, NumPy/pandas/SciPy/statsmodels/sklearn/Parquet/PyArrow/DuckDB, official MCP SDK/NHPLUG, Linux Docker Compose/GitHub Actions/GHCR/OTel/Prometheus/Grafana. 정확한 버전은 Phase 0 smoke 후 lock/digest; PyMC/XGBoost/LightGBM/ELK/Valkey 조건부.
+- [contracts.md](../docs/tech-stack/contracts.md) §1~10: /api/v1/, {data,meta}, common errors, OpenAPI 3.1 → packages/contracts/openapi.json → openapi-typescript; workflow Draft 2020-12 at packages/contracts/workflow/v1.schema.json; versioned event JSON Schema at packages/contracts/events/. immutable workflow version + semantic validator, canonical SHA-256 graph/config/deps/mode/risk excluding presentation; money Decimal serialized string, aware UTC Z; separate source/available/received/ingested timestamps and null quality. Idempotency-Key actor/resource/action/mode/hash plus expected_version. Event envelope origin_db/aggregate version, typed payload, correlation/causation, at-least-once and durable inbox. No cross-DB FK/ACID or global commit cursor.
+- DB names autoaxe_dev, autoaxe_test, autoaxe_market, autoaxe_app, autoaxe_backtest, autoaxe_dry_run, autoaxe_paper_local, autoaxe_paper_broker, autoaxe_live, autoaxe_identity. Per DB roles; same-mode local UoW for workflow/intent/risk/approvals/order/fill/outbox/inbox; versioned cross-DB reference reservation+import/ack and revoke fence. BFF app identity.web_sessions PostgreSQL authority (no Valkey authority), secure opaque cookie/CSRF. Scraper private mTLS claim/heartbeat/result under /internal/v1/scrape/jobs, worker no DB/broker secrets. SSE ready + snapshot/version/delta, gap/reconnect resync, authorization independent of execution.
+- [market policy](../docs/indicator-collection/Market_Source_Policy_20261123.md): BTCUSDT Spot and XAUUSDT/XAGUSDT/COPPERUSDT/CLUSDT/BZUSDT futures are independent USDT instruments. BTC ratio is futures. 4 long/short series × 6 symbols, minimum 5m, 300s default polling. VIX ^VIX TTL 10s, ^IRX/^FVX/^TNX/^TYX 5m, Naver US2YT=RR primary after authorization, only failure/unavailable → Treasury BC_2YEAR daily temporary, return to Naver when healthy. UST_2Y_NAVER vs UST_2Y_TREASURY separated, no mixed-source changes. ^VIX not UVXY. MEXC NAS100_USDT candidate, Protobuf switch noted as planned 2026-12-01, not verified; QQQUSDT and delayed NQ=F distinct. Source age not made current by sampling. Official raw data use rights not inferred from public/free or library license.
+- [function/specification.md](../docs/function/specification.md): FR-001~007,101~111,201~211,301~310,401~404,501~532,601~610,701~708. Preserve all. 1Hz local yfinance day_volume (NVDA/QLD) not true exchange 1Hz/SIP; financial metrics and SMA/EMA/high-low closed bars; official events actual and revisions, SEC guidance, central bank distinct definitions, expiries/witching confirmed product families; DRAM two DDR5 module rows Session Average, SEIBro TOP50 USD settlement, CNN https://edition.cnn.com/markets/fear-and-greed, PizzINT https://www.pizzint.watch/ manual/permission and not automatic order signal. No invented paid/data fallback or scraping bypass.
+- [workflow](../docs/function/trading-workflow.md), [groups](../docs/function/stock-groups.md), [engine](../docs/tech-stack/workflow-engine.md): sequential/three-valued logic, branches/fork/join, whole WorkflowCondition pinned version, explicit ConditionResult/no effects, recursive refs and deletion constraints, latched hits 1~N/continuous, session resets 1/5/20/custom N preserving order/stop/risk, immediate related data refresh barrier then committed snapshot, durable activation/reset IDs, single-writer/recovery. Active count top-level distinct, exclude subcalls/backtest; group metrics coverage/as-of/weights. All P0~P2 approved features, including price/technical/macro/news/position/system/group/Friday triggers, multi strategy, split/OCO, approval, notification, reporting.
+- [Friday](../docs/function/friday-close-strategy.md): weekly 3/5/10 years, Fri close→Mon close primary; Fri close→Mon open and Mon open→close, session calendars/as-of. RESEARCH_EOD vs EXECUTION_PRE_CLOSE strictly separate; L2 logistic/KNN baseline and Bayesian/RF/boosting comparison, walk-forward/no lookahead/cost/calibration, insufficient data/model/permission fail closed.
+- [design/frontend.md](../docs/design/frontend.md): Live3x reference dark UI, market thermometer/cards/sparklines/ratio toggles and bars, detail charts, editor palette/canvas/inspector/log/toolbar, active status, group and Friday screens, responsive/accessibility. Original visual design and exact token/layout rules remain authority.
+- [trading-integration.md](../docs/tech-stack/trading-integration.md): five modes BACKTEST/DRY_RUN/PAPER_LOCAL/PAPER_BROKER/LIVE; PAPER UI aggregate only. SDK nhplug only isolated executor, official nhplug-mcp read allowlist private Node stdio; no direct live order REST/MCP. Automatic strategy prior human approval vs per-order human approval manual/AI. Account/mode priority, separate max buy/sell qty/value, reservation conflicts CONFLICT_HELD, stop/kill/revoke, UNKNOWN no blind retry; reconcile already sent; no paper→live fallback. No automatic liquidation implied.
+- [MCP](../docs/mcp/README.md): ten domains market/indicator/stock_group/workflow/prediction/backtest/portfolio/collector/system/trading(preparation only), exact tool/resource/prompt names in catalog. stdio/loopback/HTTPS Streamable HTTP, common service, authenticated OAuth scopes+resource ownership, private upstream, external off by default. Client disconnect/revoke/remote OFF affects new client requests, not independently preapproved workflow; workflow/account revoke or unknown authorization blocks new orders and requires reconciliation.
+- [security](../docs/tech-stack/security.md) SEC-01~10: identity, BOLA, network, scraper SSRF, secrets, order safety, data/model integrity, supply chain, availability/restore, audit/incident. [infrastructure](../docs/tech-stack/infrastructure.md): single Linux host initial not HA; SLO p95/RPO/RTO hypotheses only, actual target unknown.
+- This session planning decision (agent proposal within user-authorized planning): retain existing exclusive Phase 0~8, split into numbered work packages, record state + log template; no architectural change, no new approval. Canonical prior roadmap remains [testing-roadmap](../docs/tech-stack/testing-roadmap.md).
+
+## DONE (완료된 작업)
+
+- GitHub repo metadata confirmed public/default main and connection pull/push permission.
+- Recursive tree at immutable commit confirmed no existing context or production app. Read docs/README and tech-stack architecture/roadmap/contracts/backend/infrastructure and extracted detailed heading/requirements/contract tables of functional, frontend, tech-stack, indicator and MCP documents. Examined PoC identifiers/dependency list and NH index. Large NH llms-full and 6.3MB overseas stock master kept as references for targeted later Phase 0/5, not exhaustive row audit. Some long file views filtered or output truncated; don't claim all original line-by-line read. Original files retained.
+- Existing roadmap uniquely defines Phase 0~8; no conflicting global numbering introduced.
+- Planning artifacts in this commit constitute Phase planning baseline; publication/readback must be verified via Git, not this assertion alone.
+
+## PLANNED / DECIDED (계획 및 확정 사항)
+
+[PHASE_PLAN](../docs/development/PHASE_PLAN.md) and prior roadmap define 0 (tech/dev environment), 1 (collection/storage), 2 (all indicators/dashboard), 3 (group/workflow), 4 (triggers/analytics/backtest), 5 (paper Executor), 6 (MCP), 7 (operations/security), 8 (LIVE conditional). All NOT_STARTED, no user approval of LIVE. A Phase may have verified foundation and separately blocked provider activation; record both. Read phase-specific original acceptance criteria before implementing.
+- Record lifecycle: at entry read prior context and actual repo, create/update phase log before changes; update at material milestones/failures/interruptions and before stopping, then record exact verified exit and commit. For lengthy session split e.g. phases/phase-03/2026-...-01.md and add manifest links; preserve all history, mark superseded. Don't backfill fictional execution. Context is index and active state plus user specification; not a substitute for detailed logs.
+- Phase changes and documentation should land together where feasible; verify current branch and user's authorization, never force push. This session intended documentation-only commit on observed main; future branch/PR workflow not decided.
+
+## FAILED / UNRESOLVED (실패 및 미해결 사항)
+
+No build/test failure because none executed. One broad batch document retrieval exceeded tool-call limit; recovered by smaller batches, no repository change from error. Large combined read output truncated; used targeted extraction and original source links. Exact SDK/runtime versions, data provider rights/limits, MEXC Protobuf/WS and yfinance real event delays, scraper authorization and actual parser compatibility, exact NH order API/mode/fees/master/limits, actual host/retention/load/backup, dataset sufficiency/model thresholds, MCP Host interoperability, user risk limits and LIVE approval unresolved; see plan R01~R08. No local workspace verified. NH full raw references not exhaustively read. Prior separate conversation details not independently reconstructed; existing repo baseline is authoritative available evidence, later user correction overrides.
+
+## FILES (관련 파일)
+
+- README.md: project intro and docs index. docs/README.md: document authority. docs/design/{specification,frontend}.md: system and UI.
+- docs/function/{specification,trading-workflow,stock-groups,friday-close-strategy}.md: FR and full functional acceptance.
+- docs/tech-stack/{README,architecture,backend,contracts,data-collection,data-storage,frontend,infrastructure,mcp-security,quant-analytics,security,testing-roadmap,trading-integration,workflow-engine}.md: contracts, ADR, stack, operations, tests.
+- docs/indicator-collection/{README,Indicator_Data_Sources,Free_Data_Collection,Market_Source_Policy_20261123,Collector_Design,Manual_Collection,Real_Time_Data_Sources,Realtime_Quickstart,Binance_API_Coverage,Binance_Metals_LongShort_20261123,DRAMeXchange_Module_Spot_Prices,Nasdaq100_Futures_Data_Sources,SEIBro_Overseas_Stock_Flows,US_Equity_Witching_Calendar,YFinance_1s_Stock_Cumulative_Volume,YFinance_Data_Validation,YFinance_First_Collection,YFinance_Valuation_and_Moving_Averages}.md.
+- docs/examples/realtime_collector.py: yf_market, treasury_five, binance_futures_snapshot, binance_longshort, naver_2y, sec_8k, bls_calendar, bls_actual, fred, eia, vix_eod, binance_futures_live, binance_spot_btc_live, binance_market_live, coinbase, main; docs/examples/manual_record.py, binance_coverage_probe.py, naver_bond_source_probe.py, yfinance_probe.py, requirements.txt, .env.example. PoC deps requests>=2.32,<3; websockets>=14,<17; feedparser>=6,<7; icalendar>=6,<8; python-dotenv>=1,<2; yfinance>=0.2.65,<2. Production lock not implied.
+- docs/mcp/{README,specification,tools,resources-prompts,security,nhplug-integration}.md; docs/nhplug/{README.md,llms.txt,llms-full.txt,nhplug 해외주식 종목정보파일.txt}. Original large references preserve unchanged (full guide 208881 bytes, master 6295632 bytes).
+- New planning artifacts: docs/development/PHASE_PLAN.md; .ai-context/CONTEXT.md, PHASE_LOG_TEMPLATE.md, phases/planning-baseline.md. docs/README.md index extension if included in commit.
+
+## VERIFICATION (검증)
+
+This session verified remote metadata/tree and actual document evidence via GitHub. No Python/Node installs, builds, test suite, CI, Docker, DB, SDK/market endpoints, deployment or trades executed. No user credentials required or stored. All operational commands in plan are proposed, not reported successes. For final write evidence inspect actual commit/branch/readback. Baseline root and docs tree identifiers above allow immutable comparison. Phase 0 must perform concrete smoke tests and record results.
+
+## ENVIRONMENT / GIT STATE (환경 및 Git 상태)
+
+Remote main baseline as METADATA; repository not archived, push allowed per connector metadata. Local branch/worktree/staged/unstaged/untracked, installed software, running services and deployment unknown. No local checkout used in this planning session. Exact new documentation commit is discoverable via git log/main; next agent must check current state and avoid assuming baseline still HEAD. Never create/stage secret files.
+
+## AGENT STATE (에이전트 상태)
+
+Planning performed by one assistant through GitHub connector. No delegated coding agent or running process initiated.
+
+## NEXT (후속 작업)
+
+1. Fresh agent: obtain latest branch/HEAD/tree/status (remote connector or authorized local git; local git status --short --branch, git rev-parse HEAD, git remote -v with no secrets exposed). Read this entire document, prior phase logs, docs/README, docs/development/PHASE_PLAN.md, docs/tech-stack/testing-roadmap.md and contracts.md. Confirm actual changes since baseline. If newer user instructions, merge and record.
+2. Verify whether planning documentation commit is on branch and no unintended modifications; do not duplicate creation if already present. No actual Phase has begun.
+3. Upon user request for Phase 0, create .ai-context/phases/phase-00/<session-date-or-index>.md from template; record baseline and exact first P0.1. Inspect actual tool versions/local tree, then P0.2 compatibility matrix and scaffold P0.3; execute P0.4~P0.7 only with verified dependency assumptions. No production credentials or external source calls by default.
+4. At each milestone record decisions/evidence/failure/resumption. Update this file preserving user spec and link phase records. At end run relevant tests, record command/output summary/hash, mark status truthfully, persist Git changes and verify remote. Only proceed to next Phase within authorization and fulfilled dependencies.
+5. If interrupted, record exact next tool action, remaining task, expected result, blockers. If tool fails, do not invent a success. For repo-specific decisions read original documents and current code instead of asking user again for known requirements.
+
+## DO NOT (금지 사항)
+
+Do not treat plan or PoC as implementation; do not alter canonical phase numbering, delete features, or overwrite original docs/PoC/NH master without reason and authorization. No paid feed, unverified data activation, unauthorized scraping, CAPTCHA/403/robots evasion, raw evidence beyond permissions, fabricated real-time/sample timestamps or mixed instruments. No unapproved LIVE, direct order REST/MCP, paper→live fallback, external credentials in general services/CI, blind retry UNKNOWN, reset clearing risk/kill, assumptions of global DB ordering or exactly-once external orders. No real user data/secrets/tool dumps in logs. No silent unverified state/phase completion. No force push or destructive rewrite. No unrelated sensitive info in repository.
+
+## SESSION HISTORY (세션 이력)
+
+- 2026-11-26 planning-baseline: user initiated serious code development planning from docs, imposed lossless persistent handoff specification. Remote main snapshot verified; only docs and PoC. Existing unique Phase 0~8 confirmed and detailed work packages drafted; created linked operational context and template. No code or test execution, no deployment or LIVE approval. [Detailed baseline](phases/planning-baseline.md). This is the first context entry observed in the tree; original prior project history remains in baseline Git documents/commits.

@@ -37,3 +37,9 @@
 - [기술 스택 및 구현 기준](./tech-stack/README.md)
 
 - [전체 플랫폼 보안 설계](./tech-stack/security.md)
+
+## 개발 실행 계획 및 작업 인계
+
+- [Phase 0~8 개발 실행 계획](./development/PHASE_PLAN.md) — 기존 전역 로드맵의 세부 작업 및 종료 검증 기준
+- [현재 작업 맥락 및 사용자 명세](../.ai-context/CONTEXT.md) — 새 세션 시작 시 필독
+- [Phase 작업 기록 양식](../.ai-context/PHASE_LOG_TEMPLATE.md) · [최초 계획 기준선](../.ai-context/phases/planning-baseline.md)
