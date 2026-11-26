@@ -34,7 +34,9 @@ EXECUTOR_DBS = {"autoaxe_paper_local", "autoaxe_paper_broker", "autoaxe_live"}
 SUFFIXES = ("migration", "runtime", "read", "relay")
 
 
-def provision(admin_dsn: str, migrations: Path) -> dict[str, str]:
+def provision(
+    admin_dsn: str, migrations: Path, role_passwords: dict[str, str] | None = None
+) -> dict[str, str]:
     Settings()
     if os.getenv("AUTOAXE_DISPOSABLE_DB") != "true":
         raise RuntimeError("explicit disposable fixture DB consent required")
@@ -42,6 +44,13 @@ def provision(admin_dsn: str, migrations: Path) -> dict[str, str]:
     if conn.get("dbname") != "postgres":
         raise ValueError("bootstrap requires postgres admin database")
     passwords: dict[str, str] = {}
+    overrides = role_passwords or {}
+    if not overrides.keys() <= {"autoaxe_market_read", "autoaxe_market_runtime"}:
+        raise ValueError("unsupported fixture credential override")
+    if any(len(x) < 32 for x in overrides.values()) or len(set(overrides.values())) != len(
+        overrides
+    ):
+        raise ValueError("fixture role credentials must be distinct and strong")
     with psycopg.connect(admin_dsn, autocommit=True) as admin:
         major = int(admin.info.server_version) // 10000
         if major != 17:
@@ -68,7 +77,7 @@ def provision(admin_dsn: str, migrations: Path) -> dict[str, str]:
                 )
             for suffix in roles:
                 role = f"{database}_{suffix}"
-                password = secrets.token_urlsafe(32)
+                password = overrides.get(role) or secrets.token_urlsafe(32)
                 passwords[role] = password
                 exists = admin.execute(
                     "SELECT 1 FROM pg_roles WHERE rolname=%s", (role,)
@@ -133,6 +142,11 @@ def provision(admin_dsn: str, migrations: Path) -> dict[str, str]:
             finally:
                 engine.dispose()
             with psycopg.connect(admin_dsn, dbname=database, autocommit=True) as scoped:
+                if database in {"autoaxe_market", "autoaxe_dev", "autoaxe_test"}:
+                    from autoaxe.infrastructure.market_store import seed_catalog
+
+                    with scoped.transaction():
+                        seed_catalog(scoped)
                 for suffix in roles:
                     if suffix == "migration":
                         continue
@@ -153,7 +167,15 @@ def main() -> None:
     # Never log DSNs, passwords or connection exceptions with raw parameters.
     dsn = os.environ["AUTOAXE_FIXTURE_ADMIN_DSN"]
     config = Path(os.environ.get("AUTOAXE_ALEMBIC_CONFIG", "alembic.ini")).resolve()
-    provision(dsn, config)
+    overrides = {
+        role: os.environ[key]
+        for role, key in (
+            ("autoaxe_market_read", "AUTOAXE_FIXTURE_MARKET_READ_PASSWORD"),
+            ("autoaxe_market_runtime", "AUTOAXE_FIXTURE_MARKET_WRITE_PASSWORD"),
+        )
+        if key in os.environ
+    }
+    provision(dsn, config, overrides)
     print("fixture DB roles and migration verified by bootstrap; runtime secrets not persisted")
 
 

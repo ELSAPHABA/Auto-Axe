@@ -241,14 +241,24 @@ class PriceEvent(Contract):
 
 class JobPayload(Contract):
     job_id: Identifier
-    status: Literal["queued", "running", "failed", "succeeded"]
+    status: Literal["queued", "running", "failed", "succeeded", "cancel_requested", "cancelled"]
 
 
 class JobEvent(Contract):
     event_id: Identifier
     event_type: Literal["job.status.changed"]
     schema_version: Literal[1]
-    origin_db: Literal["autoaxe_app"]
+    origin_db: Literal[
+        "autoaxe_app",
+        "autoaxe_market",
+        "autoaxe_dev",
+        "autoaxe_test",
+        "autoaxe_backtest",
+        "autoaxe_dry_run",
+        "autoaxe_paper_local",
+        "autoaxe_paper_broker",
+        "autoaxe_live",
+    ]
     aggregate_type: Literal["job"]
     aggregate_id: Identifier
     aggregate_version: SafeInt
@@ -265,4 +275,31 @@ class JobEvent(Contract):
     payload: JobPayload
 
 
-Event = Annotated[PriceEvent | JobEvent, Field(discriminator="event_type")]
+class ObservationPayload(Contract):
+    observation_id: Identifier
+    revision: SafeInt
+    quality: Identifier
+
+
+class ObservationEvent(Contract):
+    event_id: Identifier
+    event_type: Literal["market.observation.recorded"]
+    schema_version: Literal[1]
+    origin_db: Literal["autoaxe_market", "autoaxe_dev", "autoaxe_test"]
+    aggregate_type: Literal["market_series"]
+    aggregate_id: Identifier
+    aggregate_version: SafeInt
+    source: Identifier
+    series_id: Identifier
+    source_event_at: UtcTime | None
+    occurred_at: UtcTime
+    available_at: UtcTime
+    committed_at: UtcTime
+    correlation_id: Identifier
+    causation_id: Identifier | None
+    mode: None
+    account_ref: None
+    payload: ObservationPayload
+
+
+Event = Annotated[PriceEvent | JobEvent | ObservationEvent, Field(discriminator="event_type")]

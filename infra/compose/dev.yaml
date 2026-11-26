@@ -23,6 +23,8 @@ services:
       AUTOAXE_ENVIRONMENT: fixture
       AUTOAXE_DISPOSABLE_DB: "true"
       AUTOAXE_FIXTURE_ADMIN_DSN: "host=postgres dbname=postgres user=fixture_admin password=${AUTOAXE_FIXTURE_DB_PASSWORD:?generate local fixture env first}"
+      AUTOAXE_FIXTURE_MARKET_READ_PASSWORD: ${AUTOAXE_FIXTURE_MARKET_READ_PASSWORD:?run init_dev_env.py}
+      AUTOAXE_FIXTURE_MARKET_WRITE_PASSWORD: ${AUTOAXE_FIXTURE_MARKET_WRITE_PASSWORD:?run init_dev_env.py}
     depends_on:
       postgres: {condition: service_healthy}
     networks: [data]
@@ -39,7 +41,8 @@ services:
       AUTOAXE_ENVIRONMENT: fixture
       AUTOAXE_LIVE_ENABLED: "false"
       AUTOAXE_EXTERNAL_MCP_ENABLED: "false"
-    networks: [app]
+      AUTOAXE_FIXTURE_MARKET_READ_DSN: "host=postgres dbname=autoaxe_market user=autoaxe_market_read password=${AUTOAXE_FIXTURE_MARKET_READ_PASSWORD:?run init_dev_env.py}"
+    networks: [app, data]
     depends_on:
       migrate: {condition: service_completed_successfully}
     read_only: true
@@ -81,6 +84,23 @@ services:
       AUTOAXE_ENVIRONMENT: fixture
       AUTOAXE_LIVE_ENABLED: "false"
     network_mode: none
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: "no"
+  fixture-collector:
+    profiles: [fixture-collect]
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.market_cli", "fixture-collect", "--key", "smoke"]
+    environment:
+      AUTOAXE_ENVIRONMENT: fixture
+      AUTOAXE_FIXTURE_MARKET_WRITE_DSN: "host=postgres dbname=autoaxe_market user=autoaxe_market_runtime password=${AUTOAXE_FIXTURE_MARKET_WRITE_PASSWORD:?run init_dev_env.py}"
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    networks: [data]
     read_only: true
     tmpfs: ["/tmp"]
     cap_drop: [ALL]

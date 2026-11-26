@@ -9,10 +9,12 @@ NH나무 OpenAPI 알고리즘 &amp; 패턴 매매 퀀트 시스템
 - [Phase별 개발 실행 계획](docs/development/PHASE_PLAN.md)
 - [현재 작업 상태 및 새 세션 인계](.ai-context/CONTEXT.md)
 - [Phase 0 개발 환경 및 검증](docs/development/PHASE_00_ENVIRONMENT.md)
+- [Phase 1 데이터 수집·저장 구현](docs/development/PHASE_01_IMPLEMENTATION.md)
+- [개발 트러블슈팅](docs/troubleshooting/README.md)
 
-## 개발 환경 (Phase 0)
+## 개발 환경 (Phase 1)
 
-현재는 합성 fixture 전용 개발 기반이며 실제 수집·주문·외부 MCP는 비활성화되어 있습니다.
+현재는 시장 데이터 카탈로그·영속 저장·수집 작업 및 이벤트 기반을 합성 fixture로 검증한 개발 환경이며 실제 공급자 수집·주문·외부 MCP는 비활성화되어 있습니다.
 Python 3.12, uv 0.13.10, Node.js 24.21.0, pnpm 12.9.1, Docker Compose를 사용합니다.
 
 ```sh

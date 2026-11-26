@@ -1,6 +1,27 @@
 {
   "components": {
     "schemas": {
+      "CatalogResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesDTO"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/MarketMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "CatalogResponse",
+        "type": "object"
+      },
       "ErrorDetail": {
         "additionalProperties": false,
         "properties": {
@@ -149,6 +170,19 @@
         "title": "FixturePageMeta",
         "type": "object"
       },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
       "Health": {
         "additionalProperties": false,
         "properties": {
@@ -195,6 +229,63 @@
           "meta"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "MarketMeta": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "title": "As Of",
+            "type": "string"
+          },
+          "environment": {
+            "default": "fixture",
+            "title": "Environment",
+            "type": "string"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "request_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Request Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "snapshot_version": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Version"
+          }
+        },
+        "required": [
+          "request_id",
+          "as_of"
+        ],
+        "title": "MarketMeta",
         "type": "object"
       },
       "Meta": {
@@ -247,6 +338,184 @@
         ],
         "title": "MutationResponse",
         "type": "object"
+      },
+      "ObservationDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "available_at": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "title": "Available At",
+            "type": "string"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "ingested_at": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "title": "Ingested At",
+            "type": "string"
+          },
+          "instrument": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Instrument",
+            "type": "string"
+          },
+          "mapping_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Mapping Version",
+            "type": "integer"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "observation_id": {
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "permission_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Permission Version",
+            "type": "integer"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/Quality"
+          },
+          "received_at": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "title": "Received At",
+            "type": "string"
+          },
+          "revision": {
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "series_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Series Id",
+            "type": "string"
+          },
+          "source_event_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "Z$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Event At"
+          },
+          "source_event_key": {
+            "title": "Source Event Key",
+            "type": "string"
+          },
+          "source_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source Id",
+            "type": "string"
+          },
+          "stored_quality": {
+            "$ref": "#/components/schemas/Quality"
+          },
+          "unit": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "observation_id",
+          "series_id",
+          "source_id",
+          "instrument",
+          "unit",
+          "currency",
+          "source_event_key",
+          "revision",
+          "value",
+          "quality",
+          "stored_quality",
+          "source_event_at",
+          "received_at",
+          "available_at",
+          "ingested_at",
+          "mapping_version",
+          "permission_version",
+          "metadata"
+        ],
+        "title": "ObservationDTO",
+        "type": "object"
+      },
+      "ObservationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ObservationDTO"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/MarketMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ObservationResponse",
+        "type": "object"
+      },
+      "Quality": {
+        "enum": [
+          "valid",
+          "no_data",
+          "no_update",
+          "stale",
+          "disconnected",
+          "unknown",
+          "session_closed",
+          "manual_unverified",
+          "manual_checked"
+        ],
+        "title": "Quality",
+        "type": "string"
       },
       "Quote": {
         "additionalProperties": false,
@@ -342,6 +611,145 @@
           "meta"
         ],
         "title": "QuoteResponse",
+        "type": "object"
+      },
+      "SeriesDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "activation": {
+            "title": "Activation",
+            "type": "string"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "indicator_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Indicator Id",
+            "type": "string"
+          },
+          "instrument_type": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Instrument Type",
+            "type": "string"
+          },
+          "interval": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Interval",
+            "type": "string"
+          },
+          "mapping_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Mapping Version",
+            "type": "integer"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "series_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Series Id",
+            "type": "string"
+          },
+          "source_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source Id",
+            "type": "string"
+          },
+          "symbol": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Symbol",
+            "type": "string"
+          },
+          "ttl_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ttl Seconds"
+          },
+          "unit": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "series_id",
+          "indicator_id",
+          "source_id",
+          "symbol",
+          "instrument_type",
+          "unit",
+          "currency",
+          "interval",
+          "ttl_seconds",
+          "mapping_version",
+          "priority",
+          "activation"
+        ],
+        "title": "SeriesDTO",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
         "type": "object"
       }
     }
@@ -618,6 +1026,264 @@
           }
         },
         "summary": "Quote"
+      }
+    },
+    "/api/v1/indicators": {
+      "get": {
+        "operationId": "listIndicatorCatalog",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "indicator",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Indicator"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Series"
+      }
+    },
+    "/api/v1/market/observations": {
+      "get": {
+        "operationId": "listMarketObservations",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "title": "Series Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quality",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Quality"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Quality"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Observations"
+      }
+    },
+    "/api/v1/market/series": {
+      "get": {
+        "operationId": "listMarketSeries",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "indicator",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Indicator"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Series"
       }
     },
     "/api/v1/system/health": {

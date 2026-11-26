@@ -43,3 +43,5 @@
 - [Phase 0~8 개발 실행 계획](./development/PHASE_PLAN.md) — 기존 전역 로드맵의 세부 작업 및 종료 검증 기준
 - [현재 작업 맥락 및 사용자 명세](../.ai-context/CONTEXT.md) — 새 세션 시작 시 필독
 - [Phase 작업 기록 양식](../.ai-context/PHASE_LOG_TEMPLATE.md) · [최초 계획 기준선](../.ai-context/phases/planning-baseline.md)
+- [Phase 1 데이터 수집·저장 구현](./development/PHASE_01_IMPLEMENTATION.md)
+- [개발 트러블슈팅 인덱스](./troubleshooting/README.md) — Phase별 재현·조사·원인·해결·검증

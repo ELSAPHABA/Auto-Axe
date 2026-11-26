@@ -6,12 +6,12 @@
 
 - Repository: https://github.com/ELSAPHABA/Auto-Axe (공개, ID 1427169047), clone: https://github.com/ELSAPHABA/Auto-Axe.git.
 - 원격 기본 브랜치 main; 분석 기준 HEAD `da26b439e1d2deaabed7138ee3f83897a44e023c`, root tree `188dc0e7c9e66ed7af9cbdb8ab5887eda94a59ee`, docs tree `c75cd03335fedf50655fb76e7cf18d18e2fc25c4`.
-- 갱신 일자: 2026-11-27 KST, Phase 0 session 2026-11-26-01. 계획 기준 기록 ID planning-baseline-20261126 (2026-11-26 23:25 KST). 이 문서 자체가 포함된 커밋은 Git 이력에서 확인.
+- 갱신 일자: 2026-11-27 KST, Phase 1 session 2026-11-27-01. 계획 기준 기록 ID planning-baseline-20261126 (2026-11-26 23:25 KST). 이 문서 자체가 포함된 커밋은 Git 이력에서 확인.
 - 계획 반영 커밋 f3bb388649429220f04cb38f62ee13bad367fd56. Phase 0 로컬 main 작업 기준으로 동기화. 현재 환경/검증 세부: [Phase 0 기록](phases/phase-00/2026-11-26-01.md), [환경/호환성](../docs/development/PHASE_00_ENVIRONMENT.md).
 
 ## TASK (작업 목표)
 
-사용자 요청: Auto-Axe 본격 코드 개발에 앞서 /docs를 분석해 개발 Phase 계획을 수립하고, 매 Phase의 진행 과정과 상황을 상세히 리포지토리에 저장해 완전히 새로운 대화/에이전트에서도 작업을 정확히 재개하도록 한다. 이전 세션은 계획 수립 한정. 최신 요청 "Phase 0을 진행해 주세요."에 따라 Phase 0 P0.1~P0.7 실제 구현·검증으로 확장. Phase 1~8은 미승인, 실제 운영 배포/공급자 호출/실거래 승인은 아님.
+사용자 요청: Auto-Axe 본격 코드 개발에 앞서 /docs를 분석해 개발 Phase 계획을 수립하고, 매 Phase의 진행 과정과 상황을 상세히 리포지토리에 저장해 완전히 새로운 대화/에이전트에서도 작업을 정확히 재개하도록 한다. 계획 수립 한정에서 "Phase 0을 진행해 주세요."로 확장 후, 기존 상태를 확인하고 재개하라는 요청 및 최신 요청 "Phase 1을 진행해 주세요. 그리고 앞으로 개발 중 발생한 문제 및 해결 내용은 별도 문서를 만들고 해결 과정을 상세하게 작성해 주세요."에 따라 P1.1~P1.7 구현과 별도 트러블슈팅 기록을 수행. Phase 2~8은 미승인, 실제 운영 배포/공급자 호출/실거래 승인은 아님.
 
 ## USER SPECIFICATION (사용자 명세)
 
@@ -30,14 +30,15 @@
 11. 원본 tool 실행 기록/인자/반환 전문은 제외, 관련 증거/검증 결과는 보존.
 12. 인증 정보/API 키/access token/private key/secret 설정/무관 민감정보 절대 기록 금지.
 13. Markdown 제목: METADATA, TASK, USER SPECIFICATION, CURRENT STATE, ARCHITECTURE / DECISIONS, DONE, IN PROGRESS, PLANNED / DECIDED, FAILED / UNRESOLVED, FILES, VERIFICATION, ENVIRONMENT / GIT STATE, AGENT STATE, NEXT, DO NOT, SESSION HISTORY. 해당 없는 항목은 생략 가능. Phase별 상세 기록에도 동일 구조 적용.
+14. 2026-11-27 추가 사용자 요구: 앞으로 개발 중 발생한 문제·해결 내용은 별도 문서에 해결 과정을 상세히 작성. [docs/troubleshooting/README.md](../docs/troubleshooting/README.md) 및 phase-NN.md에 증상·재현·환경·조사 증거·원인/가설·대안·수정·재검증·잔여 위험을 기록, Phase log와 상호 링크. 기존 기록 의무는 유지. AGENTS.md와 템플릿에 반영.
 
 기존 확정 프로젝트 명세는 [docs/README.md](../docs/README.md)에서 탐색. 특히 무료 데이터만, 승인형 Scrapling, NH 조회 전용 MCP와 독립 공식 SDK Executor, P0~P2 모두 구현, 5 실행 모드, 독립 승인/리스크/Order Coordinator, 단일 통합 MCP, 외부와 LIVE 기본 off. 이들은 repo 문서에 명시된 설계 기준이며 이번 대화에서 별도 재승인된 런타임이나 거래 승인으로 해석하지 않는다.
 
 ## CURRENT STATE (현재 상태)
 
 초기 기준 원격 tree(계획 이전)는 truncated=false, .gitignore, LICENSE, README.md, docs/만 존재했다. 이 역사적 상태는 Phase 0 구현으로 변경되었다. apps/backend, apps/web, apps/executor, packages/contracts, infra, tests/fixtures, .github/workflows, scripts, AGENTS.md와 lockfiles가 추가됐다. docs/examples는 연구/수집 PoC로 실제 운영 서비스가 아니며 변경하지 않았다.
-- Phase 0: 로컬 구현 및 핵심 기술 검수 VERIFIED (hosted CI 결과 별도). Phase 1~8 NOT_STARTED. backend fixture API/MCP 및 공통 schema/TS, 실제 PostgreSQL 17 격리 role/초기 migration, React fixture 화면, 독립 disabled Executor, dev Compose/CI 기반. API의 fixture 저장은 메모리이며 실제 수집/영속 시장 데이터/워크플로/주문 없음.
-- 로컬 실제 tests 28 passed 합계(backend 21 + DB integration 1 + executor 3 + web 2 + E2E 1, 각각 별도 실행). Compose postgres/api/web healthy, migrate exit0, loopback web root HTTP 200 및 proxy fixture health, isolated executor import 성공. 최종 scan/Git 증거는 Phase log 참조. 외부 broker/market 요청 없음, LIVE/external MCP false.
+- Phase 0: 로컬 및 hosted CI VERIFIED, 원격 commit 49b6adf9a4ae20f940926d2a912811173bd7dea2, Actions run 45847804990 success를 Phase 1 preflight에서 확인. Phase 1: 합성 fixture 기반의 시장 카탈로그, PG ledger, job/outbox/inbox, parser/transport, CLI/API 구현. 실제 공급자 activation 및 반복 스케줄 운영은 미승인/미검증. 상세 [Phase 1 기록](phases/phase-01/2026-11-27-01.md), [구현 문서](../docs/development/PHASE_01_IMPLEMENTATION.md). Phase 2~8 NOT_STARTED. LIVE/외부 MCP 차단.
+- Phase 0 역사적 로컬 tests 28 passed 합계(backend 21 + DB integration 1 + executor 3 + web 2 + E2E 1, 각각 별도 실행). Phase 1 전체 backend suite 및 추가 회귀의 최종 결과는 Phase 1 log 참조; web 2 passed/typecheck/lint/build 성공. Compose PG/API/Web healthy, migrate exit0, fixture job succeeded, API FIXTURE_PRICE 123.45 USD 조회. down 후 ps -a 비어 있음, Volume 보존. 외부 broker/market 요청 없음.
 - [계획](../docs/development/PHASE_PLAN.md), [초기 기록](phases/planning-baseline.md), [Phase 0 기록](phases/phase-00/2026-11-26-01.md), [환경 문서](../docs/development/PHASE_00_ENVIRONMENT.md), [양식](PHASE_LOG_TEMPLATE.md).
 
 ## ARCHITECTURE / DECISIONS (아키텍처 및 의사결정)
@@ -57,6 +58,7 @@
 - [security](../docs/tech-stack/security.md) SEC-01~10: identity, BOLA, network, scraper SSRF, secrets, order safety, data/model integrity, supply chain, availability/restore, audit/incident. [infrastructure](../docs/tech-stack/infrastructure.md): single Linux host initial not HA; SLO p95/RPO/RTO hypotheses only, actual target unknown.
 - Prior planning decision (agent proposal within user-authorized planning): retain existing exclusive Phase 0~8, split into numbered work packages, record state + log template; no architectural change, no new approval. Canonical prior roadmap remains [testing-roadmap](../docs/tech-stack/testing-roadmap.md).
 - Phase 0 implementation decisions: separate backend/executor uv.lock and venv, nhplug only executor; host Python3.12.10/uv0.13.10, Node24.21.0/pnpm12.9.1, PG17.12; Docker images and CI Action SHA pinned. Fixture-only API config refuses true LIVE or external MCP, no domain execution. Graph/event initial minimal schema with future domain expansion. Vite dev host port 18174 and E2E 18173 due Windows reservations; Vite runner avoids read-only config temp writes; web-only edge bridge, private app/data. Vitest 4.1.12 patches audit findings. See detailed phase record for causality and actual versions.
+- Phase 1: 0002_market migration, per-source permission/version snapshots, immutable observations, source key/revision/hash, monthly/default partitions, latest projection and series version, DB-clock snapshot cursor, job lease fencing and cross-DB at-least-once relay, separate fixture read/write role secrets. Naver/Treasury separate series and audit selection. New event/API schemas generated. Actual operation gated, no global commit ordering or exactly-once external effect.
 
 ## DONE (완료된 작업)
 
@@ -65,10 +67,11 @@
 - Existing roadmap uniquely defines Phase 0~8; no conflicting global numbering introduced.
 - Planning artifacts were published and verified at f3bb388649429220f04cb38f62ee13bad367fd56.
 - Phase 0 P0.1~P0.7 local fixture implementation and evidence detailed in [Phase 0 log](phases/phase-00/2026-11-26-01.md). Initial 10 DBs/roles and migration only; actual endpoint permissions and production deployment not verified.
+- Phase 1 implementation and actual verification evidence: [Phase 1 log](phases/phase-01/2026-11-27-01.md), [implementation guide](../docs/development/PHASE_01_IMPLEMENTATION.md). Separate troubleshooting index and Phase 0 retrospective + Phase 1 issues written.
 
 ## PLANNED / DECIDED (계획 및 확정 사항)
 
-[PHASE_PLAN](../docs/development/PHASE_PLAN.md) and prior roadmap define 0 (tech/dev environment), 1 (collection/storage), 2 (all indicators/dashboard), 3 (group/workflow), 4 (triggers/analytics/backtest), 5 (paper Executor), 6 (MCP), 7 (operations/security), 8 (LIVE conditional). Phase 0 locally verified; Phase 1~8 NOT_STARTED; no user approval of LIVE. A Phase may have verified foundation and separately blocked provider activation; record both. Read phase-specific original acceptance criteria before implementing.
+[PHASE_PLAN](../docs/development/PHASE_PLAN.md) and prior roadmap define 0 (tech/dev environment), 1 (collection/storage), 2 (all indicators/dashboard), 3 (group/workflow), 4 (triggers/analytics/backtest), 5 (paper Executor), 6 (MCP), 7 (operations/security), 8 (LIVE conditional). Phase 0 verified including CI; Phase 1 fixture foundation implemented, final evidence and remaining gates in Phase 1 log; Phase 2~8 NOT_STARTED; no user approval of LIVE. Read phase-specific original acceptance criteria before implementing.
 - Record lifecycle: at entry read prior context and actual repo, create/update phase log before changes; update at material milestones/failures/interruptions and before stopping, then record exact verified exit and commit. For lengthy session split e.g. phases/phase-03/2026-...-01.md and add manifest links; preserve all history, mark superseded. Don't backfill fictional execution. Context is index and active state plus user specification; not a substitute for detailed logs.
 - Phase changes and documentation should land together where feasible; verify current branch and user's authorization, never force push. Phase 0 continued main as observed and selected normal commit/push. Future branch/PR workflow not decided.
 
@@ -86,6 +89,7 @@ Planning-history: one broad batch document retrieval exceeded tool-call limit; r
 - docs/mcp/{README,specification,tools,resources-prompts,security,nhplug-integration}.md; docs/nhplug/{README.md,llms.txt,llms-full.txt,nhplug 해외주식 종목정보파일.txt}. Original large references preserve unchanged (full guide 208881 bytes, master 6295632 bytes).
 - New planning artifacts: docs/development/PHASE_PLAN.md; .ai-context/CONTEXT.md, PHASE_LOG_TEMPLATE.md, phases/planning-baseline.md. docs/README.md index extension if included in commit.
 - Phase 0 files: apps/backend/{pyproject.toml,uv.lock,src/autoaxe,migrations,tests,Dockerfile}, apps/executor separate project, apps/web workspace, packages/contracts/{openapi.json,workflow/v1.schema.json,events/v1.schema.json,generated/api.ts}, tests/fixtures, infra/compose/dev.yaml, .github/workflows/phase0.yml, scripts/{init_dev_env,compatibility_inventory,nhplug_mcp_smoke}.py, root lock/config/AGENTS.md, docs/development/PHASE_00_ENVIRONMENT.md and .ai-context/phases/phase-00/2026-11-26-01.md. Full file and test matrix in linked logs.
+- Phase 1: apps/backend/migrations/versions/0002_market.py; src/autoaxe/domain/{catalog,market}.py, infrastructure/{market_store,jobs,db_bootstrap}.py, application/{collection,market_worker}.py, adapters/{providers,transport,manual,market_api,contracts}.py, entrypoints/{api,market_cli}.py; tests/test_phase1_{providers,db}.py; generated contracts and fixture Compose/CI. docs/troubleshooting/{README,phase-00,phase-01}.md; docs/development/PHASE_01_IMPLEMENTATION.md.
 
 ## VERIFICATION (검증)
 
@@ -102,8 +106,8 @@ Planning performed by one assistant through GitHub connector; Phase 0 by one ass
 ## NEXT (후속 작업)
 
 1. Fresh agent: obtain latest branch/HEAD/tree/status (remote connector or authorized local git; local git status --short --branch, git rev-parse HEAD, git remote -v with no secrets exposed). Read this entire document, prior phase logs, docs/README, docs/development/PHASE_PLAN.md, docs/tech-stack/testing-roadmap.md and contracts.md. Confirm actual changes since baseline. If newer user instructions, merge and record.
-2. Verify Phase 0 implementation commit on main, local tree clean or record differences, and hosted Actions status. If CI fails, inspect actual job output and repair Phase 0 before advancing. Read [Phase 0 log](phases/phase-00/2026-11-26-01.md) and [environment](../docs/development/PHASE_00_ENVIRONMENT.md).
-3. Upon user request for Phase 1, create .ai-context/phases/phase-01/<date-index>.md using template and execute P1.1 first: source/instrument/series registry and permissions, then P1.2~P1.7 with real DB/recovery/contract fixtures. Read original indicator, data-collection/data-storage/backend/contracts and functional FR requirements. No production credentials or external source calls by default.
+2. Phase 0 preflight already verified: run 45847804990 successful; local duplicate commit preserved on phase0-local-preserved, rebased main to tree-identical remote 49b6adf9. For Phase 1 verify actual main/CI state and reconcile same-tree local/remote history if necessary. Read [Phase 1 log](phases/phase-01/2026-11-27-01.md), [implementation guide](../docs/development/PHASE_01_IMPLEMENTATION.md), [troubleshooting](../docs/troubleshooting/phase-01.md).
+3. Resolve any Phase 1 regression/gate in its authorized scope first. Provider permissions/rates and real recurring collection are separate activation gates; no assumption of approval. Only after user requests Phase 2, read original FR/indicator/frontend contracts and create Phase 2 log and troubleshooting file; implement Phase 2, not other Phases.
 4. At each milestone record decisions/evidence/failure/resumption. Update this file preserving user spec and link phase records. At end run relevant tests, record command/output summary/hash, mark status truthfully, persist Git changes and verify remote. Only proceed to next Phase within authorization and fulfilled dependencies.
 5. If interrupted, record exact next tool action, remaining task, expected result, blockers. If tool fails, do not invent a success. For repo-specific decisions read original documents and current code instead of asking user again for known requirements.
 
@@ -115,3 +119,4 @@ Do not treat plan or PoC as implementation; do not alter canonical phase numberi
 
 - 2026-11-26 planning-baseline: user initiated serious code development planning from docs, imposed lossless persistent handoff specification. Remote main snapshot verified; only docs and PoC. Existing unique Phase 0~8 confirmed and detailed work packages drafted; created linked operational context and template. No code or test execution, no deployment or LIVE approval. [Detailed baseline](phases/planning-baseline.md). This is the first context entry observed in the tree; original prior project history remains in baseline Git documents/commits.
 - 2026-11-26~27 Phase 0: explicit user request; actual local preflight, compatibility, monorepo, contract/schema, DB/role, Compose, CI and tests. Locally verified fixture base, no provider or trading activation. [Detailed log](phases/phase-00/2026-11-26-01.md), [environment matrix](../docs/development/PHASE_00_ENVIRONMENT.md).
+- 2026-11-27 Phase 1: user authorized implementation and separate detailed troubleshooting going forward. Phase 0 CI verified and local history reconciled. Market registry, immutable PG ledger, durable jobs/events, fixture-tested provider adapters, manual import/review, query API and Docker smoke. See [Phase 1 log](phases/phase-01/2026-11-27-01.md) and [troubleshooting](../docs/troubleshooting/README.md). No production activation.

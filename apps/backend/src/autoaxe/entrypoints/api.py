@@ -24,6 +24,7 @@ from autoaxe.adapters.contracts import (
     QuotePage,
     QuoteResponse,
 )
+from autoaxe.adapters.market_api import router as market_router
 from autoaxe.application.fixtures import get_quote
 from autoaxe.domain.canonical import canonical_sha256
 from autoaxe.infrastructure.config import Settings
@@ -158,6 +159,7 @@ def create_app() -> FastAPI:
             results[idempotency_key] = (digest, result)
             return result
 
+    api.include_router(market_router)
     return api
 
 

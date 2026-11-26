@@ -55,6 +55,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/indicators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Series */
+        get: operations["listIndicatorCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/market/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Observations */
+        get: operations["listMarketObservations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/market/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Series */
+        get: operations["listMarketSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/health": {
         parameters: {
             query?: never;
@@ -76,6 +127,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** CatalogResponse */
+        CatalogResponse: {
+            /** Data */
+            data: components["schemas"]["SeriesDTO"][];
+            meta: components["schemas"]["MarketMeta"];
+        };
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -140,6 +197,11 @@ export interface components {
              */
             source: "synthetic_fixture";
         };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
         /** Health */
         Health: {
             /**
@@ -172,6 +234,30 @@ export interface components {
             data: components["schemas"]["Health"];
             meta: components["schemas"]["Meta"];
         };
+        /** MarketMeta */
+        MarketMeta: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Environment
+             * @default fixture
+             */
+            environment: string;
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Request Id */
+            request_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /** Snapshot Version */
+            snapshot_version?: number | null;
+        };
         /** Meta */
         Meta: {
             /**
@@ -200,6 +286,65 @@ export interface components {
             data: components["schemas"]["FixtureMutation"];
             meta: components["schemas"]["Meta"];
         };
+        /** ObservationDTO */
+        ObservationDTO: {
+            /**
+             * Available At
+             * Format: date-time
+             */
+            available_at: string;
+            /** Currency */
+            currency: string | null;
+            /**
+             * Ingested At
+             * Format: date-time
+             */
+            ingested_at: string;
+            /** Instrument */
+            instrument: string;
+            /** Mapping Version */
+            mapping_version: number;
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            };
+            /** Observation Id */
+            observation_id: string;
+            /** Permission Version */
+            permission_version: number;
+            quality: components["schemas"]["Quality"];
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /** Revision */
+            revision: number;
+            /** Series Id */
+            series_id: string;
+            /** Source Event At */
+            source_event_at: string | null;
+            /** Source Event Key */
+            source_event_key: string;
+            /** Source Id */
+            source_id: string;
+            stored_quality: components["schemas"]["Quality"];
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: string | null;
+        };
+        /** ObservationResponse */
+        ObservationResponse: {
+            /** Data */
+            data: components["schemas"]["ObservationDTO"][];
+            meta: components["schemas"]["MarketMeta"];
+        };
+        /**
+         * Quality
+         * @enum {string}
+         */
+        Quality: "valid" | "no_data" | "no_update" | "stale" | "disconnected" | "unknown" | "session_closed" | "manual_unverified" | "manual_checked";
         /** Quote */
         Quote: {
             /**
@@ -229,6 +374,46 @@ export interface components {
         QuoteResponse: {
             data: components["schemas"]["Quote"];
             meta: components["schemas"]["Meta"];
+        };
+        /** SeriesDTO */
+        SeriesDTO: {
+            /** Activation */
+            activation: string;
+            /** Currency */
+            currency: string | null;
+            /** Indicator Id */
+            indicator_id: string;
+            /** Instrument Type */
+            instrument_type: string;
+            /** Interval */
+            interval: string;
+            /** Mapping Version */
+            mapping_version: number;
+            /** Priority */
+            priority: number;
+            /** Series Id */
+            series_id: string;
+            /** Source Id */
+            source_id: string;
+            /** Symbol */
+            symbol: string;
+            /** Ttl Seconds */
+            ttl_seconds: number | null;
+            /** Unit */
+            unit: string;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
         };
     };
     responses: never;
@@ -441,6 +626,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listIndicatorCatalog: {
+        parameters: {
+            query?: {
+                source?: string | null;
+                indicator?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listMarketObservations: {
+        parameters: {
+            query: {
+                series_id: string;
+                as_of?: string | null;
+                start?: string | null;
+                end?: string | null;
+                quality?: components["schemas"]["Quality"] | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listMarketSeries: {
+        parameters: {
+            query?: {
+                source?: string | null;
+                indicator?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

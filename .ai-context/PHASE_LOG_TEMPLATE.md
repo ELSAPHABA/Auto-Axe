@@ -30,6 +30,7 @@
 
 ## FAILED / UNRESOLVED (실패 및 미해결 사항)
 - 문제 → 조사 → root cause(가설 vs verified) → 변경 → 검증 → remaining. 정확한 오류/명령/버전/영향/실패한 대안과 이유; 비밀 redacted.
+- 별도 [트러블슈팅 인덱스](../../../docs/troubleshooting/README.md) 및 phase-NN.md에도 상세 재현, 원인, 대안, 수정, 재검증, 잔여 위험을 기록하고 상호 링크. 사용자 2026-11-27 지시.
 
 ## FILES (관련 파일)
 - path / status / purpose / key identifiers / relevant commits / artifacts.
@@ -61,5 +62,6 @@
 - [ ] 기존 context 및 관련 phase log 읽고 merge
 - [ ] 사용자 메시지의 실질적 요구 누락 없음, 변경·승인 범위 표시
 - [ ] 상태·실패·검증·정확한 다음 단계 명시
+- [ ] 별도 Phase 트러블슈팅 문서 갱신 및 상호 링크
 - [ ] secret/민감정보 제거, 원본 tool payload 제외
 - [ ] CONTEXT와 phase log를 실제 코드/commit에 맞춰 갱신, 원격 저장 확인

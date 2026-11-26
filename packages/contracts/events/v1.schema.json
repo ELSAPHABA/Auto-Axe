@@ -77,7 +77,17 @@
           "type": "string"
         },
         "origin_db": {
-          "const": "autoaxe_app",
+          "enum": [
+            "autoaxe_app",
+            "autoaxe_market",
+            "autoaxe_dev",
+            "autoaxe_test",
+            "autoaxe_backtest",
+            "autoaxe_dry_run",
+            "autoaxe_paper_local",
+            "autoaxe_paper_broker",
+            "autoaxe_live"
+          ],
           "title": "Origin Db",
           "type": "string"
         },
@@ -139,7 +149,9 @@
             "queued",
             "running",
             "failed",
-            "succeeded"
+            "succeeded",
+            "cancel_requested",
+            "cancelled"
           ],
           "title": "Status",
           "type": "string"
@@ -150,6 +162,178 @@
         "status"
       ],
       "title": "JobPayload",
+      "type": "object"
+    },
+    "ObservationEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "account_ref": {
+          "title": "Account Ref",
+          "type": "null"
+        },
+        "aggregate_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Aggregate Id",
+          "type": "string"
+        },
+        "aggregate_type": {
+          "const": "market_series",
+          "title": "Aggregate Type",
+          "type": "string"
+        },
+        "aggregate_version": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Aggregate Version",
+          "type": "integer"
+        },
+        "available_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "title": "Available At",
+          "type": "string"
+        },
+        "causation_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Causation Id"
+        },
+        "committed_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "title": "Committed At",
+          "type": "string"
+        },
+        "correlation_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Correlation Id",
+          "type": "string"
+        },
+        "event_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "market.observation.recorded",
+          "title": "Event Type",
+          "type": "string"
+        },
+        "mode": {
+          "title": "Mode",
+          "type": "null"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "origin_db": {
+          "enum": [
+            "autoaxe_market",
+            "autoaxe_dev",
+            "autoaxe_test"
+          ],
+          "title": "Origin Db",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/ObservationPayload"
+        },
+        "schema_version": {
+          "const": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "series_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Series Id",
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "source_event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "Z$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Source Event At"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "schema_version",
+        "origin_db",
+        "aggregate_type",
+        "aggregate_id",
+        "aggregate_version",
+        "source",
+        "series_id",
+        "source_event_at",
+        "occurred_at",
+        "available_at",
+        "committed_at",
+        "correlation_id",
+        "causation_id",
+        "mode",
+        "account_ref",
+        "payload"
+      ],
+      "title": "ObservationEvent",
+      "type": "object"
+    },
+    "ObservationPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "observation_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "quality": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Quality",
+          "type": "string"
+        },
+        "revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "observation_id",
+        "revision",
+        "quality"
+      ],
+      "title": "ObservationPayload",
       "type": "object"
     },
     "PriceEvent": {
@@ -326,6 +510,7 @@
   "discriminator": {
     "mapping": {
       "job.status.changed": "#/$defs/JobEvent",
+      "market.observation.recorded": "#/$defs/ObservationEvent",
       "market.price.updated": "#/$defs/PriceEvent"
     },
     "propertyName": "event_type"
@@ -336,6 +521,9 @@
     },
     {
       "$ref": "#/$defs/JobEvent"
+    },
+    {
+      "$ref": "#/$defs/ObservationEvent"
     }
   ]
 }
