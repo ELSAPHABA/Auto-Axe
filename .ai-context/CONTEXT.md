@@ -6,12 +6,12 @@
 
 - Repository: https://github.com/ELSAPHABA/Auto-Axe (공개, ID 1427169047), clone: https://github.com/ELSAPHABA/Auto-Axe.git.
 - 원격 기본 브랜치 main; 분석 기준 HEAD `da26b439e1d2deaabed7138ee3f83897a44e023c`, root tree `188dc0e7c9e66ed7af9cbdb8ab5887eda94a59ee`, docs tree `c75cd03335fedf50655fb76e7cf18d18e2fc25c4`.
-- 갱신 일자: 2026-11-26 KST (사용자 대화 시각 23:25 KST). 세션 ID는 제공되지 않음, 논리 기록 ID planning-baseline-20261126. 이 문서 자체가 포함된 커밋은 Git 이력에서 확인(자기 참조 해시를 문서에 추측 기입하지 않음).
-- GitHub 연결로 원격만 조사. 로컬 checkout/프로세스/스테이징/설치 상태 미관찰.
+- 갱신 일자: 2026-11-27 KST, Phase 0 session 2026-11-26-01. 계획 기준 기록 ID planning-baseline-20261126 (2026-11-26 23:25 KST). 이 문서 자체가 포함된 커밋은 Git 이력에서 확인.
+- 계획 반영 커밋 f3bb388649429220f04cb38f62ee13bad367fd56. Phase 0 로컬 main 작업 기준으로 동기화. 현재 환경/검증 세부: [Phase 0 기록](phases/phase-00/2026-11-26-01.md), [환경/호환성](../docs/development/PHASE_00_ENVIRONMENT.md).
 
 ## TASK (작업 목표)
 
-사용자 요청: Auto-Axe 본격 코드 개발에 앞서 /docs를 분석해 개발 Phase 계획을 수립하고, 매 Phase의 진행 과정과 상황을 상세히 리포지토리에 저장해 완전히 새로운 대화/에이전트에서도 작업을 정확히 재개하도록 한다. 이번 세션은 계획 수립 및 기록 기반 구축에 한정. 실제 Phase 0 코드 구현 요청은 아직 없음.
+사용자 요청: Auto-Axe 본격 코드 개발에 앞서 /docs를 분석해 개발 Phase 계획을 수립하고, 매 Phase의 진행 과정과 상황을 상세히 리포지토리에 저장해 완전히 새로운 대화/에이전트에서도 작업을 정확히 재개하도록 한다. 이전 세션은 계획 수립 한정. 최신 요청 "Phase 0을 진행해 주세요."에 따라 Phase 0 P0.1~P0.7 실제 구현·검증으로 확장. Phase 1~8은 미승인, 실제 운영 배포/공급자 호출/실거래 승인은 아님.
 
 ## USER SPECIFICATION (사용자 명세)
 
@@ -35,9 +35,10 @@
 
 ## CURRENT STATE (현재 상태)
 
-기준 원격 Git tree는 truncated=false. 루트는 .gitignore, LICENSE, README.md, docs/만 존재. 실제 apps/, packages/, infra/, tests/, .github/workflows/, 기존 .ai-context/ 또는 AGENTS.md 없음. docs/examples는 연구/수집 PoC로 실제 운영 서비스가 아니다. 모든 Phase 0~8 NOT_STARTED, actual code not implemented; 설치/CI/외부 source/NH paper/LIVE의 이번 세션 검증은 없음. 기존 문서의 실측 결과는 해당 시점의 기록이며 현재 재현 성공을 의미하지 않는다.
-- 현재 작업 단위: 개발 계획 문서와 인계 기록의 생성 및 원격 반영. 이후 최초 실제 개발 단위는 P0.1.
-- [계획](../docs/development/PHASE_PLAN.md)에서 Phase별 세부 작업/exit/FR 및 SEC 추적 참조. [초기 기록](phases/planning-baseline.md), [양식](PHASE_LOG_TEMPLATE.md).
+초기 기준 원격 tree(계획 이전)는 truncated=false, .gitignore, LICENSE, README.md, docs/만 존재했다. 이 역사적 상태는 Phase 0 구현으로 변경되었다. apps/backend, apps/web, apps/executor, packages/contracts, infra, tests/fixtures, .github/workflows, scripts, AGENTS.md와 lockfiles가 추가됐다. docs/examples는 연구/수집 PoC로 실제 운영 서비스가 아니며 변경하지 않았다.
+- Phase 0: 로컬 구현 및 핵심 기술 검수 VERIFIED (hosted CI 결과 별도). Phase 1~8 NOT_STARTED. backend fixture API/MCP 및 공통 schema/TS, 실제 PostgreSQL 17 격리 role/초기 migration, React fixture 화면, 독립 disabled Executor, dev Compose/CI 기반. API의 fixture 저장은 메모리이며 실제 수집/영속 시장 데이터/워크플로/주문 없음.
+- 로컬 실제 tests 28 passed 합계(backend 21 + DB integration 1 + executor 3 + web 2 + E2E 1, 각각 별도 실행). Compose postgres/api/web healthy, migrate exit0, loopback web root HTTP 200 및 proxy fixture health, isolated executor import 성공. 최종 scan/Git 증거는 Phase log 참조. 외부 broker/market 요청 없음, LIVE/external MCP false.
+- [계획](../docs/development/PHASE_PLAN.md), [초기 기록](phases/planning-baseline.md), [Phase 0 기록](phases/phase-00/2026-11-26-01.md), [환경 문서](../docs/development/PHASE_00_ENVIRONMENT.md), [양식](PHASE_LOG_TEMPLATE.md).
 
 ## ARCHITECTURE / DECISIONS (아키텍처 및 의사결정)
 
@@ -54,24 +55,26 @@
 - [trading-integration.md](../docs/tech-stack/trading-integration.md): five modes BACKTEST/DRY_RUN/PAPER_LOCAL/PAPER_BROKER/LIVE; PAPER UI aggregate only. SDK nhplug only isolated executor, official nhplug-mcp read allowlist private Node stdio; no direct live order REST/MCP. Automatic strategy prior human approval vs per-order human approval manual/AI. Account/mode priority, separate max buy/sell qty/value, reservation conflicts CONFLICT_HELD, stop/kill/revoke, UNKNOWN no blind retry; reconcile already sent; no paper→live fallback. No automatic liquidation implied.
 - [MCP](../docs/mcp/README.md): ten domains market/indicator/stock_group/workflow/prediction/backtest/portfolio/collector/system/trading(preparation only), exact tool/resource/prompt names in catalog. stdio/loopback/HTTPS Streamable HTTP, common service, authenticated OAuth scopes+resource ownership, private upstream, external off by default. Client disconnect/revoke/remote OFF affects new client requests, not independently preapproved workflow; workflow/account revoke or unknown authorization blocks new orders and requires reconciliation.
 - [security](../docs/tech-stack/security.md) SEC-01~10: identity, BOLA, network, scraper SSRF, secrets, order safety, data/model integrity, supply chain, availability/restore, audit/incident. [infrastructure](../docs/tech-stack/infrastructure.md): single Linux host initial not HA; SLO p95/RPO/RTO hypotheses only, actual target unknown.
-- This session planning decision (agent proposal within user-authorized planning): retain existing exclusive Phase 0~8, split into numbered work packages, record state + log template; no architectural change, no new approval. Canonical prior roadmap remains [testing-roadmap](../docs/tech-stack/testing-roadmap.md).
+- Prior planning decision (agent proposal within user-authorized planning): retain existing exclusive Phase 0~8, split into numbered work packages, record state + log template; no architectural change, no new approval. Canonical prior roadmap remains [testing-roadmap](../docs/tech-stack/testing-roadmap.md).
+- Phase 0 implementation decisions: separate backend/executor uv.lock and venv, nhplug only executor; host Python3.12.10/uv0.13.10, Node24.21.0/pnpm12.9.1, PG17.12; Docker images and CI Action SHA pinned. Fixture-only API config refuses true LIVE or external MCP, no domain execution. Graph/event initial minimal schema with future domain expansion. Vite dev host port 18174 and E2E 18173 due Windows reservations; Vite runner avoids read-only config temp writes; web-only edge bridge, private app/data. Vitest 4.1.12 patches audit findings. See detailed phase record for causality and actual versions.
 
 ## DONE (완료된 작업)
 
 - GitHub repo metadata confirmed public/default main and connection pull/push permission.
 - Recursive tree at immutable commit confirmed no existing context or production app. Read docs/README and tech-stack architecture/roadmap/contracts/backend/infrastructure and extracted detailed heading/requirements/contract tables of functional, frontend, tech-stack, indicator and MCP documents. Examined PoC identifiers/dependency list and NH index. Large NH llms-full and 6.3MB overseas stock master kept as references for targeted later Phase 0/5, not exhaustive row audit. Some long file views filtered or output truncated; don't claim all original line-by-line read. Original files retained.
 - Existing roadmap uniquely defines Phase 0~8; no conflicting global numbering introduced.
-- Planning artifacts in this commit constitute Phase planning baseline; publication/readback must be verified via Git, not this assertion alone.
+- Planning artifacts were published and verified at f3bb388649429220f04cb38f62ee13bad367fd56.
+- Phase 0 P0.1~P0.7 local fixture implementation and evidence detailed in [Phase 0 log](phases/phase-00/2026-11-26-01.md). Initial 10 DBs/roles and migration only; actual endpoint permissions and production deployment not verified.
 
 ## PLANNED / DECIDED (계획 및 확정 사항)
 
-[PHASE_PLAN](../docs/development/PHASE_PLAN.md) and prior roadmap define 0 (tech/dev environment), 1 (collection/storage), 2 (all indicators/dashboard), 3 (group/workflow), 4 (triggers/analytics/backtest), 5 (paper Executor), 6 (MCP), 7 (operations/security), 8 (LIVE conditional). All NOT_STARTED, no user approval of LIVE. A Phase may have verified foundation and separately blocked provider activation; record both. Read phase-specific original acceptance criteria before implementing.
+[PHASE_PLAN](../docs/development/PHASE_PLAN.md) and prior roadmap define 0 (tech/dev environment), 1 (collection/storage), 2 (all indicators/dashboard), 3 (group/workflow), 4 (triggers/analytics/backtest), 5 (paper Executor), 6 (MCP), 7 (operations/security), 8 (LIVE conditional). Phase 0 locally verified; Phase 1~8 NOT_STARTED; no user approval of LIVE. A Phase may have verified foundation and separately blocked provider activation; record both. Read phase-specific original acceptance criteria before implementing.
 - Record lifecycle: at entry read prior context and actual repo, create/update phase log before changes; update at material milestones/failures/interruptions and before stopping, then record exact verified exit and commit. For lengthy session split e.g. phases/phase-03/2026-...-01.md and add manifest links; preserve all history, mark superseded. Don't backfill fictional execution. Context is index and active state plus user specification; not a substitute for detailed logs.
-- Phase changes and documentation should land together where feasible; verify current branch and user's authorization, never force push. This session intended documentation-only commit on observed main; future branch/PR workflow not decided.
+- Phase changes and documentation should land together where feasible; verify current branch and user's authorization, never force push. Phase 0 continued main as observed and selected normal commit/push. Future branch/PR workflow not decided.
 
 ## FAILED / UNRESOLVED (실패 및 미해결 사항)
 
-No build/test failure because none executed. One broad batch document retrieval exceeded tool-call limit; recovered by smaller batches, no repository change from error. Large combined read output truncated; used targeted extraction and original source links. Exact SDK/runtime versions, data provider rights/limits, MEXC Protobuf/WS and yfinance real event delays, scraper authorization and actual parser compatibility, exact NH order API/mode/fees/master/limits, actual host/retention/load/backup, dataset sufficiency/model thresholds, MCP Host interoperability, user risk limits and LIVE approval unresolved; see plan R01~R08. No local workspace verified. NH full raw references not exhaustively read. Prior separate conversation details not independently reconstructed; existing repo baseline is authoritative available evidence, later user correction overrides.
+Planning-history: one broad batch document retrieval exceeded tool-call limit; recovered by smaller batches. Large combined read output truncated; targeted extraction and source links. NH full raw references not exhaustively read; prior separate conversation details not independently reconstructed. Phase 0 resolved local runtime/SDK install and fixture compatibility; detailed failure→fix evidence in phase log (uv missing, Ruff/mypy, Vitest advisory, Windows reserved ports, Pydantic false env, Vite EROFS, internal-only Docker publish). Hosted CI outcome remains separate. Actual data provider rights/limits, MEXC Protobuf/WS and yfinance real event delays, scraper authorization/browser sandbox and actual parser compatibility, NH order API/mode/fees/master/limits, deployment host/retention/load/backup, dataset sufficiency/model thresholds, MCP Host/OAuth interoperability, user risk limits and LIVE approval unresolved; R01~R08. No external permission inferred from install success.
 
 ## FILES (관련 파일)
 
@@ -82,24 +85,25 @@ No build/test failure because none executed. One broad batch document retrieval 
 - docs/examples/realtime_collector.py: yf_market, treasury_five, binance_futures_snapshot, binance_longshort, naver_2y, sec_8k, bls_calendar, bls_actual, fred, eia, vix_eod, binance_futures_live, binance_spot_btc_live, binance_market_live, coinbase, main; docs/examples/manual_record.py, binance_coverage_probe.py, naver_bond_source_probe.py, yfinance_probe.py, requirements.txt, .env.example. PoC deps requests>=2.32,<3; websockets>=14,<17; feedparser>=6,<7; icalendar>=6,<8; python-dotenv>=1,<2; yfinance>=0.2.65,<2. Production lock not implied.
 - docs/mcp/{README,specification,tools,resources-prompts,security,nhplug-integration}.md; docs/nhplug/{README.md,llms.txt,llms-full.txt,nhplug 해외주식 종목정보파일.txt}. Original large references preserve unchanged (full guide 208881 bytes, master 6295632 bytes).
 - New planning artifacts: docs/development/PHASE_PLAN.md; .ai-context/CONTEXT.md, PHASE_LOG_TEMPLATE.md, phases/planning-baseline.md. docs/README.md index extension if included in commit.
+- Phase 0 files: apps/backend/{pyproject.toml,uv.lock,src/autoaxe,migrations,tests,Dockerfile}, apps/executor separate project, apps/web workspace, packages/contracts/{openapi.json,workflow/v1.schema.json,events/v1.schema.json,generated/api.ts}, tests/fixtures, infra/compose/dev.yaml, .github/workflows/phase0.yml, scripts/{init_dev_env,compatibility_inventory,nhplug_mcp_smoke}.py, root lock/config/AGENTS.md, docs/development/PHASE_00_ENVIRONMENT.md and .ai-context/phases/phase-00/2026-11-26-01.md. Full file and test matrix in linked logs.
 
 ## VERIFICATION (검증)
 
-This session verified remote metadata/tree and actual document evidence via GitHub. No Python/Node installs, builds, test suite, CI, Docker, DB, SDK/market endpoints, deployment or trades executed. No user credentials required or stored. All operational commands in plan are proposed, not reported successes. For final write evidence inspect actual commit/branch/readback. Baseline root and docs tree identifiers above allow immutable comparison. Phase 0 must perform concrete smoke tests and record results.
+Planning session verified remote tree/documents. Phase 0 performed actual installations, lint/typecheck, schemas, tests (28 total), database role matrix, upstream MCP handshake only, Docker fixture smoke, dependency advisory scans. Results and commands in phase log and environment docs. No user credentials or market/broker requests, no operations deployment/trades. Hosted CI must be checked independently, not inferred from local tests. Baseline root/docs hashes remain historical immutable evidence.
 
 ## ENVIRONMENT / GIT STATE (환경 및 Git 상태)
 
-Remote main baseline as METADATA; repository not archived, push allowed per connector metadata. Local branch/worktree/staged/unstaged/untracked, installed software, running services and deployment unknown. No local checkout used in this planning session. Exact new documentation commit is discoverable via git log/main; next agent must check current state and avoid assuming baseline still HEAD. Never create/stage secret files.
+Local workspace /elsaphaba/Auto-Axe; main at Phase 0 entry clean 577b6533d5a09386bacd3ec371538c32ca975b54, fast-forward to planning commit f3bb388649429220f04cb38f62ee13bad367fd56. Phase 0 commit and final remote verification recorded via Git history/final phase log. Installed Windows/Linux toolchain details in environment docs. Local ignored .venv-tools, .env.phase0, .phase0-cache, app venv and node_modules. Disposable Compose only, not production; see final cleanup state in phase log. Next agent must check branch/HEAD/status and never assume stale values.
 
 ## AGENT STATE (에이전트 상태)
 
-Planning performed by one assistant through GitHub connector. No delegated coding agent or running process initiated.
+Planning performed by one assistant through GitHub connector; Phase 0 by one assistant through local coding tools. No delegated coding agents. Local process/cleanup evidence in phase log.
 
 ## NEXT (후속 작업)
 
 1. Fresh agent: obtain latest branch/HEAD/tree/status (remote connector or authorized local git; local git status --short --branch, git rev-parse HEAD, git remote -v with no secrets exposed). Read this entire document, prior phase logs, docs/README, docs/development/PHASE_PLAN.md, docs/tech-stack/testing-roadmap.md and contracts.md. Confirm actual changes since baseline. If newer user instructions, merge and record.
-2. Verify whether planning documentation commit is on branch and no unintended modifications; do not duplicate creation if already present. No actual Phase has begun.
-3. Upon user request for Phase 0, create .ai-context/phases/phase-00/<session-date-or-index>.md from template; record baseline and exact first P0.1. Inspect actual tool versions/local tree, then P0.2 compatibility matrix and scaffold P0.3; execute P0.4~P0.7 only with verified dependency assumptions. No production credentials or external source calls by default.
+2. Verify Phase 0 implementation commit on main, local tree clean or record differences, and hosted Actions status. If CI fails, inspect actual job output and repair Phase 0 before advancing. Read [Phase 0 log](phases/phase-00/2026-11-26-01.md) and [environment](../docs/development/PHASE_00_ENVIRONMENT.md).
+3. Upon user request for Phase 1, create .ai-context/phases/phase-01/<date-index>.md using template and execute P1.1 first: source/instrument/series registry and permissions, then P1.2~P1.7 with real DB/recovery/contract fixtures. Read original indicator, data-collection/data-storage/backend/contracts and functional FR requirements. No production credentials or external source calls by default.
 4. At each milestone record decisions/evidence/failure/resumption. Update this file preserving user spec and link phase records. At end run relevant tests, record command/output summary/hash, mark status truthfully, persist Git changes and verify remote. Only proceed to next Phase within authorization and fulfilled dependencies.
 5. If interrupted, record exact next tool action, remaining task, expected result, blockers. If tool fails, do not invent a success. For repo-specific decisions read original documents and current code instead of asking user again for known requirements.
 
@@ -110,3 +114,4 @@ Do not treat plan or PoC as implementation; do not alter canonical phase numberi
 ## SESSION HISTORY (세션 이력)
 
 - 2026-11-26 planning-baseline: user initiated serious code development planning from docs, imposed lossless persistent handoff specification. Remote main snapshot verified; only docs and PoC. Existing unique Phase 0~8 confirmed and detailed work packages drafted; created linked operational context and template. No code or test execution, no deployment or LIVE approval. [Detailed baseline](phases/planning-baseline.md). This is the first context entry observed in the tree; original prior project history remains in baseline Git documents/commits.
+- 2026-11-26~27 Phase 0: explicit user request; actual local preflight, compatibility, monorepo, contract/schema, DB/role, Compose, CI and tests. Locally verified fixture base, no provider or trading activation. [Detailed log](phases/phase-00/2026-11-26-01.md), [environment matrix](../docs/development/PHASE_00_ENVIRONMENT.md).

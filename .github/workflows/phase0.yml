@@ -1,0 +1,78 @@
+name: Phase 0 fixture checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  contracts-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
+        with:
+          version: "0.13.10"
+          python-version: "3.12"
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version-file: .node-version
+      - run: uv sync --project apps/backend --locked --group collection-smoke
+      - run: uv run --project apps/backend --locked ruff check apps/backend/src apps/backend/tests apps/backend/migrations
+      - run: uv run --project apps/backend --locked ruff format --check apps/backend/src apps/backend/tests apps/backend/migrations
+      - run: uv run --project apps/backend --locked mypy --config-file apps/backend/pyproject.toml apps/backend/src
+      - run: uv run --project apps/backend --locked python -m autoaxe.adapters.schema --check
+      - run: uv run --project apps/backend --locked pytest apps/backend/tests
+      - run: uv sync --project apps/executor --locked
+      - run: uv run --project apps/executor --locked pytest apps/executor/tests
+      - run: uv run --project apps/executor --locked python -m autoaxe_executor
+      - name: Pinned NHPLUG stdio smoke (no broker requests)
+        run: |
+          git init .phase0-cache/nhplug-mcp
+          git -C .phase0-cache/nhplug-mcp fetch --depth 1 https://github.com/PLUG-OpenAPI/nhplug-mcp.git c61e38ca37de801911ac6c29a685077802513d44
+          git -C .phase0-cache/nhplug-mcp checkout --detach FETCH_HEAD
+          npm --prefix .phase0-cache/nhplug-mcp ci --ignore-scripts --no-audit --no-fund
+          npm --prefix .phase0-cache/nhplug-mcp run build
+          uv run --project apps/backend --locked python scripts/nhplug_mcp_smoke.py .phase0-cache/nhplug-mcp
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version-file: .node-version
+      - run: npm install --global pnpm@12.9.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm contracts:types && git diff --exit-code -- packages/contracts
+      - run: pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build
+      - run: pnpm --filter @autoaxe/web exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+  fixture-compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - run: python3 scripts/init_dev_env.py
+      - run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml config --quiet
+      - run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml up --build -d --wait
+      - run: curl --fail --retry 5 --retry-connrefused http://127.0.0.1:18174/api/v1/system/health
+      - run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml --profile executor-smoke run --rm executor
+      - if: always()
+        run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml down -v
+  secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+      - name: Redacted tracked commit scan
+        env:
+          SCAN_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$SCAN_BASE" ] || [ "$SCAN_BASE" = 0000000000000000000000000000000000000000 ]; then
+            SCAN_BASE="$(git rev-parse HEAD^)"
+          fi
+          docker run --rm --network none -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo -v "$PWD:/repo:ro" ghcr.io/gitleaks/gitleaks:v8.30.0@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9 git --redact=100 --no-banner --log-opts="$SCAN_BASE..HEAD" /repo

@@ -1,0 +1,24 @@
+{
+  "event_id": "evt_fixture_1",
+  "event_type": "market.price.updated",
+  "schema_version": 1,
+  "origin_db": "autoaxe_market",
+  "aggregate_type": "market_series",
+  "aggregate_id": "FIXTURE_PRICE",
+  "aggregate_version": 1,
+  "source": "synthetic",
+  "series_id": "FIXTURE_PRICE",
+  "source_event_at": "2026-01-01T00:00:00Z",
+  "occurred_at": "2026-01-01T00:00:00Z",
+  "available_at": "2026-01-01T00:00:00Z",
+  "committed_at": "2026-01-01T00:00:00Z",
+  "correlation_id": "fixture",
+  "causation_id": null,
+  "mode": null,
+  "account_ref": null,
+  "payload": {
+    "symbol": "FIXTURE",
+    "price": "123.45",
+    "currency": "USD"
+  }
+}

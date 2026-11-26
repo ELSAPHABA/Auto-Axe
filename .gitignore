@@ -218,3 +218,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Auto-Axe local development (never commit credentials or tool caches)
+.env.phase0
+.venv-tools/
+.phase0-cache/
+node_modules/
+dist/
+playwright-report/
+test-results/
+.hypothesis/
+*.tsbuildinfo

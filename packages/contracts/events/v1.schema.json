@@ -1,0 +1,341 @@
+{
+  "$defs": {
+    "JobEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "account_ref": {
+          "title": "Account Ref",
+          "type": "null"
+        },
+        "aggregate_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Aggregate Id",
+          "type": "string"
+        },
+        "aggregate_type": {
+          "const": "job",
+          "title": "Aggregate Type",
+          "type": "string"
+        },
+        "aggregate_version": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Aggregate Version",
+          "type": "integer"
+        },
+        "available_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "title": "Available At",
+          "type": "string"
+        },
+        "causation_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Causation Id"
+        },
+        "committed_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "title": "Committed At",
+          "type": "string"
+        },
+        "correlation_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Correlation Id",
+          "type": "string"
+        },
+        "event_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "job.status.changed",
+          "title": "Event Type",
+          "type": "string"
+        },
+        "mode": {
+          "title": "Mode",
+          "type": "null"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "origin_db": {
+          "const": "autoaxe_app",
+          "title": "Origin Db",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/JobPayload"
+        },
+        "schema_version": {
+          "const": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "series_id": {
+          "title": "Series Id",
+          "type": "null"
+        },
+        "source": {
+          "title": "Source",
+          "type": "null"
+        },
+        "source_event_at": {
+          "title": "Source Event At",
+          "type": "null"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "schema_version",
+        "origin_db",
+        "aggregate_type",
+        "aggregate_id",
+        "aggregate_version",
+        "source",
+        "series_id",
+        "source_event_at",
+        "occurred_at",
+        "available_at",
+        "committed_at",
+        "correlation_id",
+        "causation_id",
+        "mode",
+        "account_ref",
+        "payload"
+      ],
+      "title": "JobEvent",
+      "type": "object"
+    },
+    "JobPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Job Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "failed",
+            "succeeded"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id",
+        "status"
+      ],
+      "title": "JobPayload",
+      "type": "object"
+    },
+    "PriceEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "account_ref": {
+          "title": "Account Ref",
+          "type": "null"
+        },
+        "aggregate_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Aggregate Id",
+          "type": "string"
+        },
+        "aggregate_type": {
+          "const": "market_series",
+          "title": "Aggregate Type",
+          "type": "string"
+        },
+        "aggregate_version": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Aggregate Version",
+          "type": "integer"
+        },
+        "available_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "title": "Available At",
+          "type": "string"
+        },
+        "causation_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Causation Id"
+        },
+        "committed_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "title": "Committed At",
+          "type": "string"
+        },
+        "correlation_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Correlation Id",
+          "type": "string"
+        },
+        "event_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "market.price.updated",
+          "title": "Event Type",
+          "type": "string"
+        },
+        "mode": {
+          "title": "Mode",
+          "type": "null"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "origin_db": {
+          "const": "autoaxe_market",
+          "title": "Origin Db",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/PricePayload"
+        },
+        "schema_version": {
+          "const": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "series_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Series Id",
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "source_event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "Z$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Source Event At"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "schema_version",
+        "origin_db",
+        "aggregate_type",
+        "aggregate_id",
+        "aggregate_version",
+        "source",
+        "series_id",
+        "source_event_at",
+        "occurred_at",
+        "available_at",
+        "committed_at",
+        "correlation_id",
+        "causation_id",
+        "mode",
+        "account_ref",
+        "payload"
+      ],
+      "title": "PriceEvent",
+      "type": "object"
+    },
+    "PricePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "enum": [
+            "USD",
+            "USDT"
+          ],
+          "title": "Currency",
+          "type": "string"
+        },
+        "price": {
+          "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+          "title": "Price",
+          "type": "string"
+        },
+        "symbol": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        }
+      },
+      "required": [
+        "symbol",
+        "price",
+        "currency"
+      ],
+      "title": "PricePayload",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "discriminator": {
+    "mapping": {
+      "job.status.changed": "#/$defs/JobEvent",
+      "market.price.updated": "#/$defs/PriceEvent"
+    },
+    "propertyName": "event_type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/PriceEvent"
+    },
+    {
+      "$ref": "#/$defs/JobEvent"
+    }
+  ]
+}

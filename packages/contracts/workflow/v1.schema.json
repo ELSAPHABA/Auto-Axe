@@ -1,0 +1,366 @@
+{
+  "$defs": {
+    "Edge": {
+      "additionalProperties": false,
+      "properties": {
+        "edge_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Edge Id",
+          "type": "string"
+        },
+        "source_node_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Source Node Id",
+          "type": "string"
+        },
+        "source_port": {
+          "const": "result",
+          "title": "Source Port",
+          "type": "string"
+        },
+        "target_node_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Target Node Id",
+          "type": "string"
+        },
+        "target_port": {
+          "const": "condition",
+          "title": "Target Port",
+          "type": "string"
+        }
+      },
+      "required": [
+        "edge_id",
+        "source_node_id",
+        "source_port",
+        "target_node_id",
+        "target_port"
+      ],
+      "title": "Edge",
+      "type": "object"
+    },
+    "EmptyConfig": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "EmptyConfig",
+      "type": "object"
+    },
+    "ExecutionPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "fixture_only": {
+          "const": true,
+          "default": true,
+          "title": "Fixture Only",
+          "type": "boolean"
+        }
+      },
+      "title": "ExecutionPolicy",
+      "type": "object"
+    },
+    "IndicatorConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "freshness_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Freshness Seconds",
+          "type": "integer"
+        },
+        "indicator_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Indicator Id",
+          "type": "string"
+        },
+        "operator": {
+          "enum": [
+            "LTE",
+            "GTE"
+          ],
+          "title": "Operator",
+          "type": "string"
+        },
+        "threshold": {
+          "title": "Threshold",
+          "type": "number"
+        }
+      },
+      "required": [
+        "indicator_id",
+        "operator",
+        "threshold",
+        "freshness_seconds"
+      ],
+      "title": "IndicatorConfig",
+      "type": "object"
+    },
+    "IndicatorNode": {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "$ref": "#/$defs/IndicatorConfig"
+        },
+        "node_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Node Id",
+          "type": "string"
+        },
+        "node_schema_version": {
+          "const": 1,
+          "title": "Node Schema Version",
+          "type": "integer"
+        },
+        "node_type": {
+          "const": "indicator",
+          "title": "Node Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "node_id",
+        "node_type",
+        "node_schema_version",
+        "config"
+      ],
+      "title": "IndicatorNode",
+      "type": "object"
+    },
+    "Mode": {
+      "enum": [
+        "BACKTEST",
+        "DRY_RUN",
+        "PAPER_LOCAL",
+        "PAPER_BROKER",
+        "LIVE"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "Position": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Position",
+      "type": "object"
+    },
+    "Presentation": {
+      "additionalProperties": false,
+      "properties": {
+        "positions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Position"
+          },
+          "title": "Positions",
+          "type": "object"
+        },
+        "presentation_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Presentation Version",
+          "type": "integer"
+        }
+      },
+      "title": "Presentation",
+      "type": "object"
+    },
+    "ResetPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "business_days": {
+          "exclusiveMinimum": 0,
+          "title": "Business Days",
+          "type": "integer"
+        },
+        "calendar_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Calendar Id",
+          "type": "string"
+        },
+        "calendar_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Calendar Version",
+          "type": "string"
+        },
+        "timezone": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Timezone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_days",
+        "calendar_id",
+        "calendar_version",
+        "timezone"
+      ],
+      "title": "ResetPolicy",
+      "type": "object"
+    },
+    "ResultNode": {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "$ref": "#/$defs/EmptyConfig"
+        },
+        "node_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Node Id",
+          "type": "string"
+        },
+        "node_schema_version": {
+          "const": 1,
+          "title": "Node Schema Version",
+          "type": "integer"
+        },
+        "node_type": {
+          "const": "condition_result",
+          "title": "Node Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "node_id",
+        "node_type",
+        "node_schema_version",
+        "config"
+      ],
+      "title": "ResultNode",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "dependency_refs": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Dependency Refs",
+      "type": "array"
+    },
+    "edges": {
+      "items": {
+        "$ref": "#/$defs/Edge"
+      },
+      "maxItems": 100,
+      "title": "Edges",
+      "type": "array"
+    },
+    "execution_policy": {
+      "$ref": "#/$defs/ExecutionPolicy"
+    },
+    "mode": {
+      "$ref": "#/$defs/Mode"
+    },
+    "name": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "nodes": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "condition_result": "#/$defs/ResultNode",
+            "indicator": "#/$defs/IndicatorNode"
+          },
+          "propertyName": "node_type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/IndicatorNode"
+          },
+          {
+            "$ref": "#/$defs/ResultNode"
+          }
+        ]
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "Nodes",
+      "type": "array"
+    },
+    "presentation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Presentation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "priority": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Priority",
+      "type": "integer"
+    },
+    "reset_policy": {
+      "$ref": "#/$defs/ResetPolicy"
+    },
+    "risk_profile_ref": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Risk Profile Ref",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "workflow_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Workflow Id",
+      "type": "string"
+    },
+    "workflow_version": {
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991,
+      "title": "Workflow Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "workflow_id",
+    "workflow_version",
+    "name",
+    "mode",
+    "priority",
+    "reset_policy",
+    "execution_policy",
+    "risk_profile_ref",
+    "dependency_refs",
+    "nodes",
+    "edges"
+  ],
+  "title": "Workflow",
+  "type": "object"
+}

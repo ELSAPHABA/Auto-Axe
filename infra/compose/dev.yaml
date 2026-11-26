@@ -1,0 +1,94 @@
+name: autoaxe-phase0
+services:
+  postgres:
+    image: postgres:17@sha256:87c8b42f423b45d5247e6aa8fdb2e7762fec164c68a50fe3eb07e7bfcaf4dbcf
+    environment:
+      POSTGRES_USER: fixture_admin
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: ${AUTOAXE_FIXTURE_DB_PASSWORD:?generate local fixture env first}
+    volumes: [fixture-data:/var/lib/postgresql/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "fixture_admin", "-d", "postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: "no"
+  migrate:
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.infrastructure.db_bootstrap"]
+    environment:
+      AUTOAXE_ENVIRONMENT: fixture
+      AUTOAXE_DISPOSABLE_DB: "true"
+      AUTOAXE_FIXTURE_ADMIN_DSN: "host=postgres dbname=postgres user=fixture_admin password=${AUTOAXE_FIXTURE_DB_PASSWORD:?generate local fixture env first}"
+    depends_on:
+      postgres: {condition: service_healthy}
+    networks: [data]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: "no"
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+    environment:
+      AUTOAXE_ENVIRONMENT: fixture
+      AUTOAXE_LIVE_ENABLED: "false"
+      AUTOAXE_EXTERNAL_MCP_ENABLED: "false"
+    networks: [app]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/system/health', timeout=2).close()"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: "no"
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    environment:
+      AUTOAXE_API_TARGET: "http://api:8000"
+    networks: [app, edge]
+    ports: ["127.0.0.1:${AUTOAXE_DEV_WEB_PORT:-18174}:4173"]
+    depends_on:
+      api: {condition: service_healthy}
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4173/api/v1/system/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: "no"
+  executor:
+    profiles: [executor-smoke]
+    build:
+      context: ../..
+      dockerfile: apps/executor/Dockerfile
+    environment:
+      AUTOAXE_ENVIRONMENT: fixture
+      AUTOAXE_LIVE_ENABLED: "false"
+    network_mode: none
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: "no"
+networks:
+  app: {internal: true}
+  data: {internal: true}
+  edge: {}
+volumes:
+  fixture-data:

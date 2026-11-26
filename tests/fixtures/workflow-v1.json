@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "workflow_id": "wf_fixture",
+  "workflow_version": 1,
+  "name": "Fixture only",
+  "mode": "DRY_RUN",
+  "priority": 50,
+  "reset_policy": {
+    "business_days": 5,
+    "calendar_id": "XNYS",
+    "calendar_version": "fixture-1",
+    "timezone": "America/New_York"
+  },
+  "execution_policy": {
+    "fixture_only": true
+  },
+  "risk_profile_ref": "fixture",
+  "dependency_refs": [],
+  "nodes": [
+    {
+      "node_id": "c1",
+      "node_type": "indicator",
+      "node_schema_version": 1,
+      "config": {
+        "indicator_id": "VIX",
+        "operator": "LTE",
+        "threshold": 20,
+        "freshness_seconds": 10
+      }
+    },
+    {
+      "node_id": "n2",
+      "node_type": "condition_result",
+      "node_schema_version": 1,
+      "config": {}
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e1",
+      "source_node_id": "c1",
+      "source_port": "result",
+      "target_node_id": "n2",
+      "target_port": "condition"
+    }
+  ]
+}
