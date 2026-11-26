@@ -1,5 +1,6 @@
 """Actual PG17 transaction, permissions, replay and REST contract evidence."""
 
+import asyncio
 import secrets
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -10,12 +11,16 @@ from fastapi.testclient import TestClient
 from psycopg.errors import InsufficientPrivilege
 from testcontainers.postgres import PostgresContainer
 
+from autoaxe.adapters.providers import binance_rest_trade
+from autoaxe.application.collection import FetchError
 from autoaxe.application.market_worker import (
     relay_batch,
     run_one,
     submit_collection,
     synthetic_collect,
 )
+from autoaxe.application.polling import CADENCE, schedule_due, tick
+from autoaxe.application.stream_worker import run_stream
 from autoaxe.domain.market import Candidate, Quality
 from autoaxe.entrypoints.api import create_app
 from autoaxe.infrastructure.db_bootstrap import provision
@@ -266,4 +271,174 @@ def test_ledger_jobs_and_mode_ingress(monkeypatch):
                     "SELECT count(*) FROM catalog.permission_versions WHERE source_id='naver'"
                 ).fetchone()[0]
                 == 3
+            )
+
+        # Durable scheduling: all 24 ratios, no permission -> no jobs.
+        ratios = sorted(sid for sid in CADENCE if sid.startswith("BINANCE_"))
+        assert len(ratios) == 24 and all(CADENCE[sid] == 300 for sid in ratios)
+        with psycopg.connect(market) as conn:
+            stamp = conn.execute("SELECT clock_timestamp()").fetchone()[0]
+            assert schedule_due(conn, ratios, stamp) == []
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "binance_futures",
+                approved=True,
+                evidence="synthetic test permission",
+                fetch=True,
+                storage=True,
+            )
+        calls = []
+
+        def ratio_fixture(sid):
+            calls.append(sid)
+            t = datetime.now(UTC)
+            return [Candidate(sid, "fixture-window", "1.25", t, t, t)]
+
+        assert tick(market, ratios, ratio_fixture, now=stamp) == {"scheduled": 24, "processed": 24}
+        assert sorted(calls) == ratios
+        assert tick(market, ratios, ratio_fixture, now=stamp + timedelta(seconds=299)) == {
+            "scheduled": 0,
+            "processed": 0,
+        }
+        assert len(calls) == 24
+        next_slot = stamp + timedelta(seconds=300)
+
+        def limited(sid):
+            calls.append(sid)
+            raise FetchError(429, "90")
+
+        assert tick(market, ratios, limited, now=next_slot) == {"scheduled": 24, "processed": 1}
+        with psycopg.connect(market) as conn:
+            cooldown = conn.execute(
+                "SELECT retry_at-clock_timestamp() FROM ops.poll_circuits "
+                "WHERE source_id='binance_futures'"
+            ).fetchone()[0]
+            assert cooldown.total_seconds() > 80
+        assert tick(market, ratios, limited, now=next_slot) == {"scheduled": 0, "processed": 0}
+        assert len(calls) == 25
+        # Simulate elapsed retry delay without real waiting. 403 halts all source jobs.
+        with psycopg.connect(market) as conn:
+            conn.execute("UPDATE ops.poll_circuits SET retry_at=clock_timestamp()")
+            conn.execute(
+                "UPDATE ops.jobs SET available_at=clock_timestamp() "
+                "WHERE owner_ref='poll:binance_futures' AND status='queued'"
+            )
+
+        def forbidden(sid):
+            calls.append(sid)
+            raise FetchError(403)
+
+        assert tick(market, ratios, forbidden, now=next_slot)["processed"] == 1
+        assert tick(market, ratios, forbidden, now=next_slot)["processed"] == 0
+        assert len(calls) == 26
+        with psycopg.connect(market) as conn:
+            assert conn.execute(
+                "SELECT blocked FROM ops.poll_circuits WHERE source_id='binance_futures'"
+            ).fetchone()[0]
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "binance_futures",
+                approved=True,
+                evidence="new synthetic test permission",
+                fetch=True,
+                storage=True,
+            )
+        assert tick(market, ratios, ratio_fixture, now=next_slot)["processed"] == 23
+        # A disconnected/restarted WS reads the DB checkpoint, fills missing IDs then dedupes.
+        opens = 0
+        recoveries = []
+
+        def msg(key):
+            return {
+                "e": "trade",
+                "s": "BTCUSDT",
+                "t": key,
+                "p": "10",
+                "q": "0.1",
+                "T": int(now.timestamp() * 1000),
+            }
+
+        async def stream():
+            nonlocal opens
+            opens += 1
+            yield msg(5)
+            if opens == 2:
+                yield msg(6)
+
+        async def recover(sid, start, end):
+            recoveries.append((sid, start, end))
+            return [
+                binance_rest_trade(
+                    "BTCUSDT",
+                    {"id": i, "price": "10", "qty": "0.1", "time": int(now.timestamp() * 1000)},
+                    now,
+                    spot=True,
+                )
+                for i in range(start, end + 1)
+            ]
+
+        async def no_wait(delay):
+            assert delay >= 0
+
+        with pytest.raises(ConnectionError):
+            asyncio.run(
+                run_stream(
+                    market,
+                    stream,
+                    recover,
+                    spot=True,
+                    max_reconnects=1,
+                    clock=lambda: now,
+                    sleep=no_wait,
+                )
+            )
+        assert opens == 2 and recoveries == [("BITCOIN_BINANCE_SPOT", 3, 4)]
+        with psycopg.connect(market) as conn:
+            assert (
+                conn.execute(
+                    "SELECT last_trade_id FROM market.stream_checkpoints "
+                    "WHERE series_id='BITCOIN_BINANCE_SPOT'"
+                ).fetchone()[0]
+                == 6
+            )
+            assert (
+                conn.execute(
+                    "SELECT count(*) FROM market.source_events "
+                    "WHERE series_id='BITCOIN_BINANCE_SPOT'"
+                ).fetchone()[0]
+                == 6
+            )
+            assert (
+                conn.execute(
+                    "SELECT status FROM ops.collector_health WHERE series_id='BITCOIN_BINANCE_SPOT'"
+                ).fetchone()[0]
+                == "disconnected"
+            )
+            submit_collection(conn, "FIXTURE_PRICE", "revoke-test", "one")
+
+        def permission_changed(sid):
+            with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+                set_permission(
+                    conn,
+                    "fixture",
+                    approved=True,
+                    evidence="changed synthetic permission",
+                    fetch=True,
+                    storage=True,
+                )
+            return synthetic_collect(sid)
+
+        with psycopg.connect(market) as conn:
+            before = conn.execute(
+                "SELECT count(*) FROM market.observations WHERE series_id='FIXTURE_PRICE'"
+            ).fetchone()[0]
+        assert run_one(market, permission_changed, owner="revoke-test") == "failed"
+        with psycopg.connect(market) as conn:
+            assert (
+                conn.execute(
+                    "SELECT count(*) FROM market.observations WHERE series_id='FIXTURE_PRICE'"
+                ).fetchone()[0]
+                == before
             )

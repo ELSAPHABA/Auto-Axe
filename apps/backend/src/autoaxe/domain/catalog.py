@@ -29,6 +29,10 @@ SOURCE_URLS = {
     "yfinance": "https://finance.yahoo.com/",
     "naver": "https://m.stock.naver.com/marketindex/bond/US2YT=RR",
     "treasury": "https://home.treasury.gov/treasury-daily-interest-rate-xml-feed",
+    "gold_reference": "https://gold-api.com/docs",
+    "eia": "https://www.eia.gov/opendata/",
+    "cboe_eod": "https://www.cboe.com/tradable_products/vix/vix_historical_data",
+    "coinbase": "https://docs.cdp.coinbase.com/exchange/websocket-feed/overview",
     "fixture": "https://github.com/ELSAPHABA/Auto-Axe",
 }
 MANUAL = {
@@ -92,6 +96,19 @@ def catalog() -> dict[str, Series]:
                 10,
             )
         )
+        rows.append(
+            Series(
+                sid + "_SNAPSHOT",
+                sid,
+                "binance_futures",
+                sym,
+                f"commodity_{commodity}_linked_perpetual",
+                f"USDT/{unit}_contract_unit",
+                "USDT",
+                "snapshot",
+                10,
+            )
+        )
     for sym in ("BTCUSDT", *FUTURES):
         for kind in RATIOS:
             sid = f"BINANCE_{kind.upper()}_{sym}"
@@ -147,6 +164,76 @@ def catalog() -> dict[str, Series]:
         rows.append(
             Series(sid, sid, "manual:" + sid, sid, "manual_observation", unit, None, "manual", None)
         )
+    rows.extend(
+        [
+            Series(
+                "GOLD_SPOT_REFERENCE",
+                "GOLD_SPOT_REFERENCE",
+                "gold_reference",
+                "XAUUSD",
+                "third_party_spot_estimate",
+                "USD/troy_oz",
+                "USD",
+                "snapshot",
+                None,
+            ),
+            Series(
+                "WTI_EIA_DAILY",
+                "WTI_EIA_DAILY",
+                "eia",
+                "PET.RWTC.D",
+                "official_daily_spot",
+                "USD/bbl",
+                "USD",
+                "1d",
+                None,
+            ),
+            Series(
+                "BRENT_EIA_DAILY",
+                "BRENT_EIA_DAILY",
+                "eia",
+                "PET.RBRTE.D",
+                "official_daily_spot",
+                "USD/bbl",
+                "USD",
+                "1d",
+                None,
+            ),
+            Series(
+                "VIX_CBOE_EOD",
+                "VIX_CBOE_EOD",
+                "cboe_eod",
+                "VIX",
+                "volatility_index_eod",
+                "index_point",
+                None,
+                "1d",
+                None,
+            ),
+            Series(
+                "BITCOIN_COINBASE_USD",
+                "BITCOIN_COINBASE_USD",
+                "coinbase",
+                "BTC-USD",
+                "spot_crypto",
+                "USD/BTC",
+                "USD",
+                "trade",
+                10,
+            ),
+            Series(
+                "BTCUSDT_BINANCE_SPOT_1M_CLOSE",
+                "BTCUSDT_BINANCE_SPOT_1M_CLOSE",
+                "binance_spot",
+                "BTCUSDT",
+                "spot_crypto",
+                "USDT/BTC",
+                "USDT",
+                "1m",
+                None,
+            ),
+        ]
+    )
     rows.append(
         Series(
             "FIXTURE_PRICE",

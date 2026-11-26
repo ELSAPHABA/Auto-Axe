@@ -147,9 +147,16 @@ async def reconnecting_trades(
                 tracker.observe(item)
                 await health(item.series_id, "healthy")
             raise ConnectionError("stream ended")
-        except (ConnectionError, TimeoutError, SourceUnavailable):
+        except (ConnectionError, TimeoutError, SourceUnavailable) as exc:
             for sid in series:
                 await health(sid, "disconnected")
+            if isinstance(exc, FetchError) and exc.status not in (429, 500, 502, 503, 504):
+                raise
             if attempt == max_reconnects:
                 raise
-            await sleep(min(60, 2**attempt) + random.random())
+            delay = (
+                retry_after(attempt, exc.retry_header, clock())
+                if isinstance(exc, FetchError)
+                else min(60, 2**attempt)
+            )
+            await sleep(delay + random.random())

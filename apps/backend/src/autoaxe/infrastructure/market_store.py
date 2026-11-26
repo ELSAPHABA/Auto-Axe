@@ -247,9 +247,22 @@ def ingest(conn: Connection[Any], item: Candidate) -> tuple[str, int, bool]:
         WHERE EXISTS(SELECT 1 FROM market.observations old
           WHERE old.partition_at=market.latest_observations.partition_at
           AND old.observation_id=market.latest_observations.observation_id
-          AND (COALESCE(%s,'-infinity'::timestamptz),%s)
-              >= (COALESCE(old.source_event_at,'-infinity'::timestamptz),old.series_version))""",
-        (item.series_id, partition_at, oid, version, item.source_event_at, version),
+          AND CASE WHEN %s::text IS NOT NULL AND old.metadata ? 'observation_date'
+          THEN (%s::text,%s) >= (old.metadata->>'observation_date',old.series_version)
+          ELSE (COALESCE(%s,'-infinity'::timestamptz),%s)
+              >= (COALESCE(old.source_event_at,'-infinity'::timestamptz),old.series_version)
+          END)""",
+        (
+            item.series_id,
+            partition_at,
+            oid,
+            version,
+            item.metadata.get("observation_date") if series.interval == "1d" else None,
+            item.metadata.get("observation_date") if series.interval == "1d" else None,
+            version,
+            item.source_event_at,
+            version,
+        ),
     )
     emit(
         conn,
@@ -367,6 +380,12 @@ def current_series_version(conn: Connection[Any], series_id: str) -> int:
 def persist_trade(conn: Connection[Any], item: Candidate) -> tuple[str, int, bool]:
     """Advance durable contiguous checkpoint in the same transaction as append."""
     verify_connection(conn, write=True)
+    series = catalog().get(item.series_id)
+    if series is None or series.interval != "trade":
+        raise ValueError("not a trade series")
+    conn.execute(
+        "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ("source:" + series.source_id,)
+    )
     conn.execute(
         "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ("trade:" + item.series_id,)
     )

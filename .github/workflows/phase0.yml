@@ -59,6 +59,7 @@ jobs:
       - run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml up --build -d --wait
       - run: curl --fail --retry 5 --retry-connrefused http://127.0.0.1:18174/api/v1/system/health
       - run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml --profile fixture-collect run --rm fixture-collector
+      - run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml --profile fixture-collect run --rm --build fixture-collector /app/.venv/bin/python -m autoaxe.entrypoints.market_cli fixture-poll --cycles 2 --sleep 5
       - run: |
           curl --fail "http://127.0.0.1:18174/api/v1/market/observations?series_id=FIXTURE_PRICE" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["data"] and r["data"][0]["value"]=="123.45"'
       - run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml --profile executor-smoke run --rm executor

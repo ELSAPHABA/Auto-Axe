@@ -38,3 +38,29 @@
 - 조사: 검출 위치는 Phase 1 log 25행의 lease/token 및 slash-delimited 함수 설명, Compose fixture-collector command 97행의 합성 idempotency identifier. 둘 모두 인증값이 아님. 실제 로컬 환경값은 열람하거나 기록하지 않음.
 - 수정: 해당 문서 행의 후행 공백만 제거, 기능 설명을 자연어로 변경, 합성 idempotency identifier를 짧고 명백한 smoke로 변경. 검출 rule이나 scanner 비활성화하지 않음. 동일 합성 작업 계약이며 실제 권한 부여와 무관.
 - 재검증: staged check 및 동일 scan 재실행 결과는 커밋/검증 기록 참조.
+
+## TS-01-06 — 스케줄러/스트림 추가 후 정적 검사
+
+- 재현: `ruff check apps/backend`, `ruff format apps/backend`, `mypy apps/backend/src`. 최초 polling/worker 긴 행 E501, formatter 이후 stream_worker.py:44 SELECT 104자 E501 및 mypy `Need type annotation for "checkpoints" [var-annotated]`.
+- 원인: SQL 문자열 자동 줄바꿈 한계, psycopg 동적 row 타입에서 dict 타입 추론 불가.
+- 해결: SQL을 인접 문자열로 분리, checkpoint dict[str, int] 명시. lint/type 규칙 우회하지 않음.
+- 재검증: Ruff 통과, mypy 30 source files success, schema 검사 통과. 이전 PG 확장 test 1 passed in 53.95s. 최종 결과는 [후속 로그](../../.ai-context/phases/phase-01/2026-11-27-02.md).
+
+## TS-01-07 — 공급자 오류 및 재시작 경계에서 중복 호출 위험
+
+- 코드 조사에서 발견: 이전 runner에는 실제 durable scheduling과 provider 단위 429/403 차단 상태가 없고, unscoped claim은 서로 다른 수집 작업을 가져갈 수 있었음. 기존 helper만으로 재시작 중복과 권한 변경 중 결과 적재를 방지한다고 주장할 수 없음.
+- 해결: 0003_polling durable slot/circuit, advisory leader lock, owner/series scoped claim, DB 기반 cooldown, 새 permission version 확인. 작업 시작/저장 시 버전 일치 확인, stale lease 처리. 스트림의 source→trade→series lock 순서 통일 및 checkpoint 재사용.
+- 회귀: 실제 PG에서 24개 ratio 300초, 299초 중복 없음, 429 90초 차단, 403 차단과 version 갱신 후 재개, WS ID 3/4 백필과 중복 5, checkpoint 6, 권한 변경 이후 결과 폐기를 테스트하여 1 passed in 53.95s. 실제 공급자 권한/응답 검증은 별개.
+
+## TS-01-08 — PoC 참고 시세의 상품 및 일별 최신값 혼동 위험
+
+- 코드 조사: 기존 PoC의 REST snapshot, 현물 참고, EOD, 다른 거래소 원본과 주 시세 체결은 정의/통화/시간 해상도가 다르며, source_event_at 미상인 일별 값은 적재 순서만으로 최신 날짜를 결정하면 늦게 들어온 과거 날짜가 최신값을 덮을 수 있음.
+- 해결: 11개 독립 참고 시계열 등록, offline reference parser와 import/preview, 날짜 기반 daily latest 비교, 정확 발표시간 미상은 null/UNKNOWN. 원본 PoC는 보존.
+- 검증: 참고값 fixture 테스트 및 전체 backend suite 결과는 후속 로그 참조. 실제 서비스 호환/수집 권한은 미검증.
+
+## TS-01-09 — Compose 선택 프로필 이미지 갱신 누락
+
+- 재현: 기존 볼륨과 이미지가 남아 있는 Windows Docker 환경에서 `docker compose --env-file .env.phase0 -f infra/compose/dev.yaml up --build -d --wait` 후 `--profile fixture-collect run --rm fixture-collector /app/.venv/bin/python -m autoaxe.entrypoints.market_cli fixture-poll --cycles 2 --sleep 5`. PG/API/Web healthy, migrate exit 0, 수집 CLI exit 2: `invalid choice: 'fixture-poll'` (기존 catalog/manual-preview/fixture-collect/manual-import/manual-review만 표시).
+- 원인: 기본 프로필의 up --build는 선택 프로필의 기존 fixture-collector 이미지를 재빌드하지 않음. 새 Python 소스와 오래된 별도 서비스 이미지가 불일치. 마이그레이션이나 parser 구현 문제가 아님.
+- 해결: 선택 프로필 run에 --build 추가, CI 및 실행 문서에 동일 명령 반영. 기존 DB 볼륨 삭제 또는 임의 이미지 전체 삭제는 불필요하므로 하지 않음.
+- 재검증: 두 cycle 모두 scheduled=1, processed=1, 신규 FIXTURE_PRICE 123.45 USD 두 건 valid 조회, down exit 0, ps -a 비어 있음. 이전 volume 유지. 후속 Phase log에 관측 ID 기록.

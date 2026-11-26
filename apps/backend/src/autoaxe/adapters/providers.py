@@ -179,6 +179,8 @@ def normalize_yahoo(
 
 
 def normalize_naver(payload: Mapping[str, Any], received: datetime) -> Candidate:
+    if payload.get("isSuccess") is False or not isinstance(payload.get("result"), list):
+        raise ValueError("Naver response unsuccessful or malformed")
     rows = [r for r in payload["result"] if r.get("reutersCode") == "US2YT=RR"]
     if len(rows) != 1:
         raise ValueError("Naver row missing or ambiguous")
@@ -238,7 +240,7 @@ def normalize_treasury(raw: bytes, received: datetime) -> list[Candidate]:
             )
     if not result:
         raise ValueError("no Treasury entries")
-    return result
+    return sorted(result, key=lambda row: (row.key, row.series_id))
 
 
 Fetch = Callable[[str, dict[str, Any]], Awaitable[Any]]

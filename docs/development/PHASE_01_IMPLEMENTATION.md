@@ -2,6 +2,8 @@
 
 2026-11-27 KST. [계획](PHASE_PLAN.md) · [상세 작업 로그](../../.ai-context/phases/phase-01/2026-11-27-01.md) · [트러블슈팅](../troubleshooting/phase-01.md).
 
+후속 세션: [스케줄러·복구·PoC 보강 기록](../../.ai-context/phases/phase-01/2026-11-27-02.md). 기존 57개 시계열에 11개 참고 원본을 추가했다(5 REST snapshot, Gold reference, EIA 2, Cboe EOD, Coinbase, BTC 1m 확정봉). 모든 추가 원본은 권한 확인 전 자동 실행 차단.
+
 ## 구성 및 계약
 
 | 작업 | 구현 | 검증 범위/제약 |
@@ -41,6 +43,13 @@ docker compose --env-file .env.phase0 -f infra/compose/dev.yaml --profile fixtur
 
 CLI: `uv run --project apps/backend --locked python -m autoaxe.entrypoints.market_cli catalog`; `manual-preview <csv>` (DB 불필요); `manual-import <csv>`, `manual-review <observation_id> --reviewer <id> --status checked|rejected --reason <reason>`는 명시적으로 제한된 fixture write DSN 필요. fixture-collect --key <key> 는 합성 작업만 수행. 환경 변수 값은 로컬 비밀 설정이며 저장 금지.
 
+## 후속 구현
+
+- 0003_polling: 기존 DB에 durable polling slot, source circuit, active job index 추가. 24개 롱숏 시계열 300초 cadence, 중복 및 overlapping jobs 방지, 재시작 복구, 429 Retry-After/403 차단 및 permission version 변경 검증.
+- application/stream_worker.py: DB checkpoint를 재연결에 전달하고 원자적 체결 적재, gap 복구 및 권한 변경 fence. 실제 외부 WS 미호출.
+- CLI 합성 반복 수집: `docker compose --env-file .env.phase0 -f infra/compose/dev.yaml --profile fixture-collect run --rm --build fixture-collector /app/.venv/bin/python -m autoaxe.entrypoints.market_cli fixture-poll --cycles 2 --sleep 5`.
+- CLI offline reference: `reference-preview <source> <json> --received-at <aware ISO datetime> [--symbol <symbol>]`; `reference-import`는 같은 인자와 scoped fixture write DSN, 원본 권한 필요. 원본 PoC 기능 중 시장 참고값의 정규화 계약을 보강하며 실제 HTTP 수집 권한과 분리한다.
+
 ## 남은 운영 게이트
 
-공급자 이용권/재배포 및 rate limit, Binance spot historical raw ID 권한, Yahoo 실제 지연, Naver 승인형 Scrapling, Treasury 발표 시각/일정, 주기적 외부 collector scheduling/실제 소스 reconnect, 운영 retention/load/backup/security, 인증 및 UI는 미검증 또는 후속 구현. 5m ratio 요청 및 TTL 정의와 실제 300s 운영 polling은 별개. Treasury daily timestamp 미확인 시 null 및 UNKNOWN 유지; fallback은 표시용이며 장중 동일 소스인 것처럼 수익률 연결 금지. LIVE·실계좌·외부 MCP 계속 차단.
+공급자 이용권/재배포 및 rate limit, Binance spot historical raw ID 권한, Yahoo 실제 지연, Naver 승인형 Scrapling, Treasury 발표 시각/일정, 장시간 외부 collector 서비스 및 실제 소스 reconnect, 운영 retention/load/backup/security, 인증 및 UI는 미검증 또는 후속 구현. 300s scheduler는 fixture로 검증하며 외부 provider 활성화와 별개. 경제·공시·캘린더 PoC는 Phase 2 범위. Treasury daily timestamp 미확인 시 null 및 UNKNOWN 유지; fallback은 표시용이며 장중 동일 소스인 것처럼 수익률 연결 금지. LIVE·실계좌·외부 MCP 계속 차단.

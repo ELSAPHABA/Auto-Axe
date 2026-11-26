@@ -44,15 +44,24 @@ def enqueue(
     return str(old[0])
 
 
-def claim(conn: Connection[Any], lease_seconds: int = 30) -> dict[str, Any] | None:
+def claim(
+    conn: Connection[Any],
+    lease_seconds: int = 30,
+    *,
+    owner: str | None = None,
+    series: list[str] | None = None,
+) -> dict[str, Any] | None:
     if not 1 <= lease_seconds <= 600:
         raise ValueError("invalid lease")
     with conn.cursor(row_factory=dict_row) as cur:
         row = cur.execute(
             """SELECT * FROM ops.jobs WHERE
-            (status='queued' AND available_at<=clock_timestamp()) OR
-            (status IN ('running','cancel_requested') AND lease_until<=clock_timestamp())
-            ORDER BY available_at,id FOR UPDATE SKIP LOCKED LIMIT 1"""
+            ((status='queued' AND available_at<=clock_timestamp()) OR
+            (status IN ('running','cancel_requested') AND lease_until<=clock_timestamp()))
+            AND (%s::text IS NULL OR owner_ref=%s)
+            AND (%s::text[] IS NULL OR input_ref->>'series_id'=ANY(%s::text[]))
+            ORDER BY available_at,id FOR UPDATE SKIP LOCKED LIMIT 1""",
+            (owner, owner, series, series),
         ).fetchone()
         if not row:
             return None
@@ -116,6 +125,10 @@ def heartbeat(conn: Connection[Any], jid: str, token: str, lease_seconds: int = 
     )
 
 
+class StaleLease(ValueError):
+    pass
+
+
 def finish(
     conn: Connection[Any],
     jid: str,
@@ -134,7 +147,7 @@ def finish(
             (jid, token),
         ).fetchone()
         if not row:
-            raise ValueError("stale lease")
+            raise StaleLease("stale lease")
         status = "succeeded" if success else "failed"
         if row["status"] == "cancel_requested":
             status = "cancelled"

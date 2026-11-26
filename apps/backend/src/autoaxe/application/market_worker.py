@@ -7,9 +7,19 @@ from typing import Any
 import psycopg
 from psycopg import Connection
 
-from autoaxe.domain.market import Candidate, Quality
-from autoaxe.infrastructure.jobs import accept, acknowledge, claim, enqueue, finish, pending
-from autoaxe.infrastructure.market_store import gate, ingest, verify_connection
+from autoaxe.application.collection import FetchError
+from autoaxe.domain.catalog import catalog
+from autoaxe.domain.market import Candidate, Quality, quality_at
+from autoaxe.infrastructure.jobs import (
+    StaleLease,
+    accept,
+    acknowledge,
+    claim,
+    enqueue,
+    finish,
+    pending,
+)
+from autoaxe.infrastructure.market_store import PermissionDenied, gate, ingest, verify_connection
 
 
 def record_health(conn: Connection[Any], sid: str, status: str, reason: str) -> None:
@@ -42,7 +52,14 @@ def submit_collection(conn: Connection[Any], sid: str, owner: str, key: str) -> 
     return enqueue(conn, "collect", owner, key, {"series_id": sid})
 
 
-def run_one(dsn: str, collect: Callable[[str], list[Candidate]]) -> str | None:
+def run_one(
+    dsn: str,
+    collect: Callable[[str], list[Candidate]],
+    *,
+    owner: str | None = None,
+    series: list[str] | None = None,
+    on_failure: Callable[[Connection[Any], str, Exception], None] | None = None,
+) -> str | None:
     """Claim/commit, collect outside transaction, fence result in new transaction.
 
     Caller provides authorized adapter. This runner accepts at most 1000 results
@@ -50,7 +67,7 @@ def run_one(dsn: str, collect: Callable[[str], list[Candidate]]) -> str | None:
     """
     with psycopg.connect(dsn) as conn:
         verify_connection(conn, write=True)
-        job = claim(conn)
+        job = claim(conn, owner=owner, series=series)
     if job is None:
         return None
     jid, token = str(job["id"]), str(job["lease_token"])
@@ -60,32 +77,63 @@ def run_one(dsn: str, collect: Callable[[str], list[Candidate]]) -> str | None:
             return finish(conn, jid, token, success=False, error_code="unsupported_job")
     try:
         with psycopg.connect(dsn) as conn:
-            gate(conn, sid, "fetch")
+            permission = gate(conn, sid, "fetch")
         candidates = collect(sid)
         if len(candidates) > 1000 or any(row.series_id != sid for row in candidates):
             raise ValueError("bad candidate batch")
         with psycopg.connect(dsn) as conn:
             # finish() locks the live token and updates in this transaction;
             # no observations are accepted after cancellation, stale lease or revocation.
-            gate(conn, sid, "storage")
+            conn.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",
+                ("source:" + permission["source_id"],),
+            )
+            current = gate(conn, sid, "storage")
+            if current["permission_version"] != permission["permission_version"]:
+                raise PermissionDenied("permission changed during collection")
             status = finish(
                 conn, jid, token, success=True, result={"candidate_count": len(candidates)}
             )
             if status != "succeeded":
                 return status
             inserted = sum(ingest(conn, row)[2] for row in candidates)
-            health = (
-                "no_data"
-                if not candidates or all(row.value is None for row in candidates)
-                else ("healthy" if inserted else "no_update")
-            )
+            if not candidates:
+                health = "no_data"
+            else:
+                latest = max(
+                    candidates, key=lambda row: (row.source_event_at or row.received_at, row.key)
+                )
+                quality = quality_at(latest, catalog()[sid], datetime.now(UTC))
+                if latest.value is None:
+                    health = "no_data"
+                elif quality == Quality.STALE:
+                    health = "stale"
+                elif quality == Quality.UNKNOWN and not latest.metadata.get("official_daily"):
+                    health = "unknown"
+                else:
+                    health = "healthy" if inserted else "no_update"
             record_health(conn, sid, health, "collection_finished")
             return status
-    except (ValueError, TimeoutError, ConnectionError) as exc:
+    except StaleLease:
+        return "lease_lost"
+    except (ValueError, TimeoutError, ConnectionError, FetchError, KeyError, TypeError) as exc:
         with psycopg.connect(dsn) as conn:
-            retryable = isinstance(exc, (TimeoutError, ConnectionError))
-            code = "transport_error" if retryable else "policy_or_schema_error"
-            status = finish(conn, jid, token, success=False, retryable=retryable, error_code=code)
+            retryable = isinstance(exc, (TimeoutError, ConnectionError)) or (
+                isinstance(exc, FetchError) and exc.status in (429, 500, 502, 503, 504)
+            )
+            code = (
+                f"http_{exc.status}"
+                if isinstance(exc, FetchError)
+                else ("transport_error" if retryable else "policy_or_schema_error")
+            )
+            try:
+                status = finish(
+                    conn, jid, token, success=False, retryable=retryable, error_code=code
+                )
+            except StaleLease:
+                return "lease_lost"
+            if status != "cancelled" and on_failure:
+                on_failure(conn, sid, exc)
             record_health(conn, sid, "disconnected" if retryable else "blocked", code)
             return status
 
