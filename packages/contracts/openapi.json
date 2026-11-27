@@ -1936,6 +1936,17 @@
             "title": "Available At",
             "type": "string"
           },
+          "calendar_days_to_expiry": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Days To Expiry"
+          },
           "claim": {
             "$ref": "#/components/schemas/ExpiryClaimView"
           },
@@ -1952,6 +1963,17 @@
           "revision": {
             "title": "Revision",
             "type": "integer"
+          },
+          "trading_days_to_expiry": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trading Days To Expiry"
           }
         },
         "required": [
@@ -2066,27 +2088,48 @@
         "additionalProperties": false,
         "properties": {
           "buy_settlement_usd": {
-            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
-            "title": "Buy Settlement Usd",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buy Settlement Usd"
           },
           "country_name": {
             "title": "Country Name",
             "type": "string"
           },
           "gross_settlement_usd": {
-            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
-            "title": "Gross Settlement Usd",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gross Settlement Usd"
           },
           "isin": {
             "title": "Isin",
             "type": "string"
           },
           "net_buy_settlement_usd": {
-            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
-            "title": "Net Buy Settlement Usd",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Buy Settlement Usd"
           },
           "rank": {
             "title": "Rank",
@@ -2097,9 +2140,16 @@
             "type": "string"
           },
           "sell_settlement_usd": {
-            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
-            "title": "Sell Settlement Usd",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sell Settlement Usd"
           }
         },
         "required": [
@@ -2118,6 +2168,16 @@
       "SeibroSnapshot": {
         "additionalProperties": false,
         "properties": {
+          "amount_coverage": {
+            "default": "complete",
+            "enum": [
+              "complete",
+              "buy_only",
+              "sell_only"
+            ],
+            "title": "Amount Coverage",
+            "type": "string"
+          },
           "as_of_date_kst": {
             "format": "date",
             "title": "As Of Date Kst",
@@ -2132,6 +2192,15 @@
             "format": "date-time",
             "pattern": "Z$",
             "title": "Available At",
+            "type": "string"
+          },
+          "capture_mode": {
+            "default": "manual_capture",
+            "enum": [
+              "manual_capture",
+              "browser_capture"
+            ],
+            "title": "Capture Mode",
             "type": "string"
           },
           "country_code": {
@@ -2150,6 +2219,21 @@
             "const": "USD",
             "title": "Currency",
             "type": "string"
+          },
+          "derived_amount": {
+            "anyOf": [
+              {
+                "enum": [
+                  "gross_settlement_usd",
+                  "net_buy_settlement_usd"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derived Amount"
           },
           "first_seen_at": {
             "format": "date-time",

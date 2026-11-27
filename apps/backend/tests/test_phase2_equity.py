@@ -124,8 +124,11 @@ def test_official_regular_session_calendar(symbol):
     assert scheduled_close(symbol, date(2026, 7, 2)) == datetime(2026, 7, 2, 20, tzinfo=UTC)
     assert scheduled_close(symbol, date(2026, 7, 3)) is None
     assert scheduled_close(symbol, date(2024, 7, 3)) == datetime(2024, 7, 3, 17, tzinfo=UTC)
-    with pytest.raises(ValueError, match="unverified equity calendar"):
-        scheduled_close(symbol, date(2027, 1, 4))
+    if symbol == "NVDA":
+        with pytest.raises(ValueError, match="unverified equity calendar"):
+            scheduled_close(symbol, date(2027, 1, 4))
+    else:
+        assert scheduled_close(symbol, date(2027, 1, 4)) == datetime(2027, 1, 4, 21, tzinfo=UTC)
 
 
 def test_daily_requires_finality_and_regular_close():

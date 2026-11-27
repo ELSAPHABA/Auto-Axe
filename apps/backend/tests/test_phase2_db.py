@@ -16,10 +16,15 @@ from autoaxe.adapters.authorized_dashboard import changes, read_snapshot
 from autoaxe.adapters.binance_qqq_rest import SERIES_ID as QQQ_SERIES
 from autoaxe.adapters.macro_sources import BEA_ICS
 from autoaxe.adapters.mexc_rest import SERIES_ID as MEXC_SERIES
+from autoaxe.adapters.mexc_ws import SCHEMA_COMMIT
+from autoaxe.adapters.mexc_ws import SERIES_ID as MEXC_WS_SERIES
+from autoaxe.adapters.official_documents import DocumentCapture
 from autoaxe.application.binance_qqq_poll import poll_once as poll_qqq
 from autoaxe.application.collection import FetchError
 from autoaxe.application.document_fetch import capture_once
+from autoaxe.application.document_scheduler import Scan, save_scan
 from autoaxe.application.mexc_poll import poll_once as poll_mexc
+from autoaxe.application.mexc_ws_worker import run_session
 from autoaxe.application.official_macro import OfficialSourceError
 from autoaxe.application.official_poll import poll_once as poll_official
 from autoaxe.application.pizzint_poll import SERIES, poll_once
@@ -706,6 +711,33 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         with pytest.raises(PermissionDenied, match="not due"):
             capture_once(market, "sec_edgar", captured_document)
         assert calls == ["capture"]
+        with psycopg.connect(market) as conn:
+            ver = conn.execute(
+                "SELECT permission_version FROM catalog.source_registry WHERE source_id='sec_edgar'"
+            ).fetchone()[0]
+            scan = Scan(
+                "0001045810",
+                DocumentCapture(
+                    "sec_edgar",
+                    "0001045810:test",
+                    company.source_url,
+                    "a" * 64,
+                    "unparsed synthetic exhibit",
+                    captured,
+                    None,
+                    "review_required",
+                ),
+            )
+            save_scan(conn, "sec_edgar", scan, ver)
+            save_scan(conn, "sec_edgar", scan, ver)
+            assert (
+                conn.execute("SELECT count(*) FROM ops.official_document_inbox").fetchone()[0] == 1
+            )
+            with pytest.raises(PermissionDenied):
+                save_scan(conn, "sec_edgar", scan, ver + 1)
+        with psycopg.connect(market_read) as conn:
+            with pytest.raises(InsufficientPrivilege):
+                conn.execute("SELECT * FROM ops.official_document_inbox")
         with psycopg.connect(market_read) as conn:
             cutoff = conn.execute("SELECT clock_timestamp()").fetchone()[0]
             assert query_guidance(conn, cutoff=cutoff, private_use=True) == []
@@ -865,6 +897,32 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         assert (
             next(p for p in mexc_snapshot.data if p.series_id == MEXC_SERIES).quality == "unknown"
         )
+        ws_item = replace(
+            item,
+            series_id=MEXC_WS_SERIES,
+            metadata={
+                **item.metadata,
+                "provenance": "mexc_futures_protobuf_ticker",
+                "schema_commit": SCHEMA_COMMIT,
+                "timestamp_semantics": "provider_ticker_timestamp",
+            },
+        )
+
+        async def ws_fixture(permit):
+            permit()
+            yield ws_item
+
+        assert asyncio.run(run_session(market, ws_fixture, enabled=True)) == "stored"
+        assert asyncio.run(run_session(market, ws_fixture, enabled=True)) == "not_due"
+        with psycopg.connect(market) as conn:
+            with pytest.raises(PermissionDenied, match="informational only"):
+                gate(conn, MEXC_WS_SERIES, "trading")
+            assert (
+                conn.execute(
+                    "SELECT count(*) FROM market.observations WHERE series_id=%s", (MEXC_WS_SERIES,)
+                ).fetchone()[0]
+                == 1
+            )
 
         # Dedicated QQQ REST ledger is distinct from MEXC, generic futures and CME NQ.
         assert asyncio.run(poll_qqq(market, no_mexc, enabled=True)) == "permission_required"

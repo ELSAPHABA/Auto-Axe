@@ -57,6 +57,24 @@ def storage_permission(conn: Connection[Any], *, private_use: bool = True) -> in
     return int(row[5])
 
 
+def browser_permission(conn: Connection[Any]) -> int:
+    """Separate explicit automatic-fetch grant, never implied by storage approval."""
+    row = conn.execute(
+        """SELECT permission_status,enabled,free_only,allow_fetch,allow_storage,
+                  verified_at,evidence_ref,permission_version
+           FROM catalog.source_registry WHERE source_id='seibro'"""
+    ).fetchone()
+    if (
+        not row
+        or tuple(row[:5]) != ("approved", True, True, True, True)
+        or row[5] is None
+        or not row[6]
+        or not row[6].strip()
+    ):
+        raise PermissionDenied("SEIBro automatic capture not approved")
+    return int(row[7])
+
+
 def _date(raw: Any) -> date:
     if not isinstance(raw, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", raw):
         raise ValueError("explicit ISO date required")
@@ -82,7 +100,16 @@ def normalize_capture(data: Any) -> dict[str, Any]:
         "top50_coverage",
         "rows",
     }
-    if not isinstance(data, dict) or set(data) != fields:
+    if not isinstance(data, dict):
+        raise ValueError("invalid capture envelope")
+    browser = data.get("capture_mode") == "browser_capture"
+    partial = browser and data.get("rank_basis") in ("1", "2")
+    coverage = (
+        ("buy_only" if data.get("rank_basis") == "1" else "sell_only") if partial else "complete"
+    )
+    if set(data) != fields | ({"derived_amount"} if browser else set()) | (
+        {"amount_coverage"} if partial else set()
+    ):
         raise ValueError("invalid capture envelope")
     country = data["country_code"]
     if (
@@ -93,7 +120,7 @@ def normalize_capture(data: Any) -> dict[str, Any]:
         or data["settlement_type"] != "2"
         or data["source_url"] != URL
         or data["top50_coverage"] is not True
-        or data["capture_mode"] not in ("manual_capture", "offline_fixture")
+        or data["capture_mode"] not in ("manual_capture", "offline_fixture", "browser_capture")
     ):
         raise ValueError("invalid settlement scope")
     as_of = _date(data["as_of_date_kst"])
@@ -111,6 +138,20 @@ def normalize_capture(data: Any) -> dict[str, Any]:
     rows = data["rows"]
     if not isinstance(rows, list) or not 1 <= len(rows) <= 50:
         raise ValueError("expected 1 to 50 ranked rows")
+    if browser and (
+        len(rows) != 50
+        or start is None
+        or end != data["as_of_date_kst"]
+        or data["derived_amount"]
+        != {
+            "1": None,
+            "2": None,
+            "3": "net_buy_settlement_usd",
+            "4": "gross_settlement_usd",
+        }[data["rank_basis"]]
+        or (partial and data["amount_coverage"] != coverage)
+    ):
+        raise ValueError("invalid browser capture provenance")
     normalized = []
     seen = set()
     last = None
@@ -133,9 +174,14 @@ def normalize_capture(data: Any) -> dict[str, Any]:
         name, nation = _label(row["security_name"]), _label(row["country_name"])
         if country != "ALL" and nation != COUNTRIES[country]:
             raise ValueError("country does not match capture scope")
-        values = []
+        values: list[Decimal | None] = []
         for field in AMOUNTS:
             raw = row[field]
+            if partial and field != AMOUNTS[int(data["rank_basis"]) - 1]:
+                if raw is not None:
+                    raise ValueError("unobserved settlement amount must be null")
+                values.append(None)
+                continue
             if (
                 not isinstance(raw, str)
                 or len(raw) > 40
@@ -145,11 +191,18 @@ def normalize_capture(data: Any) -> dict[str, Any]:
             values.append(Decimal(raw))
         buy, sell, gross, net = values
         # Exact arithmetic, never silently adjust provider amounts.
-        with localcontext() as context:
-            context.prec = 100
-            if buy < 0 or sell < 0 or gross != buy + sell or net != buy - sell:
-                raise ValueError("settlement arithmetic mismatch")
+        if partial:
+            observed = buy if coverage == "buy_only" else sell
+            if observed is None or observed < 0:
+                raise ValueError("invalid observed settlement amount")
+        else:
+            assert buy is not None and sell is not None and gross is not None and net is not None
+            with localcontext() as context:
+                context.prec = 100
+                if buy < 0 or sell < 0 or gross != buy + sell or net != buy - sell:
+                    raise ValueError("settlement arithmetic mismatch")
         metric = values[int(data["rank_basis"]) - 1]
+        assert metric is not None
         if last is not None and metric > last:
             raise ValueError("rows do not follow declared ranking basis")
         last = metric
@@ -159,20 +212,40 @@ def normalize_capture(data: Any) -> dict[str, Any]:
                 "isin": isin,
                 "country_name": nation,
                 "security_name": name,
-                **dict(zip(AMOUNTS, map(decimal_string, values), strict=True)),
+                **dict(
+                    zip(
+                        AMOUNTS,
+                        (decimal_string(v) if v is not None else None for v in values),
+                        strict=True,
+                    )
+                ),
             }
         )
     return {**data, "retrieved_at_utc": utc_string(stamp), "rows": normalized}
 
 
-def stage_capture(conn: Connection[Any], data: Any) -> tuple[str, str]:
+def stage_capture(
+    conn: Connection[Any],
+    data: Any,
+    *,
+    expected_browser_version: int | None = None,
+) -> tuple[str, str]:
     """Stage normalized, permission-scoped candidates, never raw HTML or fixtures."""
     verify_connection(conn, write=True)
     payload = normalize_capture(data)
-    if payload["capture_mode"] != "manual_capture":
+    if payload["capture_mode"] == "offline_fixture":
         raise PermissionDenied("fixture cannot enter reviewed ledger")
     source_lock(conn, "seibro")
-    version = storage_permission(conn)
+    if payload["capture_mode"] == "browser_capture":
+        if expected_browser_version is None:
+            raise PermissionDenied("browser capture requires private approved launcher")
+        version = browser_permission(conn)
+        if version != expected_browser_version:
+            raise PermissionDenied("browser capture grant changed")
+    else:
+        if expected_browser_version is not None:
+            raise PermissionDenied("browser result cannot masquerade as manual capture")
+        version = storage_permission(conn)
     clock = conn.execute("SELECT clock_timestamp()").fetchone()
     assert clock is not None
     if datetime.fromisoformat(payload["retrieved_at_utc"]) > clock[0]:
@@ -209,7 +282,7 @@ def promote_capture(conn: Connection[Any], capture_id: str) -> tuple[str, str | 
     if not row or row["permission_version"] != version:
         raise PermissionDenied("independent current-version review required")
     payload = normalize_capture(row["payload"])
-    if payload["capture_mode"] != "manual_capture" or not (
+    if payload["capture_mode"] not in ("manual_capture", "browser_capture") or not (
         row["capture_hash"] == row["reviewed_hash"] == canonical_sha256(payload)
     ):
         raise PermissionDenied("reviewed capture hash mismatch")
@@ -231,6 +304,20 @@ def promote_capture(conn: Connection[Any], capture_id: str) -> tuple[str, str | 
         scope = {key: payload[key] for key in SCOPE}
         scope_hash = canonical_sha256(scope)
         content_hash = canonical_sha256({"scope": scope, "rows": payload["rows"]})
+        if payload["capture_mode"] == "browser_capture":
+            content_hash = canonical_sha256(
+                {
+                    "scope": scope,
+                    "rows": payload["rows"],
+                    "capture_mode": "browser_capture",
+                    "derived_amount": payload["derived_amount"],
+                    **(
+                        {"amount_coverage": payload["amount_coverage"]}
+                        if "amount_coverage" in payload
+                        else {}
+                    ),
+                }
+            )
         old = conn.execute(
             """SELECT id,revision,content_hash,permission_version
             FROM indicators.seibro_top50_snapshots WHERE scope_hash=%s
@@ -245,8 +332,8 @@ def promote_capture(conn: Connection[Any], capture_id: str) -> tuple[str, str | 
                 """INSERT INTO indicators.seibro_top50_snapshots
                 (id,capture_id,permission_version,scope_hash,content_hash,revision,country_code,
                 period_code,rank_basis,period_start,period_end,as_of_date_kst,retrieved_at,
-                first_seen_at,available_at,row_count)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                first_seen_at,available_at,row_count,capture_mode,derived_amount,amount_coverage)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     snapshot_id,
                     capture_id,
@@ -259,12 +346,17 @@ def promote_capture(conn: Connection[Any], capture_id: str) -> tuple[str, str | 
                     row["first_seen_at"],
                     now,
                     len(payload["rows"]),
+                    payload["capture_mode"],
+                    payload.get("derived_amount"),
+                    payload.get("amount_coverage", "complete"),
                 ),
             )
             with conn.cursor() as cur:
                 cur.executemany(
                     """INSERT INTO indicators.seibro_top50_rows
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (snapshot_id,rank,country_name,isin,security_name,buy_settlement_usd,
+                     sell_settlement_usd,gross_settlement_usd,net_buy_settlement_usd,amount_coverage)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                     [
                         (
                             snapshot_id,
@@ -272,7 +364,11 @@ def promote_capture(conn: Connection[Any], capture_id: str) -> tuple[str, str | 
                             item["country_name"],
                             item["isin"],
                             item["security_name"],
-                            *(Decimal(item[key]) for key in AMOUNTS),
+                            *(
+                                Decimal(item[key]) if item[key] is not None else None
+                                for key in AMOUNTS
+                            ),
+                            payload.get("amount_coverage", "complete"),
                         )
                         for item in payload["rows"]
                     ],

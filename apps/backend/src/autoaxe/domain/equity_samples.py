@@ -1,11 +1,11 @@
 """Canonical equity samples and as-of daily snapshots."""
 
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any, Literal, TypedDict
 
-from autoaxe.domain.equity_calendar import CALENDAR_VERSION, scheduled_close
+from autoaxe.domain.equity_calendar import ReviewedCalendar, load_calendar
 from autoaxe.domain.indicator_math import ClosedBar, derive_features, financial_snapshot
 from autoaxe.domain.market import Candidate, Quality
 from autoaxe.domain.types import decimal_string, utc_datetime, utc_string
@@ -167,6 +167,8 @@ def history_candidates(
     symbol: str,
     rows: list[dict[str, Any]],
     now: datetime,
+    *,
+    calendar: ReviewedCalendar | None = None,
 ) -> list[Candidate]:
     """Require a reviewed session and explicit final-bar evidence.
 
@@ -178,7 +180,8 @@ def history_candidates(
         raise ValueError("invalid history request")
     now = utc_datetime(now)
     today = now.astimezone(NEW_YORK).date()
-    scheduled_close(symbol, today)  # fail closed on expired calendar
+    calendar = calendar or load_calendar(as_of=today)
+    calendar.close(symbol, today, as_of=today)  # fail closed on expired calendar
     items: list[tuple[ClosedBar, dict[str, Any], datetime]] = []
     seen: set[str] = set()
     for row in rows:
@@ -188,7 +191,7 @@ def history_candidates(
         day = utc_datetime(stamp).astimezone(NEW_YORK).date()
         if day > today:
             continue
-        close_at = scheduled_close(symbol, day)
+        close_at = calendar.close(symbol, day, as_of=today)
         session = day.isoformat()
         if session in seen or close_at is None:
             raise ValueError("invalid or duplicate daily session")
@@ -230,7 +233,9 @@ def history_candidates(
             "bar_closed": True,
             "close_confirmation": "provider_final_and_scheduled_close",
             "calendar_verified": True,
-            "calendar_version": CALENDAR_VERSION,
+            "calendar_version": calendar.year(
+                symbol, date.fromisoformat(bar.session), as_of=today
+            ).version,
             "scheduled_close_utc": utc_string(close_at),
             "provider_final": True,
             "historical_backfill_valid": False,

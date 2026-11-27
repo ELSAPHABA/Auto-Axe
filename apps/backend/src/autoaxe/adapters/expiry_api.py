@@ -10,10 +10,16 @@ from fastapi import APIRouter, Cookie, HTTPException, Request
 
 from autoaxe.adapters.contracts import Contract, Identifier, UtcTime
 from autoaxe.domain.calendars import FamilyState, Witching, witching_flags
-from autoaxe.domain.expiry_evidence import ET, Family, Source, classify_reviewed
+from autoaxe.domain.expiry_dte import (
+    calendar_expiry_dte,
+    calendar_witching_dte,
+    product_session_dte,
+)
+from autoaxe.domain.expiry_evidence import ExpiryClassification, Family, Source, classify_reviewed
 from autoaxe.domain.owner_access import is_configured_owner
 from autoaxe.entrypoints.auth import SESSION_COOKIE
 from autoaxe.entrypoints.auth import _dsn as identity_dsn
+from autoaxe.infrastructure.expiry_session_store import query_calendar
 from autoaxe.infrastructure.expiry_store import query_expiry
 from autoaxe.infrastructure.market_store import PermissionDenied
 from autoaxe.infrastructure.sessions import authorize
@@ -48,6 +54,8 @@ class ReviewedExpiryView(Contract):
     first_seen_at: UtcTime
     available_at: UtcTime
     permission_version: int
+    calendar_days_to_expiry: int | None = None
+    trading_days_to_expiry: int | None = None
 
 
 class ExpirySessionView(Contract):
@@ -106,6 +114,30 @@ def get_expiry_calendar(
                 private_use=is_configured_owner(grant.subject_ref),
             )
             sessions = classify_reviewed(candidate_date, evidence, cutoff)
+            evidence_views = []
+            for record in evidence:
+                claim = record.claim
+                calendar = (
+                    query_calendar(
+                        market,
+                        source_id=claim.source_id,
+                        family=claim.family,
+                        contract_ref=claim.contract_ref,
+                        cutoff=cutoff,
+                        private_use=is_configured_owner(grant.subject_ref),
+                    )
+                    if claim.contract_ref
+                    else None
+                )
+                evidence_views.append(
+                    ReviewedExpiryView.model_validate(
+                        {
+                            **asdict(record),
+                            "calendar_days_to_expiry": calendar_expiry_dte(record, cutoff),
+                            "trading_days_to_expiry": product_session_dte(record, calendar, cutoff),
+                        }
+                    )
+                )
     except PermissionError as exc:
         raise HTTPException(401, "session invalid or insufficient scope") from exc
     except PermissionDenied as exc:
@@ -114,9 +146,8 @@ def get_expiry_calendar(
         raise HTTPException(400, "invalid expiry query") from exc
     except psycopg.Error as exc:
         raise HTTPException(503, "expiry authority unavailable") from exc
-    today = cutoff.astimezone(ET).date()
     return ExpiryCalendarResponse(
-        evidence=[ReviewedExpiryView.model_validate(asdict(r)) for r in evidence],
+        evidence=evidence_views,
         sessions=[
             ExpirySessionView(
                 session_date=s.session_date,
@@ -124,13 +155,8 @@ def get_expiry_calendar(
                 family_status=s.family_status,
                 conflicted=s.conflicted,
                 **witching_flags(s.event_type),
-                calendar_days_to_session=(
-                    (s.session_date - today).days
-                    if s.session_date is not None
-                    and s.session_date >= today
-                    and s.event_type in (Witching.TRIPLE, Witching.QUADRUPLE)
-                    else None
-                ),
+                calendar_days_to_session=calendar_witching_dte(s, cutoff),
+                trading_days_to_session=common_trading_days(s, evidence_views),
             )
             for s in sessions
         ],
@@ -138,3 +164,22 @@ def get_expiry_calendar(
             request_id=request.state.request_id, as_of=cutoff, candidate_date=candidate_date
         ),
     )
+
+
+def common_trading_days(
+    session: ExpiryClassification,
+    evidence: list[ReviewedExpiryView],
+) -> int | None:
+    """Only publish aggregate DTE if every confirmed contract has the same count."""
+    if session.conflicted:
+        return None
+    if session.event_type not in (Witching.TRIPLE, Witching.QUADRUPLE):
+        return None
+    counts = [
+        row.trading_days_to_expiry
+        for row in evidence
+        if row.claim.session_date == session.session_date and row.claim.status == FamilyState.YES
+    ]
+    if not counts or None in counts or len(set(counts)) != 1:
+        return None
+    return counts[0]

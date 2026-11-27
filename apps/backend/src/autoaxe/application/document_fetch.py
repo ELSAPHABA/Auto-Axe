@@ -27,7 +27,13 @@ def _grant(conn: Connection[Any], source: str) -> int:
     return version
 
 
-def capture_once[T](dsn: str, source: str, fetch: Callable[[Callable[[], None]], T]) -> T:
+def capture_once[T](
+    dsn: str,
+    source: str,
+    fetch: Callable[[Callable[[], None]], T],
+    *,
+    persist: Callable[[Connection[Any], T, int], None] | None = None,
+) -> T:
     """Same source leader as official poller; commit reservation before network.
 
     All document operations share a per-source interval, including discovery,
@@ -74,6 +80,8 @@ def capture_once[T](dsn: str, source: str, fetch: Callable[[Callable[[], None]],
                     "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ("source:" + source,)
                 )
                 permit()
+                if persist is not None:
+                    persist(conn, result, version)
             return result
         except OfficialSourceError as exc:
             with conn.transaction():

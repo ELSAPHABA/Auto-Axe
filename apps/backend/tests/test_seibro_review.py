@@ -6,7 +6,7 @@ from pathlib import Path
 
 import psycopg
 import pytest
-from psycopg.errors import InsufficientPrivilege
+from psycopg.errors import CheckViolation, ForeignKeyViolation, InsufficientPrivilege
 from testcontainers.postgres import PostgresContainer
 
 from autoaxe.adapters.authorized_seibro import read_top50
@@ -266,3 +266,69 @@ def test_reviewed_top50_ledger(monkeypatch):
             stage(sample())
         with pytest.raises(PermissionDenied):
             read()
+        # Explicitly approved automatic capture, independent review and partial
+        # row integrity; this uses synthetic data only.
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "seibro",
+                approved=True,
+                evidence="synthetic browser test",
+                fetch=True,
+                storage=True,
+            )
+        from autoaxe.application.seibro_review import AMOUNTS, browser_permission
+
+        for basis, coverage, observed in (
+            ("1", "buy_only", "buy_settlement_usd"),
+            ("2", "sell_only", "sell_settlement_usd"),
+        ):
+            partial = sample() | {
+                "capture_mode": "browser_capture",
+                "rank_basis": basis,
+                "derived_amount": None,
+                "amount_coverage": coverage,
+                "period_start": "2026-11-13",
+                "period_end": "2026-11-20",
+            }
+            partial["rows"] = [
+                partial["rows"][0]
+                | {"rank": rank, "isin": f"US{rank:09d}0"}
+                | {field: "100" if field == observed else None for field in AMOUNTS}
+                for rank in range(1, 51)
+            ]
+            with psycopg.connect(runtime) as conn:
+                cid, digest = stage_capture(
+                    conn,
+                    partial,
+                    expected_browser_version=browser_permission(conn),
+                )
+            with pytest.raises(PermissionDenied):
+                promote(cid)
+            review(cid, digest)
+            state, sid = promote(cid)
+            assert state == "promoted"
+            view = read(basis=basis)
+            assert view is not None and view.amount_coverage == coverage
+            assert view.derived_amount is None and len(view.rows) == 50
+            assert getattr(view.rows[0], observed) == "100"
+            assert all(getattr(view.rows[0], k) is None for k in AMOUNTS if k != observed)
+            with (
+                pytest.raises(CheckViolation),
+                psycopg.connect(admin, dbname="autoaxe_market") as conn,
+            ):
+                conn.execute(
+                    "UPDATE indicators.seibro_top50_rows SET gross_settlement_usd=0 "
+                    "WHERE snapshot_id=%s",
+                    (sid,),
+                )
+            with (
+                pytest.raises(ForeignKeyViolation),
+                psycopg.connect(admin, dbname="autoaxe_market") as conn,
+            ):
+                conn.execute(
+                    """UPDATE indicators.seibro_top50_rows SET amount_coverage='complete',
+                       buy_settlement_usd=100,sell_settlement_usd=100,
+                       gross_settlement_usd=200,net_buy_settlement_usd=0 WHERE snapshot_id=%s""",
+                    (sid,),
+                )

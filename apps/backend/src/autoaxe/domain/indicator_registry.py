@@ -24,7 +24,16 @@ STATIC = (
         "mexc",
         "USDT/contract",
         "5m",
-        "CME NQ와 다름; 5분 REST 조회, 거래세션·실시간성 미검증; WS 비활성",
+        "CME NQ와 다름; 5분 REST 조회, 거래세션·실시간성 미검증",
+    ),
+    IndicatorDefinition(
+        "NASDAQ100_MEXC_PERP_USDT_WS",
+        "MEXC Nasdaq 연동 영구선물 (Protobuf)",
+        "market",
+        "mexc",
+        "USDT/contract",
+        "ticker",
+        "문서상 체결 발생 시 1초 푸시; 실제 세션·실시간성 미검증; 별도 승인 필요",
     ),
     IndicatorDefinition(
         "NASDAQ100_BINANCE_QQQ_PERP_USDT",

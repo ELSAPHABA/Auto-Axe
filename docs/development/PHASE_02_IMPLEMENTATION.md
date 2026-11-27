@@ -199,6 +199,23 @@ MEXC REST 관측은 실제 거래소 지수 또는 실시간 CME 시세가 아�
 
 최종 검증: 전체 backend 265 passed / 21 warnings / 116.58s, frontend Vitest 10 passed / Playwright 1 passed, Ruff 125 files, strict mypy 83 source files, schema/TS/lint/build/Prettier/Compose config 통과. 실제 운영 부하와 공급자 검증은 별도.
 
+## Session 13 — 1단계 미구현 경로 개발 (2026-11-27)
+
+[최신 세션 기록](../../.ai-context/phases/phase-02/2026-11-27-13.md)이 이전 표에 우선한다.
+
+| 항목 | 구현 | 잔여 검증/제약 |
+|---|---|---|
+| MEXC | 공식 Protobuf 스키마 고정, 별도 WS 수집기, 300초 예약 및 거래 차단 | 실제 WS 연결과 상품·세션 확인 |
+| Census/Fed | 공식 HTML 일정 및 정기 갱신 | 실제 일정 DOM/응답 및 발표 vintage |
+| SEC/BOJ | 정기 원문 수집, PDF native text, 검수 inbox | 실제 공급자 응답, 지원 외 문법 수동 검수 |
+| 파생상품 | 계약별 거래 세션 검수·보존, PIT DTE 계산 | OCC/CME/Cboe 직접 자동 취득 권리; 승인 자료 import 대체 |
+| SEIBro | 별도 Chromium 브라우저 수집, 4개 순위 및 부분 금액 제약, 검수 UI | 실제 결과 DOM, 격리 컨테이너와 egress 운영 |
+| 주식 거래일 | 공식 일정 자동 추출 초안, 24시간 예약, 검수 manifest 갱신; QLD 2028년까지 | NVDA 2027년 이후 공식 완전 일정, 실제 DOM |
+
+비영리 개인 연구용 범위 유지. 직접 수집 권한 없는 계약 일정과 아직 확인되지 않은 거래일을 추정하지 않는다. 운영 데이터 확인은 2단계, 환경 연결 및 지속 운영은 3단계이다. Phase 3 개발은 시작하지 않았다.
+
+최종 고정 트리: Backend 347 passed / 21 warnings / 142.56s, scraper 69 passed, Vitest 10 passed, Playwright 1 passed. Ruff 148 files, strict mypy 95 source files, schema/TS/lint/format/build/Compose config 및 Gitleaks 통과. 실제 공급자 연속 수집 및 운영 환경 검증은 별도.
+
 ## 개발 Fixture 최종 검증 (2026-11-27, 이전 세션 이력)
 
 - Backend Ruff/mypy 42 files/schema: 통과. 전체 PostgreSQL 통합 포함 pytest **79 passed / 2 deprecation warnings / 118.90s**. 초기 병렬 테스트 중 포트 타임아웃 실패는 별도 [TS-02-05](../troubleshooting/phase-02.md)에 기록, 단독 재검증 1 passed/30.92s, 정책 완화 없음.

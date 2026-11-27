@@ -203,3 +203,13 @@
 - BEA 공식 ICS는 text/plain MIME으로 제공되는 경우가 있어 공식 링크 및 PRODID 확인 후 제한적으로 허용. HTML/다른 producer/중복 UID/naive time/redirect는 거부. Census/Fed HTML과 MEXC 공식 proto의 접근 실패를 임의 endpoint/field number 추정으로 우회하지 않음.
 - Binance QQQ 상장/endpoint 공식 문서와 실제 regional availability/응답 권리는 다름. 독립 series+300초 예약, UNKNOWN, fixed GET 및 permission/circuit fence. 기존 source-level grant evidence가 QQQ를 포함해야 하며 상품별 기계 검증은 미구현. scoped 51 passed, BEA 관련 28 passed, PG17 통합 1 passed. [세션 12](../../.ai-context/phases/phase-02/2026-11-27-12.md) 참조.
 - 최종 고정 트리 전체 backend 265 passed / 21 warnings / 116.58s / exit 0, 정적 검사 및 Compose 설정 통과. 공급자 실측 및 운영 부하 검증으로 확대 해석하지 않음.
+
+## TS-02-36 — 공식 Protobuf 및 PDF 계약 확보
+- MEXC 공식 Apache-2.0 스키마를 upstream commit과 descriptor SHA256으로 고정하고 실제 field definition 기반 디코더로 전환했다. Protobuf과 pypdf 직접 의존성을 lock에 포함했다. WS 모의 응답은 실제 공급자 WS가 아니다.
+- BOJ 공개 PDF의 정책 결정 본문과 반대 의견 텍스트가 함께 존재함을 확인했다. native text 후보 추출과 독립 검수 inbox를 사용하며, 확인할 수 없는 문서는 승격하지 않는다.
+
+## TS-02-37 — 브라우저 순위별 부분 금액 및 캘린더 권한 경계
+- SEIBro rank 1/2에서는 다른 세 금액이 미표시되므로 null과 명시 coverage를 사용한다. rank 3/4 산술·provenance 제약, DB CHECK/FK, 4개 로컬 Chromium fixture 및 실제 PG17 검증 유지. 빈 실사이트 tbody는 실제 조회 결과 검증으로 간주하지 않는다.
+- Nasdaq 직접 페이지 접근 거부는 우회하지 않고 공식 근거 초안·검수 manifest 및 연도 범위를 강제한다. QLD 공식 2027–28 일정만 추가한다. OCC/CME/Cboe 승인 자료 import 및 세션 DTE는 직접 자동 취득과 구분한다.
+- 최종 캘린더 footnote 수정 직후 Ruff format check 1개 실패는 slice 공백 정렬만 수정했다. 재검증 결과는 세션 13 기록 참조.
+- 공식 proto 원본 3개의 EOF blank line은 byte-identical 보존을 위해 수정하지 않고 나머지 staged diff의 whitespace check를 통과했다. Gitleaks의 generic-api-key 1건은 UcenterFaceAuthNotify.proto의 공개 SHA-256 값으로 실제 파일 hash와 일치했다. `.gitleaks.toml`은 기본 규칙 전체를 유지하고 해당 manifest 경로와 정확한 checksum이 모두 일치하는 경우만 허용하며 재검사에서 no leaks found/exit 0을 확인했다.

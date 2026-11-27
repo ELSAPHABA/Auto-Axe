@@ -1,0 +1,31 @@
+# One-shot browser ONLY. The private launcher reserves and stages data in the
+# backend; no DB, broker, host mounts, Docker socket, or credentials here.
+# Operator must provision an external egress network with enforced HTTPS
+# seibro.or.kr allowlist, validated DNS, and no private/LAN destinations.
+# Do not bypass Chromium sandbox or attach a general-purpose Internet network.
+name: autoaxe-seibro-browser
+services:
+  seibro-browser:
+    profiles: [browser]
+    build:
+      context: ../..
+      dockerfile: apps/scraper/Dockerfile
+      target: seibro-browser
+    stdin_open: true
+    tty: false
+    networks: [seibro-restricted-egress]
+    user: "10003:10003"
+    read_only: true
+    tmpfs: ["/tmp:size=256m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    shm_size: 128m
+    pids_limit: 128
+    mem_limit: 1024m
+    cpus: 1.0
+    init: true
+    restart: "no"
+networks:
+  seibro-restricted-egress:
+    external: true
+    name: ${AUTOAXE_SEIBRO_RESTRICTED_EGRESS_NETWORK:?externally enforce SEIBro-only HTTPS egress}

@@ -99,7 +99,7 @@ python -m autoaxe.entrypoints.document_fetch_cli --execute-approved fetch-sec <C
 ```
 
 Subcommands share a source reservation (BOJ 3600s, SEC 900s); do not retry to
-bypass it. BOJ fetch-boj accepts only official HTML statement URLs, not PDF.
+bypass it. BOJ fetch-boj accepts official HTML and native-text PDF statement URLs.
 SEC fair-access applies to the total traffic of all SEC clients in deployment.
 Inspect and independently approve candidates using `document_review_cli` before
 promotion. See the latest Phase 2 session log for constraints and verification.
@@ -126,3 +126,42 @@ Add `--daemon` only for an approved ongoing service. No provider calls or
 production deployment were performed in the implementation session. SSE uses
 named heartbeat messages; keep proxy buffering disabled and verify the actual
 IdP, TLS, database and proxy configuration before operating it.
+
+## Phase 2 Step 1 collectors (0019_expiry_sessions or later)
+
+All service commands remain opt-in and must use approved source grants; this is
+not an operating deployment. MEXC Protobuf is separate from REST and is UNKNOWN
+until live verification. The vendored official wire descriptor is SHA-pinned.
+
+```sh
+docker compose -f infra/compose/phase2-collectors.yaml --profile approved run --rm mexc-ws /app/.venv/bin/python -m autoaxe.entrypoints.mexc_ws_cli --allow-mexc-ws
+docker compose -f infra/compose/phase2-collectors.yaml --profile approved run --rm official /app/.venv/bin/python -m autoaxe.entrypoints.official_poll_cli --execute-approved --tasks census_calendar census_retail_calendar fed_calendar
+docker compose -f infra/compose/phase2-collectors.yaml --profile approved run --rm official-documents /app/.venv/bin/python -m autoaxe.entrypoints.document_scheduler_cli --execute-approved --sources boj
+```
+
+For SEC, explicitly add `sec_edgar`, `--ciks` with intended CIKs, and set
+`AUTOAXE_SEC_CONTACT`. `--daemon` is for approved continuous collection. Documents
+are staged, never promoted automatically; admin `document_review_cli inbox-list`
+and `inbox-export` provide review inputs. Native PDF only, unknown documents
+remain review_required. Product-specific expiration calendars may be imported
+through `expiry_cli --permission-version VERSION submit-calendar FILE` and
+separately reviewed with `review-calendar`. Missing verified coverage gives null,
+not a weekday approximation. Direct OCC/CME/Cboe automated access still needs
+appropriate permission; the original specification allows manual fallback.
+
+`equity_calendar_cli --root PATH refresh --symbol NVDA|QLD --allow-official-refresh`
+stages official reference evidence under a durable 24-hour reservation and
+generates an unapproved calendar draft when the explicit table grammar matches.
+Review the printed dates against the source, then run
+`equity_calendar_cli --root PATH publish-reviewed --draft FILE --approve-reviewed --reviewer-ref REF`.
+This explicitly publishes a validated manifest; set both printed
+manifest and SHA256 variables for the history collector. No inferred year.
+
+SEIBro browser is a separate sandboxed container (`seibro-browser.yaml`), built
+before use, with external source-only egress and no DB credentials. The trusted
+private runtime CLI `seibro_review_cli capture-browser --execute-approved
+--egress-verified --country US --period 1 --basis 4` reserves before launching
+one query and stages the result for independent review. Basis 1/2 preserve
+only the displayed buy/sell amount, with the other three fields null. Basis
+3/4 preserve the full amount set, marking derived values explicitly. Never attach the
+browser to the market network or disable the Chromium sandbox.

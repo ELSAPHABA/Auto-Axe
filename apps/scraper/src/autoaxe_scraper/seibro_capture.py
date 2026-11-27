@@ -56,10 +56,16 @@ def _amount(raw: Any) -> str:
 
 
 def normalize_display(data: Any) -> dict[str, Any]:
-    if not isinstance(data, dict) or set(data) != SCOPE_FIELDS | {"rows"}:
+    if not isinstance(data, dict):
+        raise ValueError("unexpected display capture fields")
+    browser = data.get("capture_mode") == "browser_capture"
+    partial = browser and data.get("rank_basis") in ("1", "2")
+    if set(data) != SCOPE_FIELDS | {"rows"} | ({"derived_amount"} if browser else set()) | (
+        {"amount_coverage"} if partial else set()
+    ):
         raise ValueError("unexpected display capture fields")
     if (
-        data["capture_mode"] not in ("manual_capture", "offline_fixture")
+        data["capture_mode"] not in ("manual_capture", "offline_fixture", "browser_capture")
         or data["currency"] != "USD"
         or data["settlement_type"] != "2"
         or data["country_code"] not in ("US", "ALL", "HK", "CN", "JP", "VN")
@@ -67,6 +73,23 @@ def normalize_display(data: Any) -> dict[str, Any]:
         or data["rank_basis"] not in ("1", "2", "3", "4")
     ):
         raise ValueError("unsupported display capture scope")
+    if browser and (
+        data["derived_amount"]
+        != {
+            "1": None,
+            "2": None,
+            "3": "net_buy_settlement_usd",
+            "4": "gross_settlement_usd",
+        }[data["rank_basis"]]
+        or (
+            partial
+            and data["amount_coverage"]
+            != ("buy_only" if data["rank_basis"] == "1" else "sell_only")
+        )
+        or not isinstance(data["rows"], list)
+        or len(data["rows"]) != 50
+    ):
+        raise ValueError("unsupported complete browser ranking")
     if not isinstance(data["rows"], list) or not 1 <= len(data["rows"]) <= 50:
         raise ValueError("TOP50 requires 1 to 50 visible rows")
     rows = []
@@ -80,12 +103,24 @@ def normalize_display(data: Any) -> dict[str, Any]:
             if key == "RNUM":
                 continue
             value = raw[key]
+            if (
+                partial
+                and name.endswith("_usd")
+                and name
+                != ("buy_settlement_usd" if data["rank_basis"] == "1" else "sell_settlement_usd")
+            ):
+                if value is not None:
+                    raise ValueError("unobserved display amount must be null")
+                row[name] = None
+                continue
             if not isinstance(value, str) or not value.strip() or len(value) > 256:
                 raise ValueError("invalid visible cell")
             row[name] = _amount(value) if name.endswith("_usd") else value.strip()
         rows.append(row)
     return {
         **{key: data[key] for key in SCOPE_FIELDS},
+        **({"derived_amount": data["derived_amount"]} if browser else {}),
+        **({"amount_coverage": data["amount_coverage"]} if partial else {}),
         "source_url": SOURCE_URL,
         "top50_coverage": True,
         "rows": rows,

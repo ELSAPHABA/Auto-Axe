@@ -30,10 +30,10 @@ class SeibroRow(Contract):
     country_name: str
     isin: str
     security_name: str
-    buy_settlement_usd: Money
-    sell_settlement_usd: Money
-    gross_settlement_usd: Money
-    net_buy_settlement_usd: Money
+    buy_settlement_usd: Money | None
+    sell_settlement_usd: Money | None
+    gross_settlement_usd: Money | None
+    net_buy_settlement_usd: Money | None
 
 
 class SeibroSnapshot(Contract):
@@ -53,6 +53,9 @@ class SeibroSnapshot(Contract):
     quality: Literal["manual_checked"]
     top50_coverage: Literal[True]
     automated_trading_allowed: Literal[False]
+    capture_mode: Literal["manual_capture", "browser_capture"] = "manual_capture"
+    derived_amount: Literal["gross_settlement_usd", "net_buy_settlement_usd"] | None = None
+    amount_coverage: Literal["complete", "buy_only", "sell_only"] = "complete"
     rows: list[SeibroRow]
 
 
@@ -90,7 +93,7 @@ def read_top50(
             """SELECT id::text AS snapshot_id,country_code,period_code,rank_basis,
                       period_start,period_end,as_of_date_kst,revision,retrieved_at,
                       first_seen_at,available_at,row_count,currency,quality,top50_coverage,
-                      automated_trading_allowed
+                      automated_trading_allowed,capture_mode,derived_amount,amount_coverage
                FROM indicators.seibro_top50_snapshots
                WHERE country_code=%s AND period_code=%s AND rank_basis=%s
                  AND permission_version=%s AND available_at<=%s

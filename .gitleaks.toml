@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+# Public upstream file SHA-256, not a credential. Match only this exact
+# checksum in the vendored schema manifest; retain every default rule.
+[[allowlists]]
+description = "MEXC UcenterFaceAuthNotify.proto verified public SHA-256"
+condition = "AND"
+paths = ['''^apps/backend/src/autoaxe/adapters/mexc_proto/manifest\.json$''']
+regexTarget = "secret"
+regexes = ['''^8633661ea791088f66651a3e373a4c03264abd08e4c4f00a26ecc065ae1e99f6$''']

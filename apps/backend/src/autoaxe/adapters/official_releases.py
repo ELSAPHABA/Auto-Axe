@@ -8,6 +8,11 @@ from datetime import date, datetime
 from typing import Any
 
 from autoaxe.adapters.macro_sources import parse_official_ics, parse_sec_atom
+from autoaxe.adapters.official_calendar_html import (
+    parse_census_calendar,
+    parse_census_retail_calendar,
+    parse_fed_calendar,
+)
 from autoaxe.domain.calendars import EventRevision
 from autoaxe.domain.types import decimal_string
 
@@ -234,6 +239,9 @@ def parse_release(task: str, raw: bytes, now: datetime) -> list[EventRevision]:
     parsers: dict[str, Any] = {
         "bls_calendar": lambda: parse_official_ics(raw, now, "bls"),
         "bea_calendar": lambda: parse_official_ics(raw, now, "bea"),
+        "census_calendar": lambda: parse_census_calendar(raw, now),
+        "census_retail_calendar": lambda: parse_census_retail_calendar(raw, now),
+        "fed_calendar": lambda: parse_fed_calendar(raw, now),
         "bea_gdp": lambda: parse_bea(raw, now, table="T10101"),
         "bea_pce": lambda: parse_bea(raw, now, table="T20807"),
         "census_retail": lambda: parse_census(raw, now),

@@ -85,6 +85,17 @@ for _sid in MANUAL:
 def catalog() -> dict[str, Series]:
     rows = [
         Series(
+            "NASDAQ100_MEXC_PERP_USDT_WS",
+            "NASDAQ100_MEXC_PERP_USDT_WS",
+            "mexc",
+            "NAS100_USDT",
+            "index_linked_perpetual",
+            "USDT/contract",
+            "USDT",
+            "ticker",
+            None,
+        ),
+        Series(
             "NASDAQ100_BINANCE_QQQ_PERP_USDT",
             "NASDAQ100_BINANCE_QQQ_PERP_USDT",
             "binance_futures",

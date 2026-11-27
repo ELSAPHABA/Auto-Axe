@@ -7,9 +7,11 @@ export function SeibroPanel() {
   const session = useAuthorizedSession();
   const allowed = session.data === true && !session.isError;
   const [country, setCountry] = useState("US");
+  const [period, setPeriod] = useState("1");
+  const [basis, setBasis] = useState("4");
   const result = useQuery({
-    queryKey: ["authorized", "seibro", country, "1", "4"],
-    queryFn: () => getSeibroTop50(country, "1", "4"),
+    queryKey: ["authorized", "seibro", country, period, basis],
+    queryFn: () => getSeibroTop50(country, period, basis),
     enabled: allowed,
     retry: false,
     refetchInterval: 60_000,
@@ -20,8 +22,8 @@ export function SeibroPanel() {
       <p className="eyebrow">SEIBRO / REVIEWED SETTLEMENTS</p>
       <h2>해외주식 결제 TOP50</h2>
       <p className="subline">
-        검수된 결제 통계 · USD · 조회 기간 코드 1 / 정렬 코드 4 · 전체 시장 및
-        실시간 주문 통계가 아님
+        검수된 결제 통계 · USD · 선택한 기간 및 정렬 기준 · 전체 시장 및 실시간
+        주문 통계가 아님
       </p>
       <label>
         국가{" "}
@@ -33,6 +35,37 @@ export function SeibroPanel() {
             ["CN", "중국"],
             ["JP", "일본"],
             ["VN", "베트남"],
+          ].map(([code, name]) => (
+            <option key={code} value={code}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        기간{" "}
+        <select value={period} onChange={(e) => setPeriod(e.target.value)}>
+          {[
+            ["1", "1주"],
+            ["2", "1개월"],
+            ["3", "3개월"],
+            ["4", "6개월"],
+            ["5", "1년"],
+          ].map(([code, name]) => (
+            <option key={code} value={code}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        순위 기준{" "}
+        <select value={basis} onChange={(e) => setBasis(e.target.value)}>
+          {[
+            ["1", "매수"],
+            ["2", "매도"],
+            ["3", "합계"],
+            ["4", "순매수"],
           ].map(([code, name]) => (
             <option key={code} value={code}>
               {name}
@@ -57,6 +90,21 @@ export function SeibroPanel() {
             {snapshot.period_start ?? "미확인"} ~{" "}
             {snapshot.period_end ?? "미확인"} · {snapshot.row_count}개 · 수정{" "}
             {snapshot.revision} · 자동 주문 사용 금지
+          </p>
+          <p className="subline">
+            {snapshot.capture_mode === "browser_capture"
+              ? "브라우저 수집"
+              : "수동 등록"}
+            {snapshot.amount_coverage === "buy_only"
+              ? " · 매수 금액만 관측"
+              : ""}
+            {snapshot.amount_coverage === "sell_only"
+              ? " · 매도 금액만 관측"
+              : ""}
+            {snapshot.derived_amount
+              ? ` · 산술 계산: ${snapshot.derived_amount}`
+              : ""}
+            {" · —는 관측되지 않은 금액"}
           </p>
           <div className="official-events-table-wrap">
             <table className="official-events-table">
@@ -83,10 +131,10 @@ export function SeibroPanel() {
                     <td>{row.rank}</td>
                     <td>{row.security_name}</td>
                     <td>{row.isin}</td>
-                    <td>{row.buy_settlement_usd}</td>
-                    <td>{row.sell_settlement_usd}</td>
-                    <td>{row.net_buy_settlement_usd}</td>
-                    <td>{row.gross_settlement_usd}</td>
+                    <td>{row.buy_settlement_usd ?? "—"}</td>
+                    <td>{row.sell_settlement_usd ?? "—"}</td>
+                    <td>{row.net_buy_settlement_usd ?? "—"}</td>
+                    <td>{row.gross_settlement_usd ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -290,6 +338,8 @@ export function ExpiryCalendarPanel() {
                       "최종 거래",
                       "처리",
                       "결제",
+                      "달력일 DTE",
+                      "거래일 DTE",
                       "공식 원본",
                     ].map((text) => (
                       <th key={text} scope="col">
@@ -299,31 +349,40 @@ export function ExpiryCalendarPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.data.evidence.map(({ claim, revision }) => (
-                    <tr key={claim.evidence_key + ":" + revision}>
-                      <td>{claim.family}</td>
-                      <td>{claim.contract_ref ?? "—"}</td>
-                      <td>{claim.nominal_expiry_date ?? "—"}</td>
-                      <td>
-                        {claim.last_trade_at ?? claim.last_trade_date ?? "—"}
-                      </td>
-                      <td>
-                        {claim.processing_at ?? claim.processing_date ?? "—"}
-                      </td>
-                      <td>
-                        {claim.settlement_at ?? claim.settlement_date ?? "—"}
-                      </td>
-                      <td>
-                        <a
-                          href={claim.source_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {claim.source_id}
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
+                  {result.data.evidence.map(
+                    ({
+                      claim,
+                      revision,
+                      calendar_days_to_expiry,
+                      trading_days_to_expiry,
+                    }) => (
+                      <tr key={claim.evidence_key + ":" + revision}>
+                        <td>{claim.family}</td>
+                        <td>{claim.contract_ref ?? "—"}</td>
+                        <td>{claim.nominal_expiry_date ?? "—"}</td>
+                        <td>
+                          {claim.last_trade_at ?? claim.last_trade_date ?? "—"}
+                        </td>
+                        <td>
+                          {claim.processing_at ?? claim.processing_date ?? "—"}
+                        </td>
+                        <td>
+                          {claim.settlement_at ?? claim.settlement_date ?? "—"}
+                        </td>
+                        <td>{calendar_days_to_expiry ?? "—"}</td>
+                        <td>{trading_days_to_expiry ?? "—"}</td>
+                        <td>
+                          <a
+                            href={claim.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {claim.source_id}
+                          </a>
+                        </td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
               </table>
             </div>

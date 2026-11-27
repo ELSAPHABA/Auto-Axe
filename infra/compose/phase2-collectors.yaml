@@ -35,6 +35,16 @@ services:
     command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.equity_cli", "--help"]
     environment:
       AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?existing market runtime DSN required}
+  official-documents:
+    <<: *common
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+      target: backend
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.document_scheduler_cli", "--help"]
+    environment:
+      AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?existing market runtime DSN required}
+      AUTOAXE_SEC_CONTACT: ${AUTOAXE_SEC_CONTACT:-}
   mexc:
     <<: *common
     build:
@@ -51,6 +61,15 @@ services:
       dockerfile: apps/backend/Dockerfile
       target: backend
     command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.binance_qqq_cli", "--help"]
+    environment:
+      AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?existing market runtime DSN required}
+  mexc-ws:
+    <<: *common
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+      target: backend
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.mexc_ws_cli", "--help"]
     environment:
       AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?existing market runtime DSN required}
 networks:

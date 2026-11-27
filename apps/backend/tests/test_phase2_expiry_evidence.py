@@ -284,6 +284,11 @@ def test_expiry_ledger_real_roles_and_pit(monkeypatch):
     from testcontainers.postgres import PostgresContainer
 
     from autoaxe.infrastructure.db_bootstrap import provision
+    from autoaxe.infrastructure.expiry_session_store import (
+        query_calendar,
+        review_calendar,
+        submit_calendar,
+    )
     from autoaxe.infrastructure.market_store import set_permission
 
     monkeypatch.setenv("AUTOAXE_DISPOSABLE_DB", "true")
@@ -356,6 +361,48 @@ def test_expiry_ledger_real_roles_and_pit(monkeypatch):
         assert visible(pending_cutoff) == []
         assert len(visible(checked_cutoff)) == 1
         assert visible(checked_cutoff, private=False) == []
+        session_args = dict(
+            source_id="occ",
+            family="EQUITY_OPTION",
+            contract_ref="SYNTHETIC",
+            coverage_start=DAY - timedelta(days=30),
+            coverage_end=DAY,
+            sessions=(DAY - timedelta(days=1), DAY),
+            source_url=URLS["occ"],
+            evidence_ref="synthetic complete session fixture",
+            submitter_ref="submitter",
+            permission_version=version,
+        )
+        with psycopg.connect(dsn("runtime")) as conn:
+            cid, crev, created = submit_calendar(conn, **session_args)
+            assert (crev, created) == (1, True)
+            assert submit_calendar(conn, **session_args) == (cid, 1, False)
+
+        def calendar_visible(at, private=True):
+            with psycopg.connect(dsn("read")) as conn:
+                return query_calendar(
+                    conn,
+                    source_id="occ",
+                    family="EQUITY_OPTION",
+                    contract_ref="SYNTHETIC",
+                    cutoff=at,
+                    private_use=private,
+                )
+
+        calendar_pending = cutoff()
+        assert calendar_visible(calendar_pending) is None
+        with psycopg.connect(dsn("runtime")) as conn:
+            assert review_calendar(
+                conn,
+                cid,
+                "checked",
+                reviewer_ref="reviewer",
+                reason="synthetic calendar check",
+                permission_version=version,
+            )
+        assert calendar_visible(calendar_pending) is None
+        assert calendar_visible(cutoff()).sessions == session_args["sessions"]
+        assert calendar_visible(cutoff(), False) is None
         with psycopg.connect(dsn("runtime")) as conn:
             corrected = replace(original, session_date=DAY - timedelta(days=1))
             new_id, rev, created = expiry_store.submit_expiry(conn, corrected, **args)
@@ -382,3 +429,4 @@ def test_expiry_ledger_real_roles_and_pit(monkeypatch):
                 storage=False,
             )
         assert visible(checked_cutoff) == []
+        assert calendar_visible(cutoff()) is None

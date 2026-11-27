@@ -965,6 +965,8 @@ export interface components {
              * Format: date-time
              */
             available_at: string;
+            /** Calendar Days To Expiry */
+            calendar_days_to_expiry?: number | null;
             claim: components["schemas"]["ExpiryClaimView"];
             /**
              * First Seen At
@@ -975,6 +977,8 @@ export interface components {
             permission_version: number;
             /** Revision */
             revision: number;
+            /** Trading Days To Expiry */
+            trading_days_to_expiry?: number | null;
         };
         /** SeibroMeta */
         SeibroMeta: {
@@ -1020,24 +1024,30 @@ export interface components {
         /** SeibroRow */
         SeibroRow: {
             /** Buy Settlement Usd */
-            buy_settlement_usd: string;
+            buy_settlement_usd: string | null;
             /** Country Name */
             country_name: string;
             /** Gross Settlement Usd */
-            gross_settlement_usd: string;
+            gross_settlement_usd: string | null;
             /** Isin */
             isin: string;
             /** Net Buy Settlement Usd */
-            net_buy_settlement_usd: string;
+            net_buy_settlement_usd: string | null;
             /** Rank */
             rank: number;
             /** Security Name */
             security_name: string;
             /** Sell Settlement Usd */
-            sell_settlement_usd: string;
+            sell_settlement_usd: string | null;
         };
         /** SeibroSnapshot */
         SeibroSnapshot: {
+            /**
+             * Amount Coverage
+             * @default complete
+             * @enum {string}
+             */
+            amount_coverage: "complete" | "buy_only" | "sell_only";
             /**
              * As Of Date Kst
              * Format: date
@@ -1054,6 +1064,12 @@ export interface components {
              */
             available_at: string;
             /**
+             * Capture Mode
+             * @default manual_capture
+             * @enum {string}
+             */
+            capture_mode: "manual_capture" | "browser_capture";
+            /**
              * Country Code
              * @enum {string}
              */
@@ -1063,6 +1079,8 @@ export interface components {
              * @constant
              */
             currency: "USD";
+            /** Derived Amount */
+            derived_amount?: ("gross_settlement_usd" | "net_buy_settlement_usd") | null;
             /**
              * First Seen At
              * Format: date-time

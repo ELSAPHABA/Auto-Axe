@@ -11,6 +11,11 @@ import psycopg
 from psycopg import Connection
 
 from autoaxe.adapters.macro_sources import BEA_ICS, BLS_IDS
+from autoaxe.adapters.official_calendar_html import (
+    CENSUS_CALENDAR_URL,
+    CENSUS_RETAIL_CALENDAR_URL,
+    FED_CALENDAR_URL,
+)
 from autoaxe.adapters.official_releases import (
     BEA_URL,
     BLS_ICS,
@@ -48,6 +53,10 @@ TASKS = {
     # BEA publishes its subscription file with text/plain as well as ICS media.
     # Its parser checks the VCALENDAR producer identity, not arbitrary plain text.
     "bea_calendar": Task("bea", BEA_ICS, ("text/calendar", "application/ics", "text/plain"), 21600),
+    # Official public calendar pages; still require source approval and explicit opt-in.
+    "census_calendar": Task("census", CENSUS_CALENDAR_URL, ("text/html",), 86400),
+    "census_retail_calendar": Task("census", CENSUS_RETAIL_CALENDAR_URL, ("text/html",), 86400),
+    "fed_calendar": Task("fed", FED_CALENDAR_URL, ("text/html",), 86400),
     "bea_gdp": Task("bea", BEA_URL, JSON, 21600, "AUTOAXE_BEA_API_KEY"),
     "bea_pce": Task("bea", BEA_URL, JSON, 21600, "AUTOAXE_BEA_API_KEY"),
     "census_retail": Task("census", CENSUS_URL, JSON, 21600, "AUTOAXE_CENSUS_API_KEY"),

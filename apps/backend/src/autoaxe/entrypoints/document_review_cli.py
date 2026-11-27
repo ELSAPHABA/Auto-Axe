@@ -38,6 +38,11 @@ def read_text(path: Path) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+    inbox = commands.add_parser("inbox-list")
+    inbox.add_argument("--limit", type=int, default=50)
+    export = commands.add_parser("inbox-export")
+    export.add_argument("capture_id", type=UUID)
+    export.add_argument("--text", action="store_true")
     discover = commands.add_parser("discover-sec")
     discover.add_argument("submissions_file", type=Path)
     discover.add_argument("--cik", required=True)
@@ -66,6 +71,40 @@ def main() -> None:
     args = parser.parse_args()
     candidate: PolicyDecision | CompanyGuidance
     try:
+        if args.command in ("inbox-list", "inbox-export"):
+            from psycopg.rows import dict_row
+
+            with psycopg.connect(
+                os.environ["AUTOAXE_DOCUMENT_REVIEW_ADMIN_DSN"],
+                connect_timeout=3,
+                row_factory=dict_row,
+            ) as conn:
+                if args.command == "inbox-list":
+                    if not 1 <= args.limit <= 200:
+                        raise ValueError("invalid inbox limit")
+                    rows = conn.execute(
+                        """SELECT id,source_id,document_key,source_url,raw_sha256,captured_at,
+                                  permission_version,parse_status,candidate_hash
+                           FROM ops.official_document_inbox
+                           ORDER BY captured_at DESC,id LIMIT %s""",
+                        (args.limit,),
+                    ).fetchall()
+                    print(json.dumps(rows, default=str, ensure_ascii=False, indent=2))
+                else:
+                    row = conn.execute(
+                        """SELECT rendered_text,candidate FROM ops.official_document_inbox
+                           WHERE id=%s""",
+                        (args.capture_id,),
+                    ).fetchone()
+                    if row is None:
+                        raise ValueError("capture not found")
+                    if args.text:
+                        print(row["rendered_text"])
+                    elif row["candidate"] is None:
+                        raise ValueError("capture requires manual extraction")
+                    else:
+                        print(json.dumps(row["candidate"], ensure_ascii=False, indent=2))
+            return
         if args.command == "discover-sec":
             print(
                 json.dumps(

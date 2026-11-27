@@ -97,6 +97,9 @@ def _failure(conn: Connection[Any], version: int, exc: Exception) -> str:
         if isinstance(exc, PermissionDenied):
             record_health(conn, SERIES_ID, "blocked", "source_permission_or_circuit_changed")
             return "permission_changed"
+        if _cooldown(conn, version, _clock(conn)):
+            record_health(conn, SERIES_ID, "blocked", "source_circuit_open")
+            return "cooldown"
         if isinstance(exc, FetchError):
             now = _clock(conn)
             delay = retry_after(1, exc.retry_header, now)

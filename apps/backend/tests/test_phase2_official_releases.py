@@ -87,7 +87,7 @@ def test_bea_calendar_authorization_and_no_redirect():
         with pytest.raises(OfficialSourceError) as exc:
             fetch_release("bea_calendar", client, lambda: None, clock=lambda: NOW)
         assert exc.value.status == 302 and requests == [BEA_ICS]
-    assert "census_calendar" not in TASKS and "fed_calendar" not in TASKS
+    assert TASKS["census_calendar"].source == "census" and TASKS["fed_calendar"].source == "fed"
 
 
 def test_bea_contract():
