@@ -95,3 +95,11 @@
 - 원인: 이전 테스트는 health/indicators/SSE만 mock 처리했으며 새 auth 요청을 누락. 운영 백엔드의 실제 인증 실패가 아니라 단독 Vite preview fixture 구성 차이.
 - 수정: apps/web/tests/fixture.spec.ts에 예상 401 unauthenticated mock 응답을 추가. 401 이후 UI는 외부 공식 데이터를 표시하지 않는 기본 차단 상태를 유지.
 - 검증: 최신 Playwright 재실행 결과는 Phase 후속 로그에 기입.
+
+## TS-02-15 — GitHub Actions 문서 전용 커밋에서 Docker Registry 레이어 다운로드 연결 재설정
+- 발생: 구현 커밋 7e68159 CI [45928981099](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45928981099)는 backend/frontend/compose/secret-scan 4/4 success. 이를 기록한 후속 문서 전용 커밋 38abe804의 workflow [45929321203](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45929321203) 중 fixture-compose가 Docker 이미지 다운로드 단계에서 실패.
+- 실제 오류: `docker compose --env-file .env.phase0 -f infra/compose/dev.yaml up --build -d --wait` 실행 직후, 고정 postgres:17 이미지의 Docker Hub/CDN 레이어 요청에서 `failed to copy: httpReadSeeker: failed open: failed to do request ... read: connection reset by peer`. URI에 포함된 서명/쿼리 문자열 전문은 민감한 임시 접속자료일 수 있어 보존하지 않음.
+- 조사: 동일 구현 SHA의 직전 CI에서 compose success, 문서 전용 변경은 코드/도커/의존성 변경 없음. 오류는 이미지 pull 중 외부 CDN TCP 연결 재설정. 애플리케이션 예외나 DB 마이그레이션 오류라고 볼 근거 없음. CDN/runner 순간 장애 가설(정확한 외부 원인은 미확인).
+- 대응: application 코드 및 Docker 이미지 digest pin과 보안 검사 비활성화를 변경하지 않음. 별도 재실행/새 CI 검증에서 결과를 확인할 예정. 코드 정적 검사 성공만으로 실패한 compose CI를 통과로 바꿔 주장하지 않음.
+- 상태: 후속 workflow의 실제 완료/재검증 결과는 최신 Phase2 session log를 참조.
+- **재검증 완료:** GitHub workflow run 45929321203, 최초 시도 run_attempt=1은 Docker Hub 다운로드 연결 재설정으로 failure. 코드·이미지 pin·권한 정책 변경 없이 GitHub Actions의 rerun-failed-jobs만 수행했고 run_attempt=2는 **2026-11-27T02:39:47Z completed/success**, fixture-compose 포함 4개 jobs success. 근본 CDN 장애는 외부 원인 가설이며 소스 코드 장애는 관측되지 않음. 최초 failure 기록 보존.
