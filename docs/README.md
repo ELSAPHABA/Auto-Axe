@@ -45,6 +45,7 @@
 - [Phase 작업 기록 양식](../.ai-context/PHASE_LOG_TEMPLATE.md) · [최초 계획 기준선](../.ai-context/phases/planning-baseline.md)
 - [Phase 1 데이터 수집·저장 구현](./development/PHASE_01_IMPLEMENTATION.md)
 - [Phase 2 지표·스크래퍼·대시보드 구현](./development/PHASE_02_IMPLEMENTATION.md)
+- [Phase 2 공급자 환경변수 설정](./development/PHASE_02_PROVIDER_ENV.md)
 - [Phase 2 세션 진행 및 인계](../.ai-context/phases/phase-02/2026-11-27-01.md)
 - [Phase 2 미완료 보강 세션 및 후속 인계](../.ai-context/phases/phase-02/2026-11-27-02.md)
 - [Phase 2 개인·교육·비영리 목적 정정 및 권한 분리](../.ai-context/phases/phase-02/2026-11-27-03.md)
