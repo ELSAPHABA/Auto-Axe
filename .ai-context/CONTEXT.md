@@ -61,6 +61,8 @@
 
 - **PizzINT 5분 운영 연결 최종 구현 검증(2026-11-27):** 구현 commit `57fc976d06ae6ea4b56f665ed703cd8ca1aa84c1`, tree `de62349c12bd570d5bce172b2e2da4c0b6ebfa1a`, [CI 45944333126](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45944333126) completed/success (4/4 jobs, 전용 worker packaging 및 미승인 source 차단 smoke 포함). 전체 backend 88, 최종 대상 8, scraper 29, web 6, E2E 1 passed; Ruff/mypy/schema/build/Gitleaks 성공. 사용자 재개 지시에 따라 중복 개발 전 기존 clean main 및 원격 일치, CI 완료, 실행 중인 autoaxe 컨테이너 없음 확인. 이전 10분 계획 폐기. [최종 인계 기록](phases/phase-02/2026-11-27-06.md) 우선. 실제 상시 운영 배포는 DB/네트워크/소유자 인증 설정 이후 가능하며 현재 기동 상태가 아님.
 
+- **2026-11-27 재개 점검 (세션 07):** 사용자 요청에 따라 기존 요구/기술 계약 및 Phase 0~2 상태를 원격 GitHub에서 재확인. [재개 점검 기록](phases/phase-02/2026-11-27-07.md). 기준 main `d044dfb013f936a1472f87ced36df0072212897f`; 구현 `57fc976d06ae6ea4b56f665ed703cd8ca1aa84c1` 이후 1개 커밋은 문서 3개만 변경. Phase0/1 및 Phase2 주요 구현 CI 7개 run, 4/4 jobs 각각 success 직접 확인; 최신 run의 pytest/정적 검사/Playwright/Compose/DOUGHCON 미승인 차단 step 성공도 확인. Phase0/1 개발 fixture VERIFIED, Phase2 fixture 및 DOUGHCON 전용 운영 연결 구현 VERIFIED, 전체 Phase2 실데이터/운영 exit 미완료. Phase3~8 NOT_STARTED, 별도 승인 및 선행 gate 필요. 이번 세션 로컬 테스트/운영 상태 확인/외부 호출 미실시. 현재 세션은 기록 및 점검만 수행, 기존 최신 사용자 명세 유지. 이후 모든 Phase의 상세 작업·의사결정·오류·검증 기록을 저장하고 실제 검증으로 완료 판단하라는 사용자 요구 재확인.
+
 ## ARCHITECTURE / DECISIONS (아키텍처 및 의사결정)
 
 기존 문서가 source of truth. 아래는 탐색용 계약 요약이고 세부는 반드시 연결 원문을 읽는다.
