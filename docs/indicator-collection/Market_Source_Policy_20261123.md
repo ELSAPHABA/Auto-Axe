@@ -8,6 +8,8 @@
 
 ### 2026-11-27 사용자 확정 수집 정책 (기존과 충돌 시 우선)
 
+- SMA/EMA 및 5/10/20거래일 고저가의 OHLCV는 로컬 우선(Cache-first). 필요한 유효 확정봉·EMA 초기화 이력이 로컬에 있으면 외부 요청 0회, 없거나 불완전하면 부족한 거래세션 구간만 Yahoo HTTP 요청 후 로컬 원장과 병합하여 계산한다. [상세](./YFinance_Valuation_and_Moving_Averages.md#4-auto-axe-수집계산-주기).
+
 - VIX는 반드시 원본 이벤트 기준 TTL 10초 및 허용 범위 내 즉시 갱신. 원본 지연/미수신은 stale 또는 UNKNOWN으로 처리하고 TTL을 늘리거나 수신시각으로 대체하지 않는다. VIX는 필수 신선도 요구사항이며 공급자 제약으로 충족하지 못하면 신호 차단, 별도 검증 필요.
 - 미국 국채 3M/5Y/10Y/30Y는 yfinance 정기 조회 900초(15분). 기존 원본 TTL 300초는 조회 주기와 구분해 유지하며, 오래된 관측을 15분 동안 최신으로 간주하지 않는다. 2Y Naver 우선/Treasury 일별 임시 fallback은 그대로 유지.
 - WTI/Brent는 각각 Binance WS CLUSDT/BZUSDT를 최우선으로, 해당 스트림 실패 시에만 Yahoo WS CL=F/BZ=F fallback. Binance 정상 복구 시 우선 원본으로 복귀하고 사유·시각·원본을 기록한다. 정규 휴장과 장애를 구분한다. Yahoo USD 만기선물과 Binance USDT 연동 영구선물은 별도 series, 상품·단위·계약·지연을 표시하고 전환 경계 수익률/EDGE/rolling은 UNKNOWN 또는 재기준화. Yahoo WS 실제 심볼 수신 검증 전 fallback을 가동하지 않는다.

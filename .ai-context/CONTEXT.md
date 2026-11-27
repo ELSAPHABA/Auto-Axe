@@ -4,6 +4,8 @@
 
 ## METADATA (메타데이터)
 
+- **사용자 추가 확정:** SMA/EMA 및 OHLCV 기반 고저가는 Cache-first, 필요한 유효 로컬 확정봉/EMA 이력이 있으면 Yahoo HTTP 요청 없이 계산하고 누락 시에만 부족한 범위를 요청. 기존 DB와 병합 계산, 조정 기준/캘린더/결측 검증. 상세 [재무·기술지표 명세](../docs/indicator-collection/YFinance_Valuation_and_Moving_Averages.md). 현재 HTTP 복원과 누락 구간 계획/로컬 병합 구현은 남아 있음.
+
 - [Session 16 정책 확정 및 검증 기록](phases/phase-02/2026-11-27-16.md): 국채 900초 스케줄 적용 및 기존 300초 슬롯 호환, 관련 41개 테스트 통과. Yahoo HTTP 복원과 원유 fallback/즉시 갱신 운영 연결은 별도 구현·검증 대상.
 
 - **최신 사용자 정책 2026-11-27:** [시장 수집 정책 확정](../docs/indicator-collection/Market_Source_Policy_20261123.md#2026-11-27-사용자-확정-수집-정책-기존과-충돌-시-우선). VIX TTL 10초 필수/허용 즉시 갱신, Yahoo 국채 4종 900초 조회(기존 TTL 300초 별도), 5/10/20 거래일 고저가, WTI/Brent Binance WS 최우선/Yahoo WS 실패 시만 fallback, 나머지 기존 유지 및 HTTP 복원 방향. 사용자 Windows 시간 동기화 완료 보고(재측정 미실행). API 키 발급 사용자 문서 [가이드](../docs/user-guide/PROVIDER_SETUP.md). 아직 Yahoo 실제 HTTP/WS, fallback 및 즉시 갱신 운영 연결 검증 미완료.
