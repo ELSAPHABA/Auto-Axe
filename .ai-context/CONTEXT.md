@@ -4,6 +4,8 @@
 
 ## METADATA (메타데이터)
 
+- **최신 개발 인계 2026-11-28 session 18:** [CNN/Naver/DRAM/SEIBro](phases/phase-02/2026-11-28-18.md). 기존 수집기 유지 및 reviewed DOM manifest, 운영/fixture 분리, 수치/시각 검증, grant 갱신 시 Retry-After 보존. 공식 무료 국제거래외화증권예탁결제정보 API는 TOP50 동등성 미확인. 네 공급원 실제 자동 수집 미검증, no prod deploy. 세부 잔여 조건은 로그 참조.
+
 - **최신 개발 인계 2026-11-28 session 17:** [Yahoo HTTP/VIX/원유 구현 및 실측](phases/phase-02/2026-11-28-17.md) 우선. 승인형 HTTP, cache-first OHLCV 병합, VIX 10초 TTL 즉시 갱신 runner, Binance 우선 원유 WS 및 별도 Yahoo fallback, 0020 migration/대시보드/Compose 연결. Binance 실제 임시 PG17 17건 성공. Yahoo 외부 호출은 공급자 명시적 자동 접근 권한 미확보로 미실행; 운영 배포/Phase 3 미착수.
 
 - **사용자 추가 확정:** SMA/EMA 및 OHLCV 기반 고저가는 Cache-first, 필요한 유효 로컬 확정봉/EMA 이력이 있으면 Yahoo HTTP 요청 없이 계산하고 누락 시에만 부족한 범위를 요청. 기존 DB와 병합 계산, 조정 기준/캘린더/결측 검증. 상세 [재무·기술지표 명세](../docs/indicator-collection/YFinance_Valuation_and_Moving_Averages.md). 현재 HTTP 복원과 누락 구간 계획/로컬 병합 구현은 남아 있음.

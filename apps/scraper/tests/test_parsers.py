@@ -45,6 +45,18 @@ def test_naver_yield_and_source_time() -> None:
     assert item["source_event_at"] == "2026-11-23T07:00:00+00:00"
     with pytest.raises(SchemaChanged):
         parse_offline("naver", '<span data-symbol="US2YT=RR" data-yield="4.6"></span>')
+    with pytest.raises(SchemaChanged):
+        parse_offline(
+            "naver",
+            '<span data-symbol="US2YT=RR" data-yield="4.6" '
+            'data-time="2099-11-23T16:00:00+09:00"></span>',
+        )
+
+
+@pytest.mark.parametrize("raw", ["1,2", "1e2", "NaN", "4.2%", "1_000"])
+def test_malformed_source_number_is_not_repaired(raw):
+    with pytest.raises(SchemaChanged):
+        parse_offline("dramexchange", DRAM.replace("22.50", raw))
 
 
 def test_seibro_rank_and_scope() -> None:

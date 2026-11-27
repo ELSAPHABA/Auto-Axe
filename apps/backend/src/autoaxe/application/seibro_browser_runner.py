@@ -47,7 +47,7 @@ def reserve_browser(
         "SELECT permission_version,blocked,retry_at>clock_timestamp() "
         "FROM ops.poll_circuits WHERE source_id='seibro'"
     ).fetchone()
-    if circuit and circuit[0] == version and (circuit[1] or circuit[2]):
+    if circuit and ((circuit[0] == version and circuit[1]) or circuit[2]):
         raise PermissionDenied("SEIBro source circuit open")
     # Source-wide reservation, not one slot per rank or country. Commit before
     # launching the browser, including failures; no immediate retry.

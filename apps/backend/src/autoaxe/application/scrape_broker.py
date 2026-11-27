@@ -69,7 +69,8 @@ def adapter_grant(conn: Connection[Any], source: str, version: int) -> int:
         "FROM ops.poll_circuits WHERE source_id=%s",
         (source,),
     ).fetchone()
-    if circuit and circuit[0] == version and (circuit[1] or circuit[2]):
+    # A renewed approval is not a license to shorten an outstanding Retry-After.
+    if circuit and ((circuit[0] == version and circuit[1]) or circuit[2]):
         raise PermissionDenied("source circuit open")
     return int(row[0])
 
@@ -471,8 +472,8 @@ def validate_candidates(source: str, candidates: list[dict[str, Any]]) -> None:
             if not isinstance(stamp, str) or len(stamp) > 64:
                 raise ValueError("invalid source timestamp")
             parsed = datetime.fromisoformat(stamp)
-            if parsed.tzinfo is None:
-                raise ValueError("source timestamp must be timezone aware")
+            if parsed.tzinfo is None or parsed > datetime.now(UTC):
+                raise ValueError("source timestamp must be timezone aware and not future")
             if source == "naver" and set(item) != common:
                 raise ValueError("invalid Naver candidate")
             if source == "dramexchange" and (

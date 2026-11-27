@@ -187,6 +187,12 @@ def test_generic_scheduler_and_review_fences(monkeypatch):
         reset_due("naver")
         assert tick("naver") == "blocked"  # Retry-After survives scheduler restart.
         grant("naver")  # A new independently verified version, fixture only.
+        assert tick("naver") == "blocked"
+        # Simulate elapsed time in the disposable fixture only.
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            conn.execute(
+                "UPDATE ops.poll_circuits SET retry_at=clock_timestamp() WHERE source_id='naver'"
+            )
         assert tick("naver") == "scheduled"
         second = lease("naver")
         stamp = (datetime.now(UTC) - timedelta(seconds=60)).isoformat()

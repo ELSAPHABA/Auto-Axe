@@ -232,3 +232,8 @@
 ## TS-02-41 — Yahoo 원본 검증과 WS 전환
 - 동기화 후 w32tm offset 약 -0.31초, Leap 3 및 한 번 timeout. 미래 timestamp 검사를 유지한 실제 Binance 원유 17건 임시 PG 저장 성공.
 - Yahoo 일반 이용약관의 자동 접근 권한과 yfinance의 개인/연구 이용 안내를 구별. 명시 허가 없는 요청/쿠키 우회 미실행. HTTP는 승인 manifest, VIX/원유 WS는 원본 권한과 계약 검증 필요. VIX 원본 TTL10 유지, UNKNOWN/STALE로 신호 차단. 원유 정상 primary와 fallback을 중복 연결하지 않고 별도 단위/상품 원장 유지. [Session 17](../../.ai-context/phases/phase-02/2026-11-28-17.md) 상세.
+
+## TS-02-42 — 운영 DOM과 테스트 구조 구분, 재요청 제한
+- 이전 generic worker가 fixture parser의 data-* 속성을 그대로 사용했다. 실제 공급자 DOM에서 확인한 속성이 아니므로 운영용 계약으로 간주할 수 없음. 독립 검수 manifest와 SHA256, source URL/permission version/expiry 일치 조건으로 운영 파서를 분리했다. Manifest가 없으면 broker claim 전 실패. 현재 실제 공급원 manifest 미생성.
+- 기존 adapter_grant 및 SEIBro browser reservation에서 이전 permission_version의 Retry-After가 무시되는 문제 발견. 재승인 후에도 활성 cooldown 유지. 테스트는 격리 DB에서 시간 경과를 모의하고 실제 제한을 우회하지 않음.
+- DRAM 공개 색인에서 Module Spot Price 표시 구조와 GMT+8 갱신 문구만 확인(오래된 crawl, 실제 실측 아님). CNN robots 제한/Naver 조회 불가/SEIBro TOP50 동등 API 미확인. [Session 18](../../.ai-context/phases/phase-02/2026-11-28-18.md) 참고.

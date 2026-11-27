@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 
 from autoaxe_scraper import worker
+from autoaxe_scraper.parsers import parse_offline
 
 
 class FakeBroker:
@@ -47,7 +48,7 @@ def test_worker_checks_lease_and_quarantines_exact_candidate(monkeypatch):
 
     monkeypatch.setattr(worker, "fetch_exact_html", fetch)
     broker = FakeBroker()
-    assert worker.run_once(broker, "cnn") == "quarantined"
+    assert worker.run_once(broker, "cnn", fixture_parser=parse_offline) == "quarantined"
     assert [path.rsplit("/", 1)[1] for path, _ in broker.calls] == [
         "claim",
         "heartbeat",
@@ -70,10 +71,10 @@ def test_worker_never_dials_provider_without_valid_lease(monkeypatch, mode):
     broker = FakeBroker(**{mode: True}) if mode in {"idle", "invalid", "revoked"} else FakeBroker()
     source = mode if mode in {"pizzint", "seibro"} else "cnn"
     if mode == "idle":
-        assert worker.run_once(broker, source) == "idle"
+        assert worker.run_once(broker, source, fixture_parser=parse_offline) == "idle"
     else:
         with pytest.raises(worker.BrokerError):
-            worker.run_once(broker, source)
+            worker.run_once(broker, source, fixture_parser=parse_offline)
     assert not any(path.endswith("/result") for path, _ in broker.calls)
     if mode in {"pizzint", "seibro"}:
         assert broker.calls == []
@@ -98,7 +99,7 @@ def test_worker_failure_is_reported_once_without_payload(monkeypatch, error, exp
 
     monkeypatch.setattr(worker, "fetch_exact_html", fetch)
     broker = FakeBroker()
-    assert worker.run_once(broker, "cnn") == "failed"
+    assert worker.run_once(broker, "cnn", fixture_parser=parse_offline) == "failed"
     assert [path.rsplit("/", 1)[1] for path, _ in broker.calls] == [
         "claim",
         "heartbeat",

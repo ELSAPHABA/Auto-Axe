@@ -26,6 +26,8 @@ def text(node: Any) -> str:
 
 def decimal(raw: str, *, nonnegative: bool = False) -> str:
     try:
+        if not re.fullmatch(r"-?(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)(?:\.[0-9]+)?", raw):
+            raise ValueError("invalid source numeric grammar")
         value = Decimal(raw.replace(",", ""))
         if not value.is_finite() or (nonnegative and value < 0):
             raise ValueError("invalid source number")
@@ -121,8 +123,8 @@ def parse_naver(html: str) -> dict[str, Any]:
     value = decimal(item.attrib.get("data-yield", ""))
     try:
         stamp = datetime.fromisoformat(item.attrib["data-time"])
-        if stamp.tzinfo is None:
-            raise ValueError("naive timestamp")
+        if stamp.tzinfo is None or stamp > datetime.now(UTC):
+            raise ValueError("naive or future timestamp")
     except (KeyError, ValueError) as exc:
         raise SchemaChanged("missing Naver source timestamp") from exc
     return {

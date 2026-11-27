@@ -11,13 +11,15 @@ import multiprocessing
 import os
 import ssl
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import UUID
 
-from autoaxe_scraper.parsers import SchemaChanged, parse_offline
+from autoaxe_scraper.parsers import SchemaChanged
 from autoaxe_scraper.policy import fixed_target
+from autoaxe_scraper.reviewed_dom import DOMContract, load_contract, parse_reviewed
 from autoaxe_scraper.transport import ProviderHTTPError, SourceBlocked, fetch_exact_html
 
 HTTP_SOURCES = frozenset({"cnn", "dramexchange", "naver"})
@@ -88,6 +90,7 @@ class Job:
     lease_token: str
     deadline_at: datetime
     lease_expires_at: datetime
+    permission_version: int
 
     @classmethod
     def parse(cls, data: Any, source: str) -> "Job":
@@ -129,23 +132,45 @@ class Job:
                     raise ValueError("invalid lease credential")
         except (TypeError, ValueError, AttributeError) as exc:
             raise BrokerError("invalid job id, time or lease credential") from exc
-        return cls(job_id, source, data["job_nonce"], data["lease_token"], deadline, expiry)
+        return cls(
+            job_id,
+            source,
+            data["job_nonce"],
+            data["lease_token"],
+            deadline,
+            expiry,
+            data["permission_version"],
+        )
 
     def credentials(self) -> dict[str, str]:
         return {"job_nonce": self.job_nonce, "lease_token": self.lease_token}
 
 
-def run_once(broker: Broker, source: str) -> str:
+def run_once(
+    broker: Broker,
+    source: str,
+    *,
+    contract: DOMContract | None = None,
+    fixture_parser: Callable[[str, str], Any] | None = None,
+) -> str:
     """Claim one exact source; all failures abandon the lease without ingest."""
     if source not in HTTP_SOURCES:
         raise BrokerError("source unavailable to generic HTTP worker")
+    if (contract is None) == (fixture_parser is None):
+        raise BrokerError("reviewed DOM contract required; fixtures must be injected explicitly")
+    if contract is not None:
+        contract.check(source)
     data = broker.post(BROKER_PATH + "/claim", {"source_id": source, "lease_seconds": 30})
     if data is None:
         return "idle"
     job = Job.parse(data, source)
+    if contract is not None:
+        contract.check(source, job.permission_version)
     path = f"{BROKER_PATH}/{job.job_id}"
 
     def permit() -> None:
+        if contract is not None:
+            contract.check(source, job.permission_version)
         if datetime.now(UTC) >= job.deadline_at:
             raise BrokerError("job deadline expired")
         if broker.post(path + "/heartbeat", job.credentials()) != {"status": "leased"}:
@@ -155,7 +180,11 @@ def run_once(broker: Broker, source: str) -> str:
     # browser fallback, arbitrary URL, compression or provider credentials.
     try:
         html = fetch_exact_html(fixed_target(source), permit=permit)
-        parsed = parse_offline(source, html)
+        if contract is not None:
+            parsed = parse_reviewed(contract, html)
+        else:
+            assert fixture_parser is not None
+            parsed = fixture_parser(source, html)
     except (
         ProviderHTTPError,
         SourceBlocked,
@@ -193,6 +222,7 @@ def run_once(broker: Broker, source: str) -> str:
 
 def _child(source: str) -> None:
     try:
+        contract = load_contract(source)
         broker = TLSBroker(
             os.environ["AUTOAXE_SCRAPE_BROKER_HOST"],
             int(os.environ.get("AUTOAXE_SCRAPE_BROKER_PORT", "8443")),
@@ -200,7 +230,7 @@ def _child(source: str) -> None:
             os.environ["AUTOAXE_SCRAPER_CERT"],
             os.environ["AUTOAXE_SCRAPER_KEY"],
         )
-        result = run_once(broker, source)
+        result = run_once(broker, source, contract=contract)
         print(f"scraper: {result}", flush=True)
         if result == "failed":
             raise SystemExit(1)

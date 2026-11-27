@@ -130,6 +130,9 @@ def test_reservation_is_source_wide_and_requires_grant(monkeypatch):
     conn.execute.return_value.fetchone.side_effect = [(7, True, False)]
     with pytest.raises(PermissionDenied):
         runner.reserve_browser(conn, country="US", period="1", basis="4")
+    conn.execute.return_value.fetchone.side_effect = [(6, False, True)]
+    with pytest.raises(PermissionDenied):
+        runner.reserve_browser(conn, country="US", period="1", basis="4")
 
 
 def test_launcher_never_uses_unreserved_or_changed_grant(monkeypatch):
