@@ -84,6 +84,43 @@ docker compose --env-file .env.phase0 -f infra/compose/dev.yaml down
 
 **미해결 실측/승인 때문에 본 Phase의 운영 활성화는 BLOCKED.** 동일 기준을 [Phase 기록](../../.ai-context/phases/phase-02/2026-11-27-01.md) 및 [트러블슈팅](../troubleshooting/phase-02.md)과 일치시킨다.
 
+## 2026-11-27 Phase 2 잔여 개발 보강 — 범위 및 작동 방법
+
+사용자 최신 요청은 기존 Fixture 기반을 넘어서 **미완료 Phase2를 마저 개발**하는 것이다. [세부 후속 세션 로그](../../.ai-context/phases/phase-02/2026-11-27-02.md), [추가 트러블슈팅 TS-02-11~14](../troubleshooting/phase-02.md)와 함께 읽어야 한다. 이전 원본 기능·보안 요구사항을 축소/취소하지 않는다.
+
+| Phase 기준 | 추가로 실제 구현된 코드 | 여전히 미구현·외부 승인이 필요한 것 |
+|---|---|---|
+| P2.1 BFF/인가 | 기존 session·scope 검증을 이용한 별도 공식 이벤트/시장 시계열 읽기 API, DB app-runtime과 market-read를 분리하여 서버가 허가를 확인 | Keycloak·Caddy HTTPS 및 실제 계정/인증서/mTLS 서비스 환경 |
+| P2.2 주식/ETF | 승인된 market ledger에서 원본 시각별 historical series만 BFF 제공, UI에서 인증된 값만 시각화 | Yahoo AsyncWebSocket 실제 NVDA/QLD day_volume 연결, 시장 캘린더·SMA/EMA 라이브 계산과 1Hz sampler 지속 실행 |
+| P2.3 공식 경제 | BLS Public Data API v1 bounded POST real transport 기능, CPI/NFP/실업률 식별자 allowlist, 분리된 25건/UTC day quota, 출처 허가 및 one-shot opt-in, 실제 HTTP는 수행 안 함 | 명시적 관리자 source 권한 확인, 실제 이용권/호출 검증, BEA/Census/중앙은행 Fed/BOJ/BoE/ECB 지표별 공식 API 연결, MEXC Protobuf |
+| P2.4 일정/공시 | 수정 이력의 실제 PostgreSQL append/revision, source/event lock, available_at PIT, current redistribution gate, 원본시각 구분 | SEC 8-K/IR Exhibit 99.1 전문 구조적 가이던스, OCC/CME/Cboe/Binance Options 실만기 세션 |
+| P2.5 격리 수집 | PinnedHTTPS 수동 공개 IP/TLS SNI 검증, DNS 사설·혼합 리졸브 거부, redirect·oversize·압축 차단, permission pre/post | 실제 worker mTLS identity/lease network broker 연결, 컨테이너 egress 정책·브라우저 subresource enforcement |
+| P2.6 심리/산업 | PizzINT API-only 약관을 반영해 HTML 수집을 broker/policy 이중 차단 | PizzINT 공식 API endpoint 계약, CNN/DRAM/SEIBro/Naver 원본 권한·robots·DOM/실측 셀렉터 |
+| P2.7 UI | 권한형 공식 이벤트 table(revision/actual/출처) 및 authorized source history/quality 차트 추가, 기존 합성 차트 분리 | 실제 봉·거래량·SMA/EMA/고저가 차트, 실소스별 polling/market session |
+| P2.8 실시간 | 기존 fixture SSE gate 유지, 인증된 history는 REST no-store로 별도 조회 | durable SSE DB event producer, session/revoke stream, gap/backpressure/reconnect 운영 검증 |
+
+### 한 번의 승인형 BLS 수집 (운영 정보 없으면 실행하지 말 것)
+
+정확한 소스별 이용약관과 저장 권한을 관리자 절차로 승인하고 PostgreSQL 17 market database `catalog.source_registry`에 권한 증거·version을 남긴 후, 보호된 runtime DB role의 server-only DSN을 환경변수 `AUTOAXE_MARKET_RUNTIME_DSN`로 연결해야 한다. BLS 무등록 API는 요청일당 25회 제한을 강제하며, 매 호출은 **요청 전 원자적 예약 + 독립 커밋**을 수행하고 실패한 요청도 quota가 차감된다. 디폴트에서는 아무 호출도 하지 않고 자동 반복·retry·배포가 없다.
+
+```sh
+uv run --project apps/backend --locked python -m autoaxe.entrypoints.official_cli --execute-approved --series CUUR0000SA0
+```
+
+CLI 실행은 사용자/관리자의 별도 승인과 정책 확인 후에만 가능하다. 해당 명령은 이번 세션에서 네트워크로 실행하지 않았으며 mock contract만 검증했다. `--execute-approved`가 없거나 server DB 권한이 없으면 실제 네트워크 호출 전에 거부한다. 백엔드 `GET /api/v1/dashboard/official-events`는 세션/indicators:read + current provider redistribution을 동시에 통과해야 JSON을 응답한다. 인증 전에는 미제공, 승인했더라도 재배포 불허라면 빈 결과가 정상이다. `GET /api/v1/dashboard/authorized/market/{series_id}` 또한 동일 세션과 시장 DB 공급자 재배포 허가를 매 요청 검사한다.
+
+### 남은 활성화 게이트
+
+실제 데이터 접근권한·사용약관/robots 확인 및 법적 저장·재배포 허가, Keycloak realm/HTTPS/mTLS 구성, 공식 원본 응답 및 시간 정의 검증, Docker egress private DNS·redirect/브라우저 리소스 방어, source-specific real DOM golden fixture, 지표 실시간 SSE producer를 먼저 확정해야 한다. **이 게이트 없이 현재 구현을 실데이터 수집 운영 완성으로 표시하지 않는다.** Phase 2의 개발 범위도 각 미구현 항목을 추후 계속 추적하며 Phase3 권한 승인은 별개다.
+
+### 후속 개발 로컬 검증
+
+- Backend 전체 Ruff/format/strict mypy(49 source files)/OpenAPI schema check 성공, pytest **88 passed/7 dependency warnings/90.13s** (3 실제 PostgreSQL 17 integration suites 포함).
+- 별도 scraper Ruff/format/mypy 5 modules 성공, pytest **9 passed**; Docker Compose network_mode:none, read_only isolated scraper **9 passed/0.66s**.
+- Frontend Prettier/typecheck/lint/unit **5 passed**, Vite build success(679 modules), Playwright Chromium **1 passed**. ECharts SVG 503.18kB > 500kB 기존 chunk 경고는 지속되며 향후 성능 개선 항목. 새 auth mock으로 e2e 개발 proxy 오류 제거.
+- 기존 개발 PostgreSQL volume에 0005 migration 성공: Docker up --build -d --wait 시 migrate exit0, PG/API/Web healthy. 대시보드 96 indicator (1 fixture/95 unverified), auth 미설정 공식 이벤트 엔드포인트 HTTP 503으로 차단. Docker down(no -v) 및 ps -a empty, 데이터 volume 보존.
+- 이는 **구현 및 격리/합성 검증**이다. 실제 BLS/SEC/시장 API 호출, source rights·Keycloak+mTLS 운영 경계와 실시간 SSE, 실제 주문 실행은 전부 미검증/비활성.
+
 ## 개발 Fixture 최종 검증 (2026-11-27)
 
 - Backend Ruff/mypy 42 files/schema: 통과. 전체 PostgreSQL 통합 포함 pytest **79 passed / 2 deprecation warnings / 118.90s**. 초기 병렬 테스트 중 포트 타임아웃 실패는 별도 [TS-02-05](../troubleshooting/phase-02.md)에 기록, 단독 재검증 1 passed/30.92s, 정책 완화 없음.

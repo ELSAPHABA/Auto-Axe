@@ -59,6 +59,8 @@ def test_auth_protected_endpoints_and_broker_fail_closed(monkeypatch):
     assert client.get("/api/v1/auth/login").status_code == 503
     assert client.get("/api/v1/auth/session").status_code == 503
     assert client.post("/api/v1/auth/logout").status_code == 503
+    assert client.get("/api/v1/dashboard/official-events").status_code == 503
+    assert client.get("/api/v1/dashboard/authorized/market/VIX").status_code == 503
     broker = TestClient(create_broker_app())
     assert (
         broker.post(

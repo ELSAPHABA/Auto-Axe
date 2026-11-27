@@ -596,6 +596,42 @@ a {
   min-width: 0;
 }
 
+.official-events-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.official-events-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 650px;
+  font-size: 12px;
+}
+.official-events-table th,
+.official-events-table td {
+  padding: 11px 10px;
+  text-align: left;
+  border-bottom: 1px solid #263851;
+  vertical-align: top;
+}
+.official-events-table th {
+  color: #91a7c2;
+  font-weight: 650;
+}
+.official-events-table td {
+  color: #d1deec;
+}
+.official-events-table a {
+  color: #92c5ff;
+  text-decoration: underline;
+}
+.indicator-detail-link {
+  display: inline-block;
+  font-size: 11px;
+  color: #92c5ff;
+  text-decoration: underline;
+  margin-top: 12px;
+}
+
 .thermometer-panel {
   display: flex;
   flex-direction: column;

@@ -46,4 +46,5 @@
 - [Phase 1 데이터 수집·저장 구현](./development/PHASE_01_IMPLEMENTATION.md)
 - [Phase 2 지표·스크래퍼·대시보드 구현](./development/PHASE_02_IMPLEMENTATION.md)
 - [Phase 2 세션 진행 및 인계](../.ai-context/phases/phase-02/2026-11-27-01.md)
+- [Phase 2 미완료 보강 세션 및 후속 인계](../.ai-context/phases/phase-02/2026-11-27-02.md)
 - [개발 트러블슈팅 인덱스](./troubleshooting/README.md) — Phase별 재현·조사·원인·해결·검증

@@ -23,6 +23,12 @@ test("Phase 2 dashboard remains clearly synthetic, mobile and accessible", async
       body: 'event: ready\ndata: {"schema_version":1,"mode":"fixture","aggregate":"dashboard","version":0}\n\n',
     }),
   );
+  await page.route("**/api/v1/auth/session", (route) =>
+    route.fulfill({
+      status: 401,
+      json: { error: { code: "UNAUTHENTICATED" } },
+    }),
+  );
   await page.route("**/api/v1/dashboard/indicators?**", (route) =>
     route.fulfill({
       json: {

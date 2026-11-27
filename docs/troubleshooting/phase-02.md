@@ -70,3 +70,28 @@
 - 조사: 해당 행에는 실제 비밀번호/토큰·값이 없으며, 공급자 서비스 구성과 인증 자료가 배포되지 않았다는 사실을 영문 구문으로 설명한 문장만 존재. 탐지기는 구성품 이름과 바로 이어지는 일반명사를 비밀값 후보로 분류한 것으로 판단. 스캐너의 출력은 `--redact=100`으로 가려 두었다.
 - 조치: 기술적 의미를 유지하면서 문구를 `production identity and mutual-TLS configuration`으로 변경. Gitleaks 규칙 해제·allowlist 추가·스캔 건너뛰기는 하지 않음.
 - 재검증: 수정 후 동일하게 stage, `git diff --cached --check`, pinned Gitleaks 재실행 결과를 Phase log에 기록. 실제 비밀정보 유출을 허용하는 예외는 없음.
+
+## TS-02-11 — Phase 2 Fixture 검증과 실제 데이터 수집 간의 기능적 격차
+- 증상/재현: 사용자가 “미완료 된 Phase 2를 마저 완료해 주세요”라고 요청. 이전 P2.1~P2.8 검증은 96 registry 중 1 synthetic/95 unverified null, Keycloak/mTLS 미설정, source별 실제 DOM 검증 없음, backend stream은 fixture heartbeat만, 주식/ETF·경제발표·산업·심리 파서는 offline fixture.
+- 조사: docs/development/PHASE_PLAN.md §5, docs/development/PHASE_02_IMPLEMENTATION.md 및 기존 phase-02 log, 실제 소스 코드를 대조. 검증된 것은 합성 계약/기반이며 허가받은 실사이트 스크래퍼/운영 서비스의 완료 증거가 없음.
+- 조치: BLS 공식 Public API v1 bounded one-shot adapter와 원본시각을 추측하지 않는 파서, 0005 DB 일별 quota(25회), 승인·권한 변경 fence, PIT append-only 수정 이력, current redistribution 확인 API, 인증된 시장 시계열 API 및 선 그래프 구현. 허가 없는 호출을 기능 개발 요청에서 자동 승인된 것으로 처리하지 않음.
+- 검증: offline MockTransport 9, 실제 PostgreSQL 권한·PIT 테스트, backend/API 및 프런트 테스트·CI는 후속 Phase 기록에 원문 명령/결과 기입. 실제 provider 네트워크 호출 0회.
+- 미해결: BLS 공식 API가 공개라고 저장/재배포 권한 자동 취득 아님. Keycloak/HTTPS/mTLS, 실측 소스 약관·DOM, 나머지 BEA/Census/시장 WS/SEC 가이던스/거래소 만기, durable SSE는 별도 운영 증거가 필요.
+
+## TS-02-12 — PizzINT 홈페이지 HTML 수집 방식의 이용약관 불일치
+- 조사: 2026-06-25 PizzINT 공개 약관의 API 접근 가능 조항과 published API 경로 밖의 웹 스크래핑 금지 조항 확인. 기존 HTML fixture의 data-source 셀렉터는 실제 홈페이지 DOM에 있는 것으로 검증되지 않았고, 해당 방식의 활성화는 약관 위반 위험.
+- 결정: homepage HTML 스크래퍼는 승인할 수 없음. apps/scraper/src/autoaxe_scraper/policy.py에서 PizzINT api_only=true 지정, apps/backend/src/autoaxe/application/scrape_broker.py의 PizzINT job permission은 서버 측에서 무조건 차단. 공식 허용 API endpoint/응답/호출량/재배포 조항 검증 전 수집 OFF.
+- 기각: CSS/브라우저 stealth/proxy를 통한 HTML 우회, 단순 홈페이지 공개·사용료 무료만으로 접근권한 인정, 임의 공식 API URL 추측 금지.
+- 검증: 별도 API-only 차단 단위 테스트 및 오프라인 broker 계약 회귀. 실제 API 호출 없음. 공식 API 스펙이 확인되면 신규 등록 source_id 및 명시적 승인 후 별도 검증 필요.
+
+## TS-02-13 — TLS 고정 HTTP 파서의 정적 검사 초기 오류
+- 증상: 신규 apps/scraper/src/autoaxe_scraper/transport.py 도입 시 Ruff E501 (public_addresses signature >100), B023 (loop 내 lambda가 conn 변수 캡처), mypy `PinnedHTTPS has no attribute _context`.
+- 원인: 길이 규칙, late-binding lambda 테스트 문제, http.client.HTTPSConnection 내부 private API를 타입 계약으로 가정.
+- 수정: Ruff formatter로 서명 분리, loop 람다에 기본 인자 target=conn으로 정확한 연결 바인딩, ssl context를 자체 `_pinned_context` 명시 필드에 저장해 SNI 사용. SSL 인증검사·IP pinning/네트워크 격리 정책을 완화하지 않음.
+- 검증: Ruff/mypy 5 modules 통과, 9 scraper tests 통과(공개 IP·RFC1918/metadata 및 혼합 DNS 거부, 302/과대응답/압축 거부, revoke fence). DNS·통신은 모의 구현을 사용, 실제 사이트 접근/브라우저 렌더링 검증이 아니다.
+
+## TS-02-14 — Playwright 개발 Preview에 인증 API 서버가 없을 때 불필요한 Proxy 오류
+- 증상: 신규 공식 경제지표 Panel의 세션 확인 요청으로 UI E2E에서 별도 API 서버를 띄우지 않았을 때 `/api/v1/auth/session` → `ECONNREFUSED 127.0.0.1:8000`. 기존 합성 화면 테스트는 통과했지만 콘솔에 연결 오류.
+- 원인: 이전 테스트는 health/indicators/SSE만 mock 처리했으며 새 auth 요청을 누락. 운영 백엔드의 실제 인증 실패가 아니라 단독 Vite preview fixture 구성 차이.
+- 수정: apps/web/tests/fixture.spec.ts에 예상 401 unauthenticated mock 응답을 추가. 401 이후 UI는 외부 공식 데이터를 표시하지 않는 기본 차단 상태를 유지.
+- 검증: 최신 Playwright 재실행 결과는 Phase 후속 로그에 기입.

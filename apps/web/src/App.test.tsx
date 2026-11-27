@@ -59,7 +59,7 @@ const fake = [
   },
 ];
 
-function setup(failure = false) {
+function setup(failure = false, authorized = false) {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) =>
@@ -68,29 +68,56 @@ function setup(failure = false) {
         : Promise.resolve({
             ok: true,
             json: async () =>
-              String(url).includes("dashboard/indicators")
+              String(url).includes("dashboard/official-events")
                 ? {
-                    data: fake,
+                    data: [
+                      {
+                        event_key: "US_CPI:2026-10",
+                        source_id: "bls",
+                        revision: 2,
+                        actual: "321.75",
+                        forecast: null,
+                        previous: null,
+                        unit: "index",
+                        scheduled_at: null,
+                        released_at: null,
+                        first_seen_at: "2026-11-27T02:00:00Z",
+                        available_at: "2026-11-27T02:00:00Z",
+                        source_url: "https://www.bls.gov/developers/",
+                      },
+                    ],
                     meta: {
-                      next_cursor: null,
-                      environment: "fixture",
-                      schema_version: 1,
-                      as_of: "2026-11-27T00:00:00Z",
-                      version: 0,
                       request_id: "test",
-                      live_enabled: false,
-                      external_mcp_enabled: false,
+                      as_of: "2026-11-27T02:00:00Z",
+                      source_scope: null,
+                      available_count: 1,
                     },
                   }
-                : {
-                    data: {
-                      status: "ok",
-                      environment: "fixture",
-                      live_enabled: false,
-                      external_mcp_enabled: false,
-                    },
-                    meta: { request_id: "test" },
-                  },
+                : String(url).includes("/auth/session")
+                  ? { meta: { authenticated: authorized } }
+                  : String(url).includes("dashboard/indicators")
+                    ? {
+                        data: fake,
+                        meta: {
+                          next_cursor: null,
+                          environment: "fixture",
+                          schema_version: 1,
+                          as_of: "2026-11-27T00:00:00Z",
+                          version: 0,
+                          request_id: "test",
+                          live_enabled: false,
+                          external_mcp_enabled: false,
+                        },
+                      }
+                    : {
+                        data: {
+                          status: "ok",
+                          environment: "fixture",
+                          live_enabled: false,
+                          external_mcp_enabled: false,
+                        },
+                        meta: { request_id: "test" },
+                      },
           }),
     ),
   );
@@ -137,4 +164,11 @@ test("fixture dashboard backend failure never displays a live price", async () =
   setup(true);
   expect(await screen.findByText(/지표를 불러오지 못했습니다/)).toBeVisible();
   expect(screen.queryByText("123.45")).not.toBeInTheDocument();
+});
+
+test("only authorized, permission-gated official events appear separately", async () => {
+  setup(false, true);
+  expect(await screen.findByText("US_CPI:2026-10")).toBeVisible();
+  expect(screen.getByText("321.75 index")).toBeVisible();
+  expect(screen.getByText("합성 검증 값")).toBeVisible();
 });

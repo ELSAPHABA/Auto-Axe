@@ -1,11 +1,13 @@
 """PostgreSQL 17 real role isolation, session revocation, scrape lease and quarantine."""
 
 import secrets
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import psycopg
 import pytest
+from fastapi.testclient import TestClient
 from psycopg.errors import InsufficientPrivilege
 from testcontainers.postgres import PostgresContainer
 
@@ -15,8 +17,13 @@ from autoaxe.application.scrape_broker import (
     heartbeat,
     submit,
 )
+from autoaxe.domain.calendars import EventRevision
+from autoaxe.domain.market import Candidate
+from autoaxe.entrypoints.api import create_app
 from autoaxe.infrastructure.db_bootstrap import provision
-from autoaxe.infrastructure.market_store import PermissionDenied, set_permission
+from autoaxe.infrastructure.event_store import persist_event, query_events
+from autoaxe.infrastructure.market_store import PermissionDenied, ingest, set_permission
+from autoaxe.infrastructure.official_quota import reserve_bls_v1
 from autoaxe.infrastructure.sessions import authorize, create_session, revoke, rotate
 
 IMAGE = "postgres:17@sha256:87c8b42f423b45d5247e6aa8fdb2e7762fec164c68a50fe3eb07e7bfcaf4dbcf"
@@ -169,3 +176,159 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         with psycopg.connect(market_read) as conn:
             with pytest.raises(InsufficientPrivilege):
                 conn.execute("SELECT * FROM ops.scrape_jobs")
+
+        # Authorized event persistence must not imply public redistribution rights.
+        event = EventRevision(
+            "US_CPI:2026-10",
+            "bls",
+            None,
+            None,
+            datetime.now(UTC),
+            datetime.now(UTC),
+            "321.5",
+            None,
+            None,
+            "index",
+            1,
+            "https://www.bls.gov/developers/",
+        )
+        with psycopg.connect(market) as conn:
+            with pytest.raises(PermissionDenied):
+                persist_event(conn, event)
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "bls",
+                approved=True,
+                evidence="fixture policy test only",
+                fetch=True,
+                storage=True,
+                redistribution=False,
+            )
+        with psycopg.connect(market) as conn:
+            first, added = persist_event(conn, event)
+            assert added and first.revision == 1
+            duplicate, added = persist_event(conn, event)
+            assert not added and duplicate.revision == 1
+            day, used, version = reserve_bls_v1(conn)
+            assert used == 1 and version > 0 and day == datetime.now(UTC).date()
+            for request in range(2, 26):
+                assert reserve_bls_v1(conn)[1] == request
+            with pytest.raises(PermissionDenied, match="quota exhausted"):
+                reserve_bls_v1(conn)
+        with psycopg.connect(market_read) as conn:
+            assert query_events(conn, cutoff=datetime.now(UTC)) == []
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "bls",
+                approved=True,
+                evidence="fixture redistribution test only",
+                fetch=True,
+                storage=True,
+                redistribution=True,
+            )
+        cutoff = datetime.now(UTC)
+        with psycopg.connect(market_read) as conn:
+            actuals = query_events(conn, cutoff=cutoff)
+            assert len(actuals) == 1 and actuals[0].actual == "321.5"
+        monkeypatch.setenv("AUTOAXE_MARKET_READ_DSN", market_read)
+        monkeypatch.setenv("AUTOAXE_APP_RUNTIME_DSN", app_runtime)
+        api = TestClient(create_app())
+        assert api.get("/api/v1/dashboard/official-events").status_code == 401
+        with psycopg.connect(app_runtime) as conn:
+            authenticated_sid, _ = create_session(
+                conn,
+                "https://idp.example/realms/a|fixture-1",
+                "https://idp.example/realms/a",
+                datetime.now(UTC) + timedelta(minutes=30),
+            )
+        permitted = api.get(
+            "/api/v1/dashboard/official-events",
+            cookies={"__Host-autoaxe-sid": authenticated_sid},
+        )
+        assert permitted.status_code == 200
+        assert permitted.json()["data"][0]["actual"] == "321.5"
+        later = datetime.now(UTC) + timedelta(seconds=2)
+        corrected = replace(event, actual="321.75", first_seen_at=later, available_at=later)
+        with psycopg.connect(market) as conn:
+            with pytest.raises(PermissionDenied, match="approval changed"):
+                persist_event(conn, corrected, expected_permission_version=version)
+            revision, inserted = persist_event(conn, corrected)
+            assert inserted and revision.revision == 2
+        with psycopg.connect(market_read) as conn:
+            assert query_events(conn, cutoff=cutoff)[0].actual == "321.5"
+            assert query_events(conn, cutoff=later + timedelta(seconds=1))[0].actual == "321.75"
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "bls",
+                approved=False,
+                evidence="test source permission revoked",
+                fetch=False,
+                storage=False,
+                redistribution=False,
+            )
+        with psycopg.connect(market_read) as conn:
+            assert query_events(conn, cutoff=later + timedelta(seconds=1)) == []
+        hidden = api.get(
+            "/api/v1/dashboard/official-events",
+            cookies={"__Host-autoaxe-sid": authenticated_sid},
+        )
+        assert hidden.status_code == 200 and hidden.json()["data"] == []
+
+        # Approved storage is not automatically permission to expose prices.
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "yfinance",
+                approved=True,
+                evidence="synthetic historical series integration test only",
+                fetch=True,
+                storage=True,
+                redistribution=False,
+            )
+        now = datetime.now(UTC)
+        with psycopg.connect(market) as conn:
+            assert (
+                ingest(
+                    conn,
+                    Candidate(
+                        "VIX",
+                        "synthetic-integration-bar",
+                        "23.45",
+                        now,
+                        now,
+                        now,
+                    ),
+                )[2]
+                is True
+            )
+        route = "/api/v1/dashboard/authorized/market/VIX"
+        assert api.get(route).status_code == 401
+        assert api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code == 403
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "yfinance",
+                approved=True,
+                evidence="synthetic market read permission fixture",
+                fetch=True,
+                storage=True,
+                redistribution=True,
+            )
+        allowed = api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid})
+        assert allowed.status_code == 200
+        assert allowed.json()["data"][0]["value"] == "23.45"
+        assert allowed.json()["meta"]["source_id"] == "yfinance"
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "yfinance",
+                approved=False,
+                evidence="synthetic fixture source revoke",
+                fetch=False,
+                storage=False,
+                redistribution=False,
+            )
+        assert api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code == 403

@@ -5,12 +5,24 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
-import { getDashboardPage, getHealth, type IndicatorView } from "./api";
+import {
+  getApprovedMarketSeries,
+  getDashboardPage,
+  getHealth,
+  getOfficialEvents,
+  hasAuthorizedSession,
+  type IndicatorView,
+} from "./api";
 import { SnapshotGate, type Delta, type LiveStatus } from "./live";
 import { useUi, type RatioKind } from "./store";
 
 const FixtureChart = lazy(() =>
   import("./fixture-chart").then((item) => ({ default: item.FixtureChart })),
+);
+const ApprovedChart = lazy(() =>
+  import("./approved-chart").then((module) => ({
+    default: module.ApprovedChart,
+  })),
 );
 
 const CATEGORIES = [
@@ -137,6 +149,14 @@ function IndicatorCard({ row }: { row: IndicatorView }) {
       </div>
       <p className="indicator-note">{row.source_note || row.cadence}</p>
       <span className="indicator-frequency">{row.cadence}</span>
+      {row.category === "market" && (
+        <Link
+          className="indicator-detail-link"
+          to={"/market/" + encodeURIComponent(row.indicator_id)}
+        >
+          원본·시계열 상세
+        </Link>
+      )}
     </article>
   );
 }
@@ -285,6 +305,94 @@ function MarketThermometer() {
   );
 }
 
+function OfficialEventsPanel() {
+  const session = useQuery({
+    queryKey: ["auth", "session"],
+    queryFn: hasAuthorizedSession,
+    retry: false,
+    staleTime: 30_000,
+  });
+  const events = useQuery({
+    queryKey: ["official-events", "approved"],
+    queryFn: getOfficialEvents,
+    enabled: session.data === true,
+    retry: false,
+    staleTime: 60_000,
+  });
+  return (
+    <section className="panel" aria-label="경제지표 발표·수정 이력">
+      <p className="eyebrow">OFFICIAL RELEASES / POINT-IN-TIME</p>
+      <h2>경제지표 발표·수정 이력</h2>
+      <p className="subline">
+        이용 권한·계정 권한·재배포 허가를 모두 통과한 공식 관측값만 표시합니다.
+        발표 시각이 확인되지 않으면 임의로 채우지 않습니다.
+      </p>
+      {session.data !== true ? (
+        <p className="panel-empty">
+          인증 및 제공자 권한 확인 전 — 표시 가능한 공식 발표값이 없습니다.
+        </p>
+      ) : events.isError ? (
+        <p className="panel-empty" role="status">
+          공식 데이터 연결 또는 제공 권한을 확인할 수 없습니다.
+        </p>
+      ) : events.isPending ? (
+        <p className="panel-empty" role="status">
+          검증된 공식 관측값을 조회 중입니다.
+        </p>
+      ) : events.data.data.length === 0 ? (
+        <p className="panel-empty">
+          이 계정에 제공 가능한 승인된 공식 관측값이 없습니다.
+        </p>
+      ) : (
+        <div className="official-events-table-wrap">
+          <table className="official-events-table">
+            <thead>
+              <tr>
+                <th scope="col">지표</th>
+                <th scope="col">Actual</th>
+                <th scope="col">Forecast</th>
+                <th scope="col">Revision</th>
+                <th scope="col">최초 관측 (UTC)</th>
+                <th scope="col">원본</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.data.data.map((event) => (
+                <tr
+                  key={
+                    event.source_id +
+                    ":" +
+                    event.event_key +
+                    ":" +
+                    event.revision
+                  }
+                >
+                  <td>{event.event_key}</td>
+                  <td>
+                    {event.actual ?? "—"} {event.unit}
+                  </td>
+                  <td>{event.forecast ?? "—"}</td>
+                  <td>{event.revision}</td>
+                  <td>{event.first_seen_at}</td>
+                  <td>
+                    <a
+                      href={event.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {event.source_id}
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function DashboardHome() {
   const health = useQuery({
     queryKey: ["health"],
@@ -341,6 +449,7 @@ export function DashboardHome() {
         </div>
       </section>
       <RatioPanel rows={data} />
+      <OfficialEventsPanel />
       <section className="section-block">
         <div className="section-title">
           <div>
@@ -435,6 +544,18 @@ export function IndicatorsPage() {
 export function MarketDetailPage() {
   const { instrumentId } = useParams();
   const dashboard = useDashboard();
+  const session = useQuery({
+    queryKey: ["auth", "session"],
+    queryFn: hasAuthorizedSession,
+    retry: false,
+    staleTime: 30_000,
+  });
+  const history = useQuery({
+    queryKey: ["authorized", "history", instrumentId],
+    queryFn: () => getApprovedMarketSeries(instrumentId!),
+    enabled: session.data === true && !!instrumentId,
+    retry: false,
+  });
   const data = dashboard.data?.pages.flatMap((p) => p.data) ?? [];
   const selected = data.find((row) => row.indicator_id === instrumentId);
   return (
@@ -461,11 +582,50 @@ export function MarketDetailPage() {
           <Suspense fallback={<p>합성 차트 로딩 중…</p>}>
             <FixtureChart />
           </Suspense>
-        ) : (
+        ) : session.data !== true ? (
           <p className="panel-empty">
-            해당 시계열의 검증된 가격 봉이 없습니다. 실제 차트로 위장하지
-            않습니다.
+            시세 내역은 인증 및 원본 재배포 권한이 확인된 경우에만 조회합니다.
           </p>
+        ) : history.isPending ? (
+          <p className="panel-empty" role="status">
+            승인된 시계열 조회 중…
+          </p>
+        ) : history.isError ? (
+          <p className="panel-empty" role="status">
+            해당 시계열의 제공 권한 또는 연결을 확인할 수 없습니다.
+          </p>
+        ) : history.data.data.length === 0 ? (
+          <p className="panel-empty">승인된 관측값이 없습니다.</p>
+        ) : (
+          <>
+            <Suspense fallback={<p>승인된 차트 로딩 중…</p>}>
+              <ApprovedChart page={history.data} />
+            </Suspense>
+            <div className="official-events-table-wrap">
+              <table className="official-events-table">
+                <thead>
+                  <tr>
+                    <th scope="col">원본 시각 (UTC)</th>
+                    <th scope="col">값</th>
+                    <th scope="col">품질</th>
+                    <th scope="col">개정</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.data.data.map((point) => (
+                    <tr key={point.event_key + ":" + point.revision}>
+                      <td>{point.source_event_at ?? "원본 시각 미확인"}</td>
+                      <td>
+                        {point.value ?? "—"} {history.data.meta.unit}
+                      </td>
+                      <td>{point.quality}</td>
+                      <td>{point.revision}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
       <RatioPanel rows={data} />

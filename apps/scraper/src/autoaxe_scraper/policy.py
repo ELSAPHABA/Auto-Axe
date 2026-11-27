@@ -10,6 +10,7 @@ class SourcePolicy:
     source_id: str
     url: str
     mode: str = "http"
+    api_only: bool = False
 
     def __post_init__(self) -> None:
         parsed = urlsplit(self.url)
@@ -40,7 +41,9 @@ class SourcePolicy:
 
 SOURCES = {
     "cnn": SourcePolicy("cnn", "https://edition.cnn.com/markets/fear-and-greed"),
-    "pizzint": SourcePolicy("pizzint", "https://www.pizzint.watch/"),
+    # Terms (2026-06-25): API access may be used, HTML scraping outside the
+    # published APIs is prohibited. No verified API endpoint contract yet.
+    "pizzint": SourcePolicy("pizzint", "https://www.pizzint.watch/", api_only=True),
     "dramexchange": SourcePolicy("dramexchange", "https://www.dramexchange.com/"),
     "seibro": SourcePolicy(
         "seibro",
