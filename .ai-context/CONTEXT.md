@@ -4,6 +4,8 @@
 
 ## METADATA (메타데이터)
 
+- **최신 개발 인계 2026-11-27 session 15:** [2단계 실제 공급자 검증](phases/phase-02/2026-11-27-15.md) 우선. PizzINT/Treasury/BOJ 문서 및 9개 공식 task 실제 임시 PG17 저장, Binance ratio/QQQ·MEXC REST/Protobuf 실제 파싱, BLS 결측·BoE CSV·BOJ null·상품 enum 수정. Binance WS는 미래 timestamp(PC 시계 동기화 점검 필요), 키/SEC 연락처/약관 미확인 공급원 및 운영 검증 남음. Phase 3 미착수.
+
 - **최신 개발 인계 2026-11-27 session 14:** [규칙 기반 분기 만기 일정](phases/phase-02/2026-11-27-14.md) 우선. 사용자 승인으로 기본은 미국 주식시장 검수 캘린더 기반 휴장일 보정 예상 만기/DTE, 서버 ET 기준 다음 만기 자동 선택. 실제 상품별 확정 및 triple/quad 판정은 기존 공식 근거와 구분. [Session 13](phases/phase-02/2026-11-27-13.md)의 나머지 구현 유지. 2단계 실제 수집/3단계 운영 검증 별도, Phase 3 미착수.
 
 - **최신 개발 인계 2026-11-27 session 12:** [상세 구현·검증·잔여 조건](phases/phase-02/2026-11-27-12.md) 우선. Binance QQQUSDT 영속 300초 REST/0015, BEA 공식 ICS 21600초 수집, SSE heartbeat/watchdog/capacity/reconnect 및 로컬 HTTP·PG17 테스트. 실제 source/운영 및 Protobuf·브라우저 일부 미완료, DOUGHCON 전용 300초 유지, Phase 3~8 미착수.

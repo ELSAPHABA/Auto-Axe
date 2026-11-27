@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime, timedelta
 import httpx
 import pytest
 
-from autoaxe.adapters.macro_sources import BEA_ICS
+from autoaxe.adapters.macro_sources import BEA_ICS, parse_bls_actual
 from autoaxe.adapters.official_releases import ECB_KEY, parse_release
 from autoaxe.application.official_macro import OfficialSourceError
 from autoaxe.application.official_poll import TASKS, fetch_release
@@ -12,6 +12,31 @@ from autoaxe.domain.economic_linkage import schedule_identities
 from autoaxe.infrastructure.market_store import PermissionDenied
 
 NOW = datetime(2026, 11, 27, tzinfo=UTC)
+
+
+def test_bls_explicit_missing_marker_is_not_zero_or_failed_batch():
+    payload = {
+        "status": "REQUEST_SUCCEEDED",
+        "Results": {
+            "series": [
+                {
+                    "seriesID": "CUUR0000SA0",
+                    "data": [
+                        {"year": "2025", "period": "M10", "value": "-"},
+                        {"year": "2025", "period": "M11", "value": "123.4"},
+                    ],
+                }
+            ],
+        },
+    }
+    missing, observed = parse_bls_actual(payload, NOW)
+    assert missing.actual is None and missing.released_at is None
+    assert missing.event_key == "US_CPI:2025-10"
+    assert observed.actual == "123.4"
+    payload["Results"]["series"][0]["data"][0]["value"] = "unknown"
+    with pytest.raises(ValueError):
+        parse_bls_actual(payload, NOW)
+
 
 # Synthetic rows using the publicly documented BEA subscription ICS format.
 BEA_FIXTURE = (
@@ -182,7 +207,10 @@ def test_boj_effective_is_not_policy_target():
                 "SERIES_CODE": "STRDCLUCON",
                 "UNIT": "percent per annum",
                 "FREQUENCY": "DAILY",
-                "VALUES": {"SURVEY_DATES": [20261125, 20261126], "VALUES": [0.7, None]},
+                "VALUES": {
+                    "SURVEY_DATES": [20261125, 20261126, 20261130],
+                    "VALUES": [0.7, None, None],
+                },
             }
         ],
     }
@@ -199,6 +227,32 @@ def test_boj_effective_is_not_policy_target():
     assert rows[0].event_key == "BOJ_EFFECTIVE_CALL_RATE:2026-11-25"
     assert rows[0].actual == "0.7"
     assert rows[0].released_at is None and rows[0].available_at == NOW
+    payload["RESULTSET"][0]["VALUES"]["VALUES"][2] = 0.7
+    with pytest.raises(ValueError, match="future BOJ observation"):
+        parse_release("boj_effective", json.dumps(payload).encode(), NOW)
+    payload["RESULTSET"][0]["VALUES"]["VALUES"][2] = None
     payload["NEXTPOSITION"] = 1
     with pytest.raises(ValueError):
         parse_release("boj_effective", json.dumps(payload).encode(), NOW)
+
+
+def test_boe_documented_csv_download():
+    def response(request):
+        assert request.url.host == "www.bankofengland.co.uk"
+        assert request.url.path == "/boeapps/database/_iadb-fromshowcolumns.asp"
+        assert request.url.params["csv.x"] == "yes"
+        assert "html.x" not in request.url.params
+        assert request.url.params["SeriesCodes"] == "IUDBEDR"
+        assert request.url.params["CSVF"] == "TN"
+        assert request.url.params["UsingCodes"] == "Y"
+        assert request.url.params["VPD"] == "Y"
+        assert request.url.params["VFD"] == "N"
+        return httpx.Response(
+            200, headers={"content-type": "text/csv"}, content=b"DATE,IUDBEDR\n26 Nov 2026,4.0\n"
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(response), trust_env=False) as client:
+        rows = fetch_release("boe_rate", client, lambda: None, clock=lambda: NOW)
+    assert rows[0].event_key == "BOE_BANK_RATE:2026-11-26"
+    assert rows[0].actual == "4" and rows[0].unit == "percent"
+    assert rows[0].released_at is None

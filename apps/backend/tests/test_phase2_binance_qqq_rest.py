@@ -14,7 +14,7 @@ MS = int(NOW.timestamp() * 1000) - 1000
 DETAIL = {
     "symbol": "QQQUSDT",
     "pair": "QQQUSDT",
-    "contractType": "PERPETUAL",
+    "contractType": "TRADIFI_PERPETUAL",
     "status": "TRADING",
     "baseAsset": "QQQ",
     "quoteAsset": "USDT",
@@ -81,6 +81,7 @@ async def test_fixed_pair_unsigned_no_other_symbols_persisted():
         {"marginAsset": "USDC"},
         {"quoteAsset": "USDC"},
         {"contractType": "CURRENT_QUARTER"},
+        {"contractType": "PERPETUAL"},
         {"status": "SETTLING"},
         {"pair": "TQQQUSDT"},
         {"symbol": "TQQQUSDT"},

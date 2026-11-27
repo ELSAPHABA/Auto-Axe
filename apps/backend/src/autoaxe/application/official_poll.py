@@ -109,7 +109,9 @@ def parameters(task_id: str, now: datetime, key: str | None) -> dict[str, str]:
             "Dateto": "now",
             "SeriesCodes": "IUDBEDR",
             "UsingCodes": "Y",
-            "html.x": "yes",
+            "csv.x": "yes",
+            "VPD": "Y",
+            "VFD": "N",
         }
     if task_id == "sec_filings":
         return {

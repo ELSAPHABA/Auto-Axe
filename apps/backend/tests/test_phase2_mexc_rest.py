@@ -14,7 +14,7 @@ MS = int(NOW.timestamp() * 1000) - 1000
 DETAIL = {
     "symbol": "NAS100_USDT",
     "state": 0,
-    "type": 1,
+    "type": 2,
     "futureType": 1,
     "baseCoin": "NAS100",
     "quoteCoin": "USDT",
@@ -88,6 +88,7 @@ async def test_fixed_endpoints_and_fences():
     assert item.received_at == item.available_at == NOW
     assert item.metadata["live_verified"] is False
     assert item.metadata["session_verified"] is False
+    assert item.metadata["pair_type"] == 2
 
 
 @pytest.mark.asyncio
@@ -122,7 +123,7 @@ async def test_disabled_and_permission_revocation():
         {"state": 4},
         {"state": False},
         {"futureType": 2},
-        {"type": 2},
+        {"type": 3},
         {"quoteCoin": "USD1"},
         {"settleCoin": "USD"},
         {"baseCoin": "QQQ"},

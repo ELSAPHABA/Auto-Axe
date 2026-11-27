@@ -222,6 +222,16 @@ MEXC REST 관측은 실제 거래소 지수 또는 실시간 CME 시세가 아�
 
 최종 검증: backend 353 passed / 23 warnings / 198.45s, frontend Vitest 10 passed 및 Playwright 1 passed, Ruff 150 files, strict mypy 96 source files, schema/TS/lint/format/build/Gitleaks 통과. 변경 없는 scraper는 재실행하지 않음. 실제 공급자/운영 검증은 별도.
 
+## Session 15 — Step 2 실제 공개 공급자 검증 (2026-11-27)
+
+[상세 검증·시각·출처·제약](../../.ai-context/phases/phase-02/2026-11-27-15.md) 우선. 실제 임시 DB에 PizzINT 1 observation, Treasury 85 observations, BOJ 공식 PDF 후보 1 inbox, BLS actual 102(100 numeric/2 null), BLS/BEA/Census/Fed 일정 665, ECB 30/BoE 483/BOJ 실효 37 rows 저장. 실제 Binance ratios 24/24, QQQ REST/MEXC REST 및 Protobuf WS 파싱 확인, quote/market session 여부는 UNKNOWN. Binance spot/futures WS 6종은 실제 메시지 수신하나 source timestamp가 local receipt보다 약 1초 미래여서 차단. Windows Time Service 미시작, 시계 정합성 확인 후 재검증 필요.
+
+무료 등록 API 키(BEA/Census/FRED)와 SEC 연락처 미설정, Yahoo/Naver/CNN/DRAM/SEIBro 및 NYSE/Nasdaq 자동 취득 권한 제약은 실제 단계의 잔여 조건. 사용자 승인된 규칙 기반 분기 만기 기능은 해당 자동 취득에 의존하지 않는다. 실제 운영 grant·장기 가동·IdP/TLS/egress는 별도 Step 3. 원본 데이터/비밀 미커밋, 기존 DOUGHCON-only 보존. 재현은 `scripts/phase2_live_smoke.py --execute-disposable --tasks ...`로 새 임시 DB에서만.
+
+실제 시장 DB 재검증: MEXC REST 1건 저장, WS 3건 저장 후 invalid_response circuit(세션 실패); QQQ 0건/invalid_response circuit 및 shared Binance ratio 저장 차단(파싱 24/24 성공과 구분). 시장 DB smoke exit1. `w32tm /stripchart` NTP +1.1858~+1.1913s 실측, PC clock sync 필요. QQQ/WS 후반 실패 원인은 별도 확인 필요. 2단계 전부 통과로 처리하지 않는다.
+
+Session 15 final regression: backend **360 passed / 23 deprecation warnings / 170.25s**, Ruff/format 151 files, strict mypy 96 files, schema/Gitleaks passed. Frontend/scraper unchanged; not rerun. 실제 2단계 부분 완료, 3단계 미착수.
+
 ## 개발 Fixture 최종 검증 (2026-11-27, 이전 세션 이력)
 
 - Backend Ruff/mypy 42 files/schema: 통과. 전체 PostgreSQL 통합 포함 pytest **79 passed / 2 deprecation warnings / 118.90s**. 초기 병렬 테스트 중 포트 타임아웃 실패는 별도 [TS-02-05](../troubleshooting/phase-02.md)에 기록, 단독 재검증 1 passed/30.92s, 정책 완화 없음.

@@ -14,7 +14,7 @@ from autoaxe.adapters.providers import (
     normalize_yahoo,
     ratio_request,
 )
-from autoaxe.adapters.transport import ProviderTransport
+from autoaxe.adapters.transport import ProviderTransport, _FixedConnect
 from autoaxe.application.collection import FetchError, GapTracker, bounded_fetch, recover_gap
 from autoaxe.domain.catalog import FUTURES, RATIOS, catalog
 from autoaxe.domain.market import Candidate, Quality, change_pct, quality_at
@@ -215,3 +215,38 @@ async def test_transport_blocked_and_mock_only():
     enabled = ProviderTransport(auth.append, network_opt_in=True, http_transport=transport)
     rows = await enabled.ratios("BTCUSDT", "global_accounts")
     assert rows[0].value == "1.25" and len(calls) == 1 and len(auth) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [302, 403, 429])
+async def test_transport_error_no_retry_and_final_permission_check(status):
+    calls = []
+    auth = []
+
+    def mock(request):
+        calls.append(request)
+        return httpx.Response(status, headers={"Location": "https://example.com"})
+
+    tr = ProviderTransport(
+        auth.append, network_opt_in=True, http_transport=httpx.MockTransport(mock)
+    )
+    with pytest.raises(FetchError) as exc:
+        await tr.ratios("BTCUSDT", "global_accounts")
+    assert exc.value.status == status and len(calls) == 1 and len(auth) == 2
+    error = ValueError("redirect")
+    assert _FixedConnect(FUTURES_WS).process_redirect(error) is error
+
+
+def test_binance_future_timestamp_fails_closed():
+    # A live probe observed a provider timestamp roughly 1 s ahead of receipt.
+    # Do not shift the machine clock, source timestamp or availability to admit it.
+    msg = {
+        "s": "BTCUSDT",
+        "e": "trade",
+        "t": 5,
+        "p": "1",
+        "q": "1",
+        "T": int((NOW + timedelta(seconds=1)).timestamp() * 1000),
+    }
+    with pytest.raises(ValueError, match="future source event"):
+        binance_trade(msg, NOW, spot=True)

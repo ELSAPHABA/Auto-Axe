@@ -65,7 +65,10 @@ def parse_bls_actual(data: dict[str, Any], received: datetime) -> list[EventRevi
                     None,
                     received,
                     received,
-                    _decimal(row.get("value")),
+                    # BLS explicitly uses "-" for unpublished observations
+                    # (including the 2025 lapse in appropriations).
+                    # https://www.bls.gov/bls/bls-handling-of-missing-data.htm
+                    None if row.get("value") == "-" else _decimal(row.get("value")),
                     None,
                     None,
                     unit,

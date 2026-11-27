@@ -3,12 +3,14 @@
 No user-supplied URL is accepted. Phase 1 CLI has no network mode.
 """
 
+import asyncio
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime
 from typing import Any
 
 import httpx
 from websockets.asyncio.client import connect
+from websockets.exceptions import InvalidStatus
 
 from autoaxe.adapters.providers import (
     FUTURES_REST,
@@ -24,6 +26,13 @@ from autoaxe.application.collection import FetchError
 from autoaxe.domain.canonical import strict_json
 from autoaxe.domain.catalog import FUTURES, TREASURY
 from autoaxe.domain.market import Candidate
+
+
+class _FixedConnect(connect):
+    """Do not follow even same-host redirects outside the fixed route."""
+
+    def process_redirect(self, exc: Exception) -> Exception | str:
+        return exc
 
 
 class ProviderTransport:
@@ -46,19 +55,27 @@ class ProviderTransport:
     async def _get(self, url: str, params: dict[str, Any], series: list[str]) -> bytes:
         for sid in series:
             self.check(sid)
-        async with httpx.AsyncClient(
-            timeout=20, follow_redirects=False, trust_env=False, transport=self.http_transport
-        ) as client:
-            async with client.stream("GET", url, params=params) as response:
-                if response.status_code != 200:
-                    raise FetchError(response.status_code, response.headers.get("Retry-After"))
-                result = bytearray()
-                async for chunk in response.aiter_bytes():
-                    result.extend(chunk)
-                    if len(result) > MAX_BYTES:
-                        raise ValueError("provider response too large")
-        for sid in series:
-            self.check(sid)
+        try:
+            async with (
+                asyncio.timeout(25),
+                httpx.AsyncClient(
+                    timeout=20,
+                    follow_redirects=False,
+                    trust_env=False,
+                    transport=self.http_transport,
+                ) as client,
+            ):
+                async with client.stream("GET", url, params=params) as response:
+                    if response.status_code != 200:
+                        raise FetchError(response.status_code, response.headers.get("Retry-After"))
+                    result = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        result.extend(chunk)
+                        if len(result) > MAX_BYTES:
+                            raise ValueError("provider response too large")
+        finally:
+            for sid in series:
+                self.check(sid)
         return bytes(result)
 
     async def ratios(self, symbol: str, kind: str) -> list[Candidate]:
@@ -104,23 +121,41 @@ class ProviderTransport:
         for sid in series:
             self.check(sid)
         # websockets handles ping/pong; bounded queue backpressure and max message size.
-        async with connect(
-            SPOT_WS if spot else FUTURES_WS,
-            open_timeout=10,
-            close_timeout=5,
-            ping_interval=20,
-            ping_timeout=20,
-            max_size=MAX_BYTES,
-            max_queue=16,
-            proxy=None,
-        ) as ws:
-            async for message in ws:
-                for sid in series:
-                    self.check(sid)
-                result = strict_json(message.decode() if isinstance(message, bytes) else message)
-                if not isinstance(result, dict):
-                    raise ValueError("invalid websocket message")
-                yield result
+        try:
+            async with _FixedConnect(
+                SPOT_WS if spot else FUTURES_WS,
+                open_timeout=10,
+                close_timeout=5,
+                ping_interval=20,
+                ping_timeout=20,
+                max_size=MAX_BYTES,
+                max_queue=16,
+                proxy=None,
+            ) as ws:
+                while True:
+                    for sid in series:
+                        self.check(sid)
+                    try:
+                        try:
+                            message = await asyncio.wait_for(ws.recv(), timeout=5)
+                        except TimeoutError:
+                            continue
+                    finally:
+                        for sid in series:
+                            self.check(sid)
+                    result = strict_json(
+                        message.decode() if isinstance(message, bytes) else message
+                    )
+                    if not isinstance(result, dict):
+                        raise ValueError("invalid websocket message")
+                    yield result
+        except InvalidStatus as exc:
+            raise FetchError(
+                exc.response.status_code, exc.response.headers.get("Retry-After")
+            ) from None
+        finally:
+            for sid in series:
+                self.check(sid)
 
 
 def fetch_yahoo(

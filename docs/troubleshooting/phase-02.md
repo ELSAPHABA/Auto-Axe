@@ -218,3 +218,13 @@
 - 기존 프런트는 UTC 명목 셋째 금요일을 선택하므로 휴장으로 목요일에 앞당겨진 만기가 끝난 금요일에도 지난 분기를 조회할 수 있었다. 서버에서 America/New_York 기준 보정 세션을 계산해 다음 후보를 선택하도록 변경했다. 2027-06-18 02:00 UTC(ET 목요일)는 DTE 0, 04:00 UTC(ET 금요일)는 다음 9월 분기. 테스트로 검증.
 - 검수 manifest의 다른 미래 연도 존재만으로 과거 조회 실패 가능성 제거: 현재 pin 검증 후 개별 연도 review date 적용. 공식 달력이 없는 후보는 null, 권한/실제 확정 상태는 변경하지 않음. 초기 통합 assertion E501은 중간 변수로 수정. 신규 단위 테스트 6 passed. 전체 검증은 Session 14 기록.
 - strict mypy 최초 오류: ReviewedCalendar 변수와 ProductSessionCalendar | None 변수가 동일 이름이라 assignment/arg-type 두 건 발생. 주식시장 calendar를 equity_calendar로 분리하고 재검사하여 96 source files 통과. 데이터 계약 또는 타입 검사 완화 없음.
+
+## TS-02-39 — 실제 공식 API 결측 및 CSV 계약
+- BLS Public API v1 HTTP200 REQUEST_SUCCEEDED 3 series×34 rows에서 CPI/실업률 '-' 2개가 Decimal ConversionSyntax 유발. BLS 공식 https://www.bls.gov/bls/bls-handling-of-missing-data.htm 에서 2025 예산 중단에 따른 API 결측 표기 확인. BLS parser에 정확한 '-'만 null로 처리(0 보간 금지, 임의 malformed 값 거부). 회귀 및 실제 102건(100 numeric/2 null) PG 저장 확인.
+- BoE HTTP200 HTML 반환: 기존 Bank-Rate.asp / html.x param은 CSV contract 아님. 공식 Help.asp의 _iadb-fromshowcolumns.asp/csv.x=yes/VPD=Y/VFD=N 적용, 실제 483건 저장. BOJ STRDCLUCON 미래 survey date 차단은 null placeholder 가능성: 문서상 missing null skip을 date guard 앞에 이동, 실제 numeric future reject 유지. 수정 후 37건 저장.
+- 초기 smoke가 실패 task 포함 exit0으로 반환한 문제: 모든 task 상태 검사 및 실패 exit1, source당 grant 1회, count delta 기록. 두 번째 임시 DB smoke 9 tasks 모두 성공/exit0, source keys/원본 payload는 기록하지 않음.
+
+## TS-02-40 — 실제 시장 상품 enum 및 시계 불일치
+- QQQ exchangeInfo HTTP200 실제 contractType=TRADIFI_PERPETUAL, 기존 PERPETUAL expectation 변경. MEXC detail/country type2는 문서상 suspended-pair class, state0/futureType1 및 pair_type provenance 검증. 재실측 두 REST adapter 정상 UNKNOWN. Protobuf 101 binary tickerDetail 실제 수신. 시세를 지수/실거래 또는 활성 거래 세션으로 단정하지 않음.
+- Binance WS spot 및 futures 6개 symbol의 실제 T가 수신보다 +1.020~1.173초 앞섬. w32tm 0x80070426 서비스 미기동. 읽기 전용 `w32tm /stripchart /computer:time.windows.com /dataonly /samples:3` +1.1912681/+1.1906111/+1.1857723s 확인, clock skew와 일치. source timestamp 위조/허용 범위 완화 금지. 관리자 동기화 후 한 번 재실측. Fixed WS redirect 거부와 recv 전후 grant fence, REST 25초 deadline.
+- 실제 시장 DB 재실행: MEXC REST 1건 성공, WS 3건 저장 후 invalid_response, QQQ invalid_response 0건, Binance ratio는 shared circuit으로 실행하지 않음. 정확한 후속 오류 trigger는 미확정(시계 불일치로 단정 금지). exit1, no circuit bypass. [Session 15](../../.ai-context/phases/phase-02/2026-11-27-15.md) 상세.

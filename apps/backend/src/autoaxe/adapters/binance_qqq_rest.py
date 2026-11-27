@@ -6,7 +6,8 @@ Market-data endpoints (reviewed 2026-11-27):
 https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data
 ExchangeInfo accepts no symbol filter; discard all other symbol records.
 Both requests have documented weight 1 with a single-symbol V2 ticker.
-Actual regional availability, payload and exchange session not verified.
+The actual QQQ exchangeInfo observed 2026-11-27 uses TRADIFI_PERPETUAL.
+No claim of exchange session or latency verification.
 """
 
 import asyncio
@@ -62,7 +63,7 @@ def contract_tick(raw: bytes) -> str:
         row.get(k) != v
         for k, v in {
             "pair": SYMBOL,
-            "contractType": "PERPETUAL",
+            "contractType": "TRADIFI_PERPETUAL",
             "status": "TRADING",
             "baseAsset": "QQQ",
             "quoteAsset": "USDT",
@@ -105,6 +106,7 @@ def normalize(raw: bytes, tick: str, received: datetime) -> Candidate:
             "quote_currency": "USDT",
             "settlement_currency": "USDT",
             "price_unit": _positive(tick),
+            "contract_type": "TRADIFI_PERPETUAL",
             "provenance": "binance_qqq_rest_candidate",
             "session_verified": False,
             "live_verified": False,

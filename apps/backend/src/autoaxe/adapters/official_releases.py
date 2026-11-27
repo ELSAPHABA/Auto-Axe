@@ -21,7 +21,8 @@ CENSUS_URL = "https://api.census.gov/data/timeseries/eits/marts"
 FRED_URL = "https://api.stlouisfed.org/fred/series/observations"
 ECB_URL = "https://data-api.ecb.europa.eu/service/data/FM/D.U2.EUR.4F.KR.DFR.LEV"
 ECB_KEY = "FM.D.U2.EUR.4F.KR.DFR.LEV"
-BOE_URL = "https://www.bankofengland.co.uk/boeapps/database/fromshowcolumns.asp"
+# Official automatic CSV download contract: /boeapps/database/Help.asp.
+BOE_URL = "https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp"
 BOJ_URL = "https://www.stat-search.boj.or.jp/api/v1/getDataCode"
 BOJ_CODE = "STRDCLUCON"
 BLS_ICS = "https://www.bls.gov/schedule/news_release/bls.ics"
@@ -218,10 +219,12 @@ def parse_boj_effective(raw: bytes, now: datetime) -> list[EventRevision]:
     events = []
     for stamp, value in zip(dates, values, strict=True):
         parsed = datetime.strptime(str(stamp), "%Y%m%d").date()
-        if parsed > now.date():
-            raise ValueError("future BOJ observation")
+        # BOJ API manual p.20 documents null for missing observations. The
+        # month-bounded request can contain dates without a published value.
         if value is None or value == "NA":
             continue
+        if parsed > now.date():
+            raise ValueError("future BOJ observation")
         events.append(
             event(
                 "boj",

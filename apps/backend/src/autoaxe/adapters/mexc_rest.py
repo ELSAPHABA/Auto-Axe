@@ -10,7 +10,8 @@ source grant version, cooldown, and storage-time permission check.
 Futures JSON WS migration deadline: 2026-12-01 10:00 UTC.
 https://www.mexc.com/pt-BR/announcements/article/mexc-to-migrate-futures-websocket-market-data-from-json-to-protobuf-17827791539697
 https://www.mexc.com/api-docs/futures/websocket-api/protocol-buffers-integration
-WS remains disabled; docs are not a live symbol/schema/latency validation.
+Separate WS adapter exists. Pair type 2 observed 2026-11-27; it denotes
+the documented suspended-pair class, not current session status.
 """
 
 import asyncio
@@ -91,6 +92,7 @@ class ContractDetail:
     contract_id: int
     contract_size: str
     price_unit: str
+    pair_type: int
 
     @classmethod
     def parse(cls, raw: bytes) -> "ContractDetail":
@@ -98,7 +100,7 @@ class ContractDetail:
         if (
             _int(row.get("state")) != 0
             or _int(row.get("futureType")) != 1
-            or _int(row.get("type")) != 1
+            or _int(row.get("type")) not in (1, 2)
             or row.get("baseCoin") != "NAS100"
             or row.get("quoteCoin") != "USDT"
             or row.get("settleCoin") != "USDT"
@@ -111,6 +113,7 @@ class ContractDetail:
             cid,
             _decimal(row.get("contractSize"), positive=True),
             _decimal(row.get("priceUnit"), positive=True),
+            _int(row.get("type")),
         )
 
 
@@ -208,6 +211,7 @@ async def fetch_snapshot(
             "contract_id": ticker.contract_id,
             "contract_size": detail.contract_size,
             "price_unit": detail.price_unit,
+            "pair_type": detail.pair_type,
             "contract_detail_received_at": utc_string(detail_received),
             "provenance": "mexc_futures_rest_candidate",
             "session_verified": False,
