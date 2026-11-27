@@ -91,3 +91,4 @@ docker compose --env-file .env.phase0 -f infra/compose/dev.yaml down
 - React TypeScript/ESLint/Prettier 성공, Vitest **4 passed** (App 2 + SSE gate 2), Vite build 성공, Playwright Chromium **1 passed** (모바일 390px). ECharts lazy bundle 504.47kB 경고는 보존.
 - 기존 PG volume 0004 migration exit0; Compose PG/API/Web healthy, `GET /api/v1/dashboard/indicators?limit=100` **96 indicators, 1 synthetic, 95 unverified/null**, root HTTP 200; down/ps -a clean, disposable volume 보존.
 - pnpm audit 및 backend pip-audit no known vulnerabilities (unpublished local backend excluded), **실제 외부 공급자 접속이나 주문 없음**. 원격 CI/commit 검증은 Phase 2 로그 종료 섹션 참조.
+- **GitHub 최종 구현 CI:** `main` 구현 커밋 `1bd6c8a`의 [Actions run 45926311285](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45926311285)는 **completed/success, 4/4 jobs**. 초기 CI에서만 발생한 Linux `mypy --config-file` 주석 누락 두 건은 [TS-02-09](../troubleshooting/phase-02.md)에 자세히 기록하고 코드 수정 후 재검증했다. 이 성공은 Fixture/인가 차단 경계를 검증한 것으로, 운영 실제 사이트 접근 권한을 부여하지 않는다.

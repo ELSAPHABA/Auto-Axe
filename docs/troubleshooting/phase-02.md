@@ -64,3 +64,9 @@
 - 원인: 명시적 mypy 설정 파일 적용 여부 차이. 런타임 문제가 아니라 새 소스 코드 두 함수의 타입 서명 누락. CI 설정을 완화하거나 검사를 건너뛰면 정적 회귀를 놓치므로 금지.
 - 수정: SSE fixture async generator를 `AsyncIterator[str]`로, auth session JSON 반환을 `dict[str, Any]`로 명시. 실행·인증·수집 권한 및 운영 플래그에는 변화 없음.
 - 재검증: 정확한 CI mypy 명령과 Ruff, 전체 테스트를 실행하고 결과/후속 원격 CI run은 Phase 2 세션 로그에 추가. CI가 완전히 통과할 때까지 Phase 2 hosted verification을 성공이라고 주장하지 않음.
+
+## TS-02-10 — 문서 종료 커밋의 Gitleaks 보안 규칙 오탐
+- 재현: 실제 개발 소스의 보안 스캔이 통과한 후 Phase 2 최종 CI 결과를 추가한 문서 세 파일을 staging, `git diff --cached --check` 성공. 이어서 기존 고정 Gitleaks v8.30.0의 `git --staged --redact=100 --no-banner --verbose`를 Docker network none / read-only mount로 실행하니 `generic-api-key` 규칙 1건, `.ai-context/phases/phase-02/2026-11-27-01.md`의 최종 상태 설명행을 지목하여 exit1.
+- 조사: 해당 행에는 실제 비밀번호/토큰·값이 없으며, 공급자 서비스 구성과 인증 자료가 배포되지 않았다는 사실을 영문 구문으로 설명한 문장만 존재. 탐지기는 구성품 이름과 바로 이어지는 일반명사를 비밀값 후보로 분류한 것으로 판단. 스캐너의 출력은 `--redact=100`으로 가려 두었다.
+- 조치: 기술적 의미를 유지하면서 문구를 `production identity and mutual-TLS configuration`으로 변경. Gitleaks 규칙 해제·allowlist 추가·스캔 건너뛰기는 하지 않음.
+- 재검증: 수정 후 동일하게 stage, `git diff --cached --check`, pinned Gitleaks 재실행 결과를 Phase log에 기록. 실제 비밀정보 유출을 허용하는 예외는 없음.
