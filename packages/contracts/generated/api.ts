@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/authorized/cnn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Authorized Cnn Graphs */
+        get: operations["getAuthorizedCnnGraphs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard/authorized/market/{series_id}": {
         parameters: {
             query?: never;
@@ -349,6 +366,75 @@ export interface components {
             /** Data */
             data: components["schemas"]["SeriesDTO"][];
             meta: components["schemas"]["MarketMeta"];
+        };
+        /** CnnComponent */
+        CnnComponent: {
+            /** Rating */
+            rating: string | null;
+            /** Score */
+            score: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+        };
+        /** CnnGraphPage */
+        CnnGraphPage: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            current: components["schemas"]["CnnReading"] | null;
+            /** Graphs */
+            graphs: {
+                [key: string]: components["schemas"]["CnnPoint"][];
+            };
+        };
+        /** CnnPoint */
+        CnnPoint: {
+            /**
+             * Available At
+             * Format: date-time
+             */
+            available_at: string;
+            /** Rating */
+            rating: string | null;
+            /** Revision */
+            revision: number;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Value */
+            value: string;
+        };
+        /** CnnReading */
+        CnnReading: {
+            /**
+             * Available At
+             * Format: date-time
+             */
+            available_at: string;
+            /** Comparisons */
+            comparisons: {
+                [key: string]: string;
+            };
+            /** Components */
+            components: {
+                [key: string]: components["schemas"]["CnnComponent"];
+            };
+            /** Rating */
+            rating: string;
+            /** Score */
+            score: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
         };
         /** DailyBar */
         DailyBar: {
@@ -1302,6 +1388,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getAuthorizedCnnGraphs: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                "__Host-autoaxe-sid"?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnnGraphPage"];
                 };
             };
             /** @description Validation Error */

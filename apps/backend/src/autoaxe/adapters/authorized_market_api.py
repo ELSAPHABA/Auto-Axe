@@ -7,6 +7,7 @@ from typing import Annotated
 import psycopg
 from fastapi import APIRouter, Cookie, HTTPException, Query, Request
 
+from autoaxe.adapters.authorized_cnn import CnnGraphPage, read_cnn_graphs
 from autoaxe.adapters.contracts import Contract, Identifier, Money, UtcTime
 from autoaxe.domain.catalog import catalog
 from autoaxe.domain.owner_access import is_configured_owner
@@ -17,6 +18,36 @@ from autoaxe.infrastructure.market_store import PermissionDenied
 from autoaxe.infrastructure.sessions import authorize
 
 router = APIRouter(prefix="/api/v1/dashboard/authorized", tags=["dashboard-authorized"])
+
+
+@router.get("/cnn", operation_id="getAuthorizedCnnGraphs", response_model=CnnGraphPage)
+def get_authorized_cnn_graphs(
+    session_id: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None,
+    as_of: UtcTime | None = None,
+) -> CnnGraphPage:
+    dsn = os.environ.get("AUTOAXE_MARKET_READ_DSN")
+    if not dsn:
+        raise HTTPException(503, "read-only market authority not configured")
+    try:
+        with psycopg.connect(identity_dsn(), connect_timeout=3) as app:
+            grant = authorize(app, session_id, required_scope="indicators:read")
+        with psycopg.connect(dsn, connect_timeout=3) as market:
+            market.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+            market.execute("SET LOCAL statement_timeout = '5s'")
+            clock = market.execute("SELECT transaction_timestamp()").fetchone()
+            assert clock is not None
+            cutoff = as_of or clock[0]
+            if cutoff > clock[0]:
+                raise HTTPException(400, "future snapshot cutoff")
+            return read_cnn_graphs(
+                market, cutoff, private_use=is_configured_owner(grant.subject_ref)
+            )
+    except PermissionError as exc:
+        raise HTTPException(401, "session invalid or insufficient scope") from exc
+    except PermissionDenied as exc:
+        raise HTTPException(403, "source not approved for this audience") from exc
+    except psycopg.Error as exc:
+        raise HTTPException(503, "read-only market authority unavailable") from exc
 
 
 class DailyBar(Contract):

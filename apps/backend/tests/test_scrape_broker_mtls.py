@@ -19,14 +19,16 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 from autoaxe.entrypoints.scrape_broker import validate_candidates
 
 
-def test_candidate_schema_rejects_unrelated_and_trade_fields():
+def test_candidate_schema_rejects_unrelated_and_trade_fields(cnn_details):
+    stamp = (datetime.now(UTC) - timedelta(seconds=10)).isoformat()
     candidate = {
         "series_id": "CNN_FEAR_GREED_CNN",
         "value": "12",
         "category": "Fear",
-        "source_event_at": None,
+        "source_event_at": stamp,
         "quality": "manual_review_required",
         "automated_trading_allowed": False,
+        "details": cnn_details(stamp),
     }
     validate_candidates("cnn", [candidate])
     for bad in (

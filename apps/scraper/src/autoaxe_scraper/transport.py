@@ -206,7 +206,8 @@ def fetch_pizzint_doughcon(
 
 
 def parse_cnn_json(body: bytes) -> dict[str, Any]:
-    """Retain only current CNN score, rating and the original timestamp."""
+    """Normalize current reading, comparisons, component scores and graph points."""
+    from autoaxe_scraper.cnn_graphs import details, number
 
     def unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
         result: dict[str, Any] = {}
@@ -242,13 +243,14 @@ def parse_cnn_json(body: bytes) -> dict[str, Any]:
             raise ValueError("invalid CNN timestamp")
         return {
             "series_id": "CNN_FEAR_GREED_CNN",
-            "value": str(score) if type(score) is int else format(score, "f"),
+            "value": number(score, score=True),
             "category": rating.title(),
             "source_event_at": stamp.astimezone(UTC).isoformat(),
             "quality": "manual_review_required",
             "automated_trading_allowed": False,
+            "details": details(root, datetime.now(UTC)),
         }
-    except (ValueError, TypeError, KeyError, OverflowError, ArithmeticError) as exc:
+    except (ValueError, TypeError, KeyError, AttributeError, ArithmeticError) as exc:
         raise SourceBlocked("invalid CNN JSON document") from exc
 
 

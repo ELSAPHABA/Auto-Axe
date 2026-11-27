@@ -12,6 +12,7 @@ from psycopg import Connection
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from autoaxe.application.cnn_graphs import save_graphs, validate_details
 from autoaxe.application.market_worker import record_health
 from autoaxe.domain.canonical import canonical_sha256
 from autoaxe.domain.catalog import SOURCE_URLS, catalog
@@ -459,7 +460,7 @@ def validate_candidates(source: str, candidates: list[dict[str, Any]]) -> None:
             raise ValueError("invalid candidate quality or value")
         if source == "cnn":
             if (
-                set(item) != common | {"category", "automated_trading_allowed"}
+                set(item) != common | {"category", "automated_trading_allowed", "details"}
                 or not 0 <= value <= 100
                 or item["category"]
                 not in ("Extreme Fear", "Fear", "Neutral", "Greed", "Extreme Greed")
@@ -472,6 +473,7 @@ def validate_candidates(source: str, candidates: list[dict[str, Any]]) -> None:
             parsed = datetime.fromisoformat(stamp)
             if parsed.utcoffset() is None or parsed > datetime.now(UTC):
                 raise ValueError("invalid CNN source timestamp")
+            validate_details(item["details"], datetime.now(UTC))
         else:
             stamp = item.get("source_event_at")
             if not isinstance(stamp, str) or len(stamp) > 64:
@@ -626,9 +628,17 @@ def promote_reviewed(conn: Connection[Any], job_id: str) -> str:
             )
             # Unknown source time must remain unknown; use per-job identity only.
             key = utc_string(stamp) if stamp else "review:" + job_id
-            metadata = {"automated_trading_allowed": False}
+            metadata: dict[str, Any] = {"automated_trading_allowed": False}
             if source == "cnn":
                 metadata["category"] = item["category"]
+                metadata["cnn"] = save_graphs(
+                    conn,
+                    item["details"],
+                    version=row["permission_version"],
+                    received=row["submitted_at"],
+                    reviewed=reviewed,
+                    job_id=job_id,
+                )
             candidate = Candidate(
                 sid,
                 key,

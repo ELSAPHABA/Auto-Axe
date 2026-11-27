@@ -97,6 +97,7 @@ def gate(conn: Connection[Any], series_id: str, action: str = "storage") -> dict
         "WTI_YAHOO_FUTURES_WS",
         "BRENT_YAHOO_FUTURES_WS",
         "VIX_YAHOO_WS",
+        "CNN_FEAR_GREED_CNN",
     }:
         raise PermissionDenied("unverified WebSocket series is informational only")
     with conn.cursor(row_factory=dict_row) as cur:

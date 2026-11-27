@@ -191,17 +191,22 @@ def test_pizzint_uses_documented_public_json_api_only():
     assert conn.closed
 
 
-def test_cnn_uses_only_fixed_json_and_retains_original_timestamp():
-    payload = (
-        b'{"fear_and_greed":{"score":42.125,"rating":"fear",'
-        b'"timestamp":"2026-11-23T07:00:00Z"},"history":[{"discard":true}]}'
-    )
+def test_cnn_uses_only_fixed_json_and_retains_original_timestamp(cnn_document):
+    payload = cnn_document(count=250)
     conn = FakeConnection(FakeResponse(payload, content_type="application/json"))
     result = fetch_cnn_fear_greed(
         permit=lambda: None,
         resolve=lambda *_a, **_kw: address("8.8.8.8"),
         dial=lambda host, ip: conn,
     )
+    details = result.pop("details")
+    assert len(details["blocks"]) == 10
+    assert sum(len(b["data"]) for b in details["blocks"].values()) == 2500
+    assert details["comparisons"]["previous_1_week"] == "40.5"
+    assert details["blocks"]["market_volatility_vix"]["score"] == "42.125"
+    assert details["blocks"]["market_volatility_vix"]["data"][0][1] == "123.456"
+    assert details["blocks"]["market_volatility_vix_50"]["score"] is None
+    assert len(__import__("json").dumps(details).encode()) < 262144
     assert result == {
         "series_id": "CNN_FEAR_GREED_CNN",
         "value": "42.125",

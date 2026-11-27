@@ -39,13 +39,11 @@ class FakeBroker:
         return {"status": "quarantined"}
 
 
-def test_worker_checks_lease_and_quarantines_exact_candidate(monkeypatch):
+def test_worker_checks_lease_and_quarantines_exact_candidate(monkeypatch, cnn_document):
     def fetch(*, permit):
         permit()
         permit()
-        return parse_cnn_json(
-            b'{"fear_and_greed":{"score":32,"rating":"fear","timestamp":"2026-11-23T07:00:00Z"}}'
-        )
+        return parse_cnn_json(cnn_document(score=32))
 
     monkeypatch.setattr(worker, "fetch_cnn_fear_greed", fetch)
     broker = FakeBroker()

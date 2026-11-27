@@ -11,6 +11,7 @@ from psycopg.errors import InsufficientPrivilege
 from psycopg.types.json import Jsonb
 from testcontainers.postgres import PostgresContainer
 
+from autoaxe.adapters.authorized_cnn import read_cnn_graphs
 from autoaxe.application.scrape_broker import (
     SERIES,
     claim,
@@ -28,7 +29,7 @@ IMAGE = "postgres:17@sha256:87c8b42f423b45d5247e6aa8fdb2e7762fec164c68a50fe3eb07
 
 
 @pytest.mark.integration
-def test_generic_scheduler_and_review_fences(monkeypatch):
+def test_generic_scheduler_and_review_fences(monkeypatch, cnn_details):
     monkeypatch.setenv("AUTOAXE_DISPOSABLE_DB", "true")
     secret = secrets.token_urlsafe(24)
     with PostgresContainer(
@@ -277,19 +278,16 @@ def test_generic_scheduler_and_review_fences(monkeypatch):
         grant("cnn")
         assert tick("cnn") == "scheduled"
         cnn = lease("cnn")
-        quarantine(
-            cnn,
-            [
-                {
-                    "series_id": "CNN_FEAR_GREED_CNN",
-                    "value": "65",
-                    "source_event_at": stamp,
-                    "quality": "manual_review_required",
-                    "category": "Greed",
-                    "automated_trading_allowed": False,
-                }
-            ],
-        )
+        cnn_candidate = {
+            "series_id": "CNN_FEAR_GREED_CNN",
+            "value": "65",
+            "source_event_at": stamp,
+            "quality": "manual_review_required",
+            "category": "Greed",
+            "automated_trading_allowed": False,
+            "details": cnn_details(stamp),
+        }
+        quarantine(cnn, [cnn_candidate])
         review(cnn, {"CNN_FEAR_GREED_CNN": "index"})
         with psycopg.connect(market) as conn:
             assert promote_reviewed(conn, cnn.job_id) == "promoted"
@@ -297,6 +295,62 @@ def test_generic_scheduler_and_review_fences(monkeypatch):
                 "SELECT source_event_at,quality FROM market.observations "
                 "WHERE series_id='CNN_FEAR_GREED_CNN'"
             ).fetchone() == (datetime.fromisoformat(stamp), "manual_checked")
+            assert (
+                conn.execute("SELECT count(*) FROM indicators.cnn_graph_points").fetchone()[0] == 17
+            )
+        reader = psycopg.conninfo.make_conninfo(
+            **opts,
+            dbname="autoaxe_market",
+            user="autoaxe_market_read",
+            password=passwords["autoaxe_market_read"],
+        )
+        with psycopg.connect(reader) as conn:
+            cutoff = datetime.now(UTC)
+            page = read_cnn_graphs(conn, cutoff, private_use=True)
+            assert page.current.score == "65"
+            assert page.current.comparisons["previous_close"] == "40.5"
+            assert len(page.graphs) == 17
+            assert page.graphs["market_volatility_vix"][0].value == "123.456"
+            assert page.graphs["score:market_volatility_vix"][0].value == "65"
+            assert (
+                read_cnn_graphs(
+                    conn, page.current.available_at - timedelta(microseconds=1), private_use=True
+                ).current
+                is None
+            )
+            with pytest.raises(PermissionDenied):
+                read_cnn_graphs(conn, cutoff, private_use=False)
+        reset_due("cnn")
+        assert tick("cnn") == "scheduled"
+        repeated = lease("cnn")
+        quarantine(repeated, [cnn_candidate])
+        review(repeated, {"CNN_FEAR_GREED_CNN": "index"})
+        with psycopg.connect(market) as conn:
+            assert promote_reviewed(conn, repeated.job_id) == "promoted"
+            assert (
+                conn.execute("SELECT count(*) FROM indicators.cnn_graph_points").fetchone()[0] == 17
+            )
+        reset_due("cnn")
+        assert tick("cnn") == "scheduled"
+        correction = lease("cnn")
+        cnn_candidate["details"]["blocks"]["market_volatility_vix"]["data"][0][1] = "22"
+        quarantine(correction, [cnn_candidate])
+        review(correction, {"CNN_FEAR_GREED_CNN": "index"})
+        with psycopg.connect(market) as conn:
+            assert promote_reviewed(conn, correction.job_id) == "promoted"
+            assert (
+                conn.execute("SELECT count(*) FROM indicators.cnn_graph_points").fetchone()[0] == 18
+            )
+        with psycopg.connect(reader) as conn:
+            page2 = read_cnn_graphs(conn, datetime.now(UTC), private_use=True)
+            assert page2.graphs["market_volatility_vix"][0].revision == 2
+            assert page2.graphs["market_volatility_vix"][0].value == "22"
+            assert (
+                read_cnn_graphs(conn, cutoff, private_use=True)
+                .graphs["market_volatility_vix"][0]
+                .value
+                == "123.456"
+            )
         reset_due("cnn")
         assert tick("cnn") == "scheduled"
         expired = lease("cnn")

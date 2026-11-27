@@ -243,6 +243,182 @@
         "title": "CatalogResponse",
         "type": "object"
       },
+      "CnnComponent": {
+        "additionalProperties": false,
+        "properties": {
+          "rating": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timestamp",
+          "score",
+          "rating"
+        ],
+        "title": "CnnComponent",
+        "type": "object"
+      },
+      "CnnGraphPage": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "title": "As Of",
+            "type": "string"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CnnReading"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graphs": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/CnnPoint"
+              },
+              "type": "array"
+            },
+            "title": "Graphs",
+            "type": "object"
+          }
+        },
+        "required": [
+          "as_of",
+          "current",
+          "graphs"
+        ],
+        "title": "CnnGraphPage",
+        "type": "object"
+      },
+      "CnnPoint": {
+        "additionalProperties": false,
+        "properties": {
+          "available_at": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "title": "Available At",
+            "type": "string"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "value": {
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timestamp",
+          "value",
+          "rating",
+          "revision",
+          "available_at"
+        ],
+        "title": "CnnPoint",
+        "type": "object"
+      },
+      "CnnReading": {
+        "additionalProperties": false,
+        "properties": {
+          "available_at": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "title": "Available At",
+            "type": "string"
+          },
+          "comparisons": {
+            "additionalProperties": {
+              "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+              "type": "string"
+            },
+            "title": "Comparisons",
+            "type": "object"
+          },
+          "components": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CnnComponent"
+            },
+            "title": "Components",
+            "type": "object"
+          },
+          "rating": {
+            "title": "Rating",
+            "type": "string"
+          },
+          "score": {
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Score",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timestamp",
+          "score",
+          "rating",
+          "available_at",
+          "comparisons",
+          "components"
+        ],
+        "title": "CnnReading",
+        "type": "object"
+      },
       "DailyBar": {
         "additionalProperties": false,
         "properties": {
@@ -2866,6 +3042,72 @@
         "summary": "Current Session",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/dashboard/authorized/cnn": {
+      "get": {
+        "operationId": "getAuthorizedCnnGraphs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "__Host-autoaxe-sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "  Host-Autoaxe-Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CnnGraphPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Authorized Cnn Graphs",
+        "tags": [
+          "dashboard-authorized"
         ]
       }
     },

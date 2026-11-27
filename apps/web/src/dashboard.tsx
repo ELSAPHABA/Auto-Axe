@@ -30,6 +30,9 @@ const ApprovedChart = lazy(() =>
     default: module.ApprovedChart,
   })),
 );
+const CnnPanel = lazy(() =>
+  import("./cnn-panel").then((module) => ({ default: module.CnnPanel })),
+);
 
 const CATEGORIES = [
   { id: "market", title: "시장", description: "가격·변동성·선물" },
@@ -630,6 +633,9 @@ export function DashboardHome() {
       </div>
       <SummaryStrip total={data.length} />
       <MarketThermometer />
+      <Suspense fallback={<p role="status">CNN 그래프 로딩 중…</p>}>
+        <CnnPanel />
+      </Suspense>
       {health.isError && (
         <p className="error" role="alert">
           개발 API 연결 상태를 확인할 수 없습니다.

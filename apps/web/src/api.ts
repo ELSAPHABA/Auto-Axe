@@ -21,6 +21,17 @@ export type ExpiryPage =
   paths["/api/v1/dashboard/expiry-calendar"]["get"]["responses"][200]["content"]["application/json"];
 export type SeibroPage =
   paths["/api/v1/dashboard/authorized/seibro"]["get"]["responses"][200]["content"]["application/json"];
+export type CnnGraphPage =
+  paths["/api/v1/dashboard/authorized/cnn"]["get"]["responses"][200]["content"]["application/json"];
+
+export async function getCnnGraphs(): Promise<CnnGraphPage> {
+  const response = await fetch("/api/v1/dashboard/authorized/cnn", {
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error("CNN 검수 데이터 조회 불가");
+  return (await response.json()) as CnnGraphPage;
+}
 
 export async function getSeibroTop50(
   country: string,
