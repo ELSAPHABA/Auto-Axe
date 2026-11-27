@@ -219,6 +219,10 @@ export interface components {
              * Format: date-time
              */
             as_of: string;
+            /** Collector Checked At */
+            collector_checked_at?: string | null;
+            /** Collector Status */
+            collector_status?: string | null;
             /** Currency */
             currency: string | null;
             /** Permission */

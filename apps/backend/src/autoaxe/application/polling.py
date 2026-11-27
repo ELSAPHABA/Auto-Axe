@@ -20,7 +20,8 @@ CADENCE = {
         300 if s.interval == "5m" else 60 if s.id == "VIX" else 3600 if s.interval == "1d" else 300
     )
     for s in catalog().values()
-    if s.source_id in {"yfinance", "treasury", "naver"} or s.interval == "5m"
+    if s.source_id != "pizzint"
+    and (s.source_id in {"yfinance", "treasury", "naver"} or s.interval == "5m")
 }
 CADENCE["FIXTURE_PRICE"] = 5
 

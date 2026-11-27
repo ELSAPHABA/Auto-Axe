@@ -130,3 +130,10 @@
 - 원인: 비대화형 git push에서 필요한 인증 정보를 얻지 못함. 서버 브랜치 충돌·소스 코드 오류로 인한 실패는 아님. 인증 만료 등 세부 원인은 확인하지 않았으므로 단정하지 않는다.
 - 해결: 인증된 GitHub connector로 기존 parent `7146970946b4058c09b2c9b662b17fb21d63bd94`의 tree를 바탕으로 변경 29개 파일을 생성. 전체 tree SHA `5e3b0582c3cef99c7d793600d23534e0e69b5b11`가 로컬 구현과 일치한 뒤 원격 commit `c2d90cccbd32765a7a2f111eca4618f64ab30082` 생성 및 expected parent 기반 non-force ref update. 이후 `git fetch origin main` 및 clean/tree 검증, CAS local update-ref로 정렬. 자격증명 저장/출력, 강제 push, 기존 데이터 삭제 없음.
 - 재검증: 재개 시 local HEAD=origin/main, clean 상태 확인. [GitHub Actions 45942185124](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45942185124) completed/success, 4/4 jobs. 인증 문제는 GitHub connector 경로로 해결했으며 로컬 git credential 자체를 수리한 것은 아니다. 동일 문제 재발 시 검증된 방식만 사용하고 원격 변경과 충돌하면 중단·재확인한다.
+
+## TS-02-20 — DOUGHCON 전용 스케줄러 검증 중 정적 검사 및 운영 테스트 정리
+- 요구/환경: 2026-11-27 사용자 5분 상시 수집 및 운영 연결 구현. 일반 poller의 queued retry/catch-up을 그대로 적용하면 요청 간격을 보장하기 어려워 전용 DB 예약 기반 poller를 선택.
+- 최초 검사 실패: Ruff E501 다섯 건(긴 source permission 조건, SQL ON CONFLICT, health 호출 및 BFF 테스트 assert). 동작 변경 없이 식/SQL/문장을 여러 줄로 나누고 Ruff formatter 적용. 이후 Ruff/mypy 52 source files/schema check 통과 및 전체 backend 88 passed.
+- 실제 연결 검증: 신규 전용 Docker image와 기존 환경과 분리된 신규 PostgreSQL smoke stack, source permission을 해당 test DB에서만 승인. 실제 API one-shot `pizzint: stored`, 즉시 재실행 exit0/not_due, daemon up. DB에는 DOUGHCON 5, API timestamp 2026-11-27T04:14:22.373Z, metadata={} 1건만 존재, 5m cadence와 healthy 확인. provider timestamp는 DB 확인시각보다 오래되어 5분 polling != 데이터 갱신 빈도임을 확인. 실제 5분 경과 재호출은 수행하지 않고 isolated DB 시간을 가속한 통합 테스트로 검증.
+- 정리 중 한 combined tool request는 safety filter에 의해 실행 전 차단. 실제 smoke worker가 계속 실행되는 것을 막기 위해 정확한 신규 컨테이너만 docker stop, 별도 읽기 전용 SQL 및 두 smoke project compose down으로 정상 종료했다. 기존 볼륨/다른 프로젝트는 유지, 새 검증 volume `autoaxe-pizzint-smoke-20261127_fixture-data`만 보존. 비밀정보 노출 없음.
+- 남은 조건: 실제 production DSN/private network/IdP 설정 없음; 배포 구성을 구현하고 smoke에서 검증했으나 현재 상시 운영 중은 아니다. 429/401/403 정책은 유지하고 새로운 provider 접근 조건을 임의로 완화하지 않는다. [Phase2 후속 로그](../../.ai-context/phases/phase-02/2026-11-27-06.md)에서 최종 검증과 Git 상태 확인.

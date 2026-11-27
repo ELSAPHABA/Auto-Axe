@@ -10,6 +10,30 @@
             "title": "As Of",
             "type": "string"
           },
+          "collector_checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "Z$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collector Checked At"
+          },
+          "collector_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collector Status"
+          },
           "currency": {
             "anyOf": [
               {

@@ -15,7 +15,7 @@
 | 기업 재무·기술 | Ticker.info, OHLCV, pandas rolling/EMA | point-in-time 이력, ETF 재무 필드 결측 |
 | 공식 경제·정책·가이던스 | httpx, feedparser, icalendar, lxml/XML/JSON | SEC EDGAR, BLS, FRED, EIA, Treasury, 중앙은행/거래소 공식 발표; API 키 무료 등록·권한 |
 | CNN F&G, SEIBro, DRAMeXchange, Naver 2Y | 승인 이후 Scrapling (Selector/Fetcher 우선, 필요한 정상 렌더링만 별도 검증) | 기본 비활성, 허가/수동 이용 범위 확인; 우회 금지 |
-| PizzINT DOUGHCON | 고정 HTTPS JSON GET, `defcon_level`만 정규화 | 1~5 정수, API timestamp 검증, 10분 조회 권장, 원본 payload 미보관, HTML/수동 폴백 없음 |
+| PizzINT DOUGHCON | 고정 HTTPS JSON GET, `defcon_level`만 정규화 | 1~5 정수, API timestamp 검증, 5분 영속 스케줄, 원본 payload 미보관, HTML/수동 폴백 없음 |
 | 수동 입력 | Pydantic DTO + 검수 UI/CSV import | 원본 URL·값·시각·입력자·단위·권한·검수, 자동으로 표기 금지 |
 
 SEIBro는 해외주식 TOP50 결제금액(매수/매도/순매수 USD)이며 전체 개인투자자 실시간 거래량이 아님. DRAM은 Module Spot Price의 DDR5 UDIMM 16GB 4800/5600 및 RDIMM 32GB 4800/5600 Session Average 두 시리즈만. 두바이유 전면 제외. 경제 발표 일정과 실제값/수정값/컨센서스는 별개 필드. 위칭은 공식 상품별 만기 일정에서 실제 3/4개 상품군 동시 만기로 판정.

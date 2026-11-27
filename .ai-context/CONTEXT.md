@@ -57,6 +57,8 @@
 
 - **PizzINT 범위 변경 검증 완료(2026-11-27):** 구현 commit `c2d90cccbd32765a7a2f111eca4618f64ab30082`, tree `5e3b0582c3cef99c7d793600d23534e0e69b5b11`, [Actions 45942185124](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45942185124) completed/success, 4/4 jobs. Scraper 29 tests, 이전 전체 backend 88 tests 및 마지막 ledger 보강 후 대상 테스트 8 tests, Ruff/mypy/schema/Gitleaks 성공. 재개 시 local/remote main 일치 및 clean 확인. 직접 git push는 비대화형 인증 실패로 GitHub connector의 동일 tree 검증·non-force update로 해결(TS-02-19). [Phase 2 종료 기록](phases/phase-02/2026-11-27-05.md) 참고. DOUGHCON 범위 변경 완료와 운영 스케줄러·mTLS·원장 연동 미완료는 구분한다. 10분은 권장 조회 주기이며 현재 자동 실행 주기가 아니다.
 
+- **PizzINT 최신 운영 지시(2026-11-27):** 사용자 원문 “5분 주기의 상시 수집 스케줄러와 운영 환경 연결을 구현해 주세요.” 이전 10분 권장값 및 스케줄러 미구현 상태를 대체한다. 신규 [Phase 2 5분 수집 구현 기록](phases/phase-02/2026-11-27-06.md), [운영 가이드](../infra/compose/README.md#pizzint-doughcon-collector). 전용 `pizzint_poll`/CLI와 Docker collector, `0006_pizzint_cadence`, 300초 영속 예약/동일 DB leader lock/429 cooldown·401/403 circuit/permission version fence, DOUGHCON 단일 원장 저장, 인증 BFF/React 참고 지표 연동 구현. 실제 별도 PostgreSQL17+운영 Docker 이미지에서 API 단발 호출, 저장 1건(5, timestamp 2026-11-27T04:14:22.373Z, metadata={} 및 healthy), 직후 재실행 중복 없음과 daemon 기동 확인. 해당 smoke 프로젝트만 종료, 별도 검증 volume 보존, 기존 환경 변경 없음. 실제 운영 DB/IdP/네트워크 접속자료가 없으므로 영구 운영 배포는 아직 실행하지 않았음. 실제 5분 경과 반복 API 요청은 하지 않았고 테스트 DB 시간 가속으로 주기·실패 회복 검증. 기타 지표/HTML/수동/raw payload 금지 및 비거래 원칙, 소유자 인증 및 최하단 한 문장 고지 유지.
+
 ## ARCHITECTURE / DECISIONS (아키텍처 및 의사결정)
 
 기존 문서가 source of truth. 아래는 탐색용 계약 요약이고 세부는 반드시 연결 원문을 읽는다.

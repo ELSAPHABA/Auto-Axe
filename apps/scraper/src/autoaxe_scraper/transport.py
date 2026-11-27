@@ -26,6 +26,13 @@ class SourceBlocked(RuntimeError):
     pass
 
 
+class ProviderHTTPError(SourceBlocked):
+    def __init__(self, status: int, retry_header: str | None) -> None:
+        super().__init__(f"provider returned HTTP {status}; no redirect fallback")
+        self.status = status
+        self.retry_header = retry_header
+
+
 class Response(Protocol):
     status: int
 
@@ -106,7 +113,7 @@ def _fetch_exact(
         )
         response = connection.getresponse()
         if response.status != 200:
-            raise SourceBlocked(f"provider returned HTTP {response.status}; no redirect fallback")
+            raise ProviderHTTPError(response.status, response.getheader("retry-after"))
         content_type = (response.getheader("content-type", "") or "").lower()
         expected = "application/json" if media == "json" else "text/html"
         if not content_type.startswith(expected):

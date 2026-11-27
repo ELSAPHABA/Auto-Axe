@@ -188,9 +188,9 @@ python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit 
 
 ## 10. PizzINT·CNN 원본 및 yfinance 검증
 
-- PizzINT DOUGHCON: `GET https://www.pizzint.watch/api/dashboard-data`의 `defcon_level`(1~5)만 추출한다. `success`와 `timestamp`는 검증용이다. 10분 간격은 권장 초기 조회 주기이며 운영 스케줄러는 아직 연결하지 않았다. 원본 응답 및 기타 필드 저장·HTML 폴백 없음.
+- PizzINT DOUGHCON: `GET https://www.pizzint.watch/api/dashboard-data`의 `defcon_level`(1~5)만 추출한다. `success`와 `timestamp`는 검증용이다. 5분 주기 전용 스케줄러 및 운영 컨테이너는 [운영 가이드](../../infra/compose/README.md#pizzint-doughcon-collector)를 따른다. 원본 응답 및 기타 필드 저장·HTML 폴백 없음.
 - CNN 원본: `https://edition.cnn.com/markets/fear-and-greed`.
-- CNN 및 네이버의 자동화·저장 권한 미확인 시 실행 금지. [수집 및 보안](../tech-stack/data-collection.md). PizzINT는 별도 공개 API 전용 경로와 승인형 broker를 사용한다.
+- CNN 및 네이버의 자동화·저장 권한 미확인 시 실행 금지. [수집 및 보안](../tech-stack/data-collection.md). PizzINT 운영 수집은 기존 generic scraper/broker와 분리된 공개 API 전용 컨테이너에서만 실행한다.
 
 ```bash
 python -m pip install yfinance

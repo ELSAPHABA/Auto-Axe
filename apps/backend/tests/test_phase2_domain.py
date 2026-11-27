@@ -40,7 +40,7 @@ def test_all_indicator_catalog_is_registered_without_claiming_permission():
         "PENTAGON_PIZZA_PIZZINT",
         "DOUGHCON",
         "level",
-        "10m",
+        "5m",
     )
 
 

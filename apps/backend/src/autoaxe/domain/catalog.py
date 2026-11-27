@@ -187,7 +187,7 @@ def catalog() -> dict[str, Series]:
             "sentiment_level",
             "level",
             None,
-            "10m",
+            "5m",
             None,
         )
     )

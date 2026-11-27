@@ -31,7 +31,7 @@ const CATEGORIES = [
   { id: "macro", title: "경제 지표", description: "경기·물가·고용" },
   { id: "rates", title: "기준금리", description: "중앙은행 정책" },
   { id: "calendar", title: "일정 / 공시", description: "발표·만기·가이던스" },
-  { id: "sentiment", title: "심리", description: "Fear & Greed · Pizza" },
+  { id: "sentiment", title: "심리", description: "Fear & Greed · DOUGHCON" },
   { id: "industry", title: "산업", description: "DRAM · 해외주식 결제" },
   { id: "manual", title: "수동 입력", description: "허용된 수동 관측" },
 ] as const;
@@ -135,7 +135,62 @@ function DataStatus({ row }: { row: IndicatorView }) {
   );
 }
 
+function DoughconCard({ row }: { row: IndicatorView }) {
+  const session = useQuery({
+    queryKey: ["auth", "session"],
+    queryFn: hasAuthorizedSession,
+    retry: false,
+    refetchInterval: 30_000,
+  });
+  const history = useQuery({
+    queryKey: ["authorized", "history", row.indicator_id],
+    queryFn: () => getApprovedMarketSeries(row.indicator_id),
+    enabled: session.data === true && !session.isError,
+    retry: false,
+    refetchInterval: 30_000,
+  });
+  const point =
+    session.data === true && !session.isError && !history.isError
+      ? history.data?.data[0]
+      : undefined;
+  const level = point && /^[1-5]$/.test(point.value ?? "") ? point.value : null;
+  const collectorStatus = history.data?.meta.collector_status;
+  const checkedAt = history.data?.meta.collector_checked_at;
+  const checkedRecently = checkedAt
+    ? Date.parse(history.data?.meta.as_of ?? "") - Date.parse(checkedAt) <=
+      660_000
+    : false;
+  const collecting =
+    checkedRecently &&
+    (collectorStatus === "healthy" || collectorStatus === "no_update");
+  const statusText = level
+    ? collecting
+      ? "최근 저장값 · 참고용"
+      : "이전 저장값 · 수집 상태 확인 필요"
+    : "조회 가능한 데이터 없음";
+  return (
+    <article className="indicator-card" aria-label={row.label}>
+      <div className="indicator-card-top">
+        <span className="indicator-source">pizzint</span>
+        <span className="data-status">{statusText}</span>
+      </div>
+      <h3>DOUGHCON</h3>
+      <div className="indicator-value">{level ?? "—"}</div>
+      <p className="indicator-note">
+        {level && point?.source_event_at
+          ? "API 시각 (UTC): " + point.source_event_at
+          : "인증·데이터 제공 상태 확인 필요"}
+      </p>
+      <span className="indicator-frequency">
+        5분 수집 · 금융 판단 및 자동 주문에 사용하지 않음
+      </span>
+    </article>
+  );
+}
+
 function IndicatorCard({ row }: { row: IndicatorView }) {
+  if (row.indicator_id === "PENTAGON_PIZZA_PIZZINT")
+    return <DoughconCard row={row} />;
   return (
     <article className="indicator-card" aria-label={row.label}>
       <div className="indicator-card-top">
@@ -448,6 +503,18 @@ export function DashboardHome() {
           })}
         </div>
       </section>
+      {data
+        .filter((row) => row.indicator_id === "PENTAGON_PIZZA_PIZZINT")
+        .map((row) => (
+          <section className="section-block" key={row.indicator_id}>
+            <div className="section-title">
+              <h2>참고 지표</h2>
+            </div>
+            <div className="indicator-grid">
+              <IndicatorCard row={row} />
+            </div>
+          </section>
+        ))}
       <RatioPanel rows={data} />
       <OfficialEventsPanel />
       <section className="section-block">

@@ -175,9 +175,11 @@ SEIBro의 국가·조회기간별 해외주식 TOP50 매수·매도·순매수 �
 
 | 지표 | 우선 수집 출처·방법 | 대안 및 보조 경로 | 수동·결측 처리 | 빈도 및 주의사항 |
 |---|---|---|---|---|
-| DOUGHCON | [PizzINT 공개 JSON API](https://www.pizzint.watch/api/dashboard-data)의 `defcon_level` (정수 1~5) | 없음 | 실패 또는 필수 필드 결측 시 미수집 | 10분 조회 권장; 자동 주문 신호 금지 |
+| DOUGHCON | [PizzINT 공개 JSON API](https://www.pizzint.watch/api/dashboard-data)의 `defcon_level` (정수 1~5) | 없음 | 실패 또는 필수 필드 결측 시 미수집 | 5분 주기 전용 수집기; 금융 판단 및 자동 주문 신호 금지 |
 
 **유일한 수집 대상:** `PENTAGON_PIZZA_PIZZINT` = DOUGHCON 1~5. `GET https://www.pizzint.watch/api/dashboard-data` (공개 HTTPS JSON, API key 불필요). 2026-11-27 확인한 HTTP 200 응답의 `defcon_level=5`, `timestamp=2026-11-27T04:14:22.373Z`를 계약 근거로 사용한다. `success=true`, 정수 범위, 시간대가 포함된 API timestamp를 검사하고 정규화한 단계 및 최소 검증 메타데이터만 반환한다. API timestamp는 응답 기준 시각이며 기초 데이터의 신규 갱신을 보장하지 않는다. 서버가 전체 JSON을 반환하므로 지정 필드 이외의 내용은 메모리에서 폐기하고 원본 응답은 저장·로그·전달하지 않는다. 다른 데이터 소스, HTML/수동 대체 경로는 사용하지 않는다. API 오류·결측·범위 밖 값은 실패이며 5 등 정상값으로 채우지 않는다. [약관](https://www.pizzint.watch/terms)에 따라 합리적 조회 빈도를 지키고 기존 권한 및 검수 절차를 유지한다. 자동 주문 신호 금지.
+
+사용자가 확정한 운영 주기는 300초이다. 동일 DB의 advisory lock 및 영속 poll_slots로 중복 요청을 막고, 429 Retry-After/403 차단을 준수한다. 단일 API의 검증된 응답만 참고용 `manual_unverified` 관측값으로 저장한다. [운영 가이드](../../infra/compose/README.md#pizzint-doughcon-collector)를 참고한다.
 
 ## 7. 관련 문서
 

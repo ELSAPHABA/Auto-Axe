@@ -26,6 +26,8 @@
 
 **핵심:** 내부 데이터 원장/계산/fixture 파서·대시보드 코드는 구현·검증할 수 있으나, 이는 CNN/PizzINT/SEIBro/Naver/DRAM에 실제 접속해 지표를 수집할 수 있다는 뜻이 아니다. 이 사이트들의 수집 경로는 기본 BLOCKED다. 사용자 의도에 맞춰 무료 데이터만 대상으로 하지만 무료 가격이 곧 수집·저장·재배포 권한을 의미하지 않는다.
 
+최신 정정: 위 문단은 최초 Phase2 fixture 검증 기준선이다. 2026-11-27 사용자 요청으로 PizzINT의 DOUGHCON 공개 API 전용 5분 collector/ledger/BFF 및 Docker 배포 경로를 후속 구현했고 별도 PostgreSQL/Docker 환경의 실제 API 저장을 검증했다. 실제 운영 인스턴스는 source grant, runtime DB/private network 및 인증 설정이 필요하다. 다른 사이트들의 차단 조건은 유지한다. [운영 절차](../../infra/compose/README.md#pizzint-doughcon-collector), [최신 검증](../../.ai-context/phases/phase-02/2026-11-27-06.md) 참조.
+
 ## 주요 파일과 계약
 
 - `apps/backend/src/autoaxe/domain/indicator_registry.py`: 68 Phase1 시계열 + Phase2 논리 지표 정의. `all_indicators()`는 등록과 수집 권한을 구분한다.
@@ -95,7 +97,7 @@ docker compose --env-file .env.phase0 -f infra/compose/dev.yaml down
 | P2.3 공식 경제 | BLS Public Data API v1 bounded POST real transport 기능, CPI/NFP/실업률 식별자 allowlist, 분리된 25건/UTC day quota, 출처 허가 및 one-shot opt-in, 실제 HTTP는 수행 안 함 | 명시적 관리자 source 권한 확인, 실제 이용권/호출 검증, BEA/Census/중앙은행 Fed/BOJ/BoE/ECB 지표별 공식 API 연결, MEXC Protobuf |
 | P2.4 일정/공시 | 수정 이력의 PostgreSQL append/revision, source/event lock, available_at PIT, 개인 조회와 재배포 권한 분리, 원본시각 구분 | SEC 8-K/IR Exhibit 99.1 전문 구조적 가이던스, OCC/CME/Cboe/Binance Options 실만기 세션 |
 | P2.5 격리 수집 | PinnedHTTPS 수동 공개 IP/TLS SNI 검증, DNS 사설·혼합 리졸브 거부, redirect·oversize·압축 차단, permission pre/post | 실제 worker mTLS identity/lease network broker 연결, 컨테이너 egress 정책·브라우저 subresource enforcement |
-| P2.6 심리/산업 | PizzINT 공개 JSON API `/api/dashboard-data`에서 DOUGHCON 단계만 추출, 고정 TLS reader 및 허가형 broker 큐, HTML/수동 폴백 제거; 실제 단발 요청 검증 | PizzINT 운영 스케줄링 및 검수 후 원장 반영 연결, CNN/DRAM/SEIBro/Naver 약관·robots·DOM/실측 셀렉터, worker mTLS 배포 |
+| P2.6 심리/산업 | PizzINT 공개 JSON API DOUGHCON 단일 수치, 고정 TLS reader, 5분 영속 스케줄러·원장·인증 BFF 연결 및 전용 운영 Docker 구성; HTML/수동 폴백 제거 | 운영 DB/IdP의 실제 설정 및 배포, CNN/DRAM/SEIBro/Naver 약관·robots·DOM/실측 셀렉터, generic worker mTLS 배포 |
 | P2.7 UI | 권한형 공식 이벤트 table(revision/actual/출처) 및 authorized source history/quality 차트 추가, 기존 합성 차트 분리 | 실제 봉·거래량·SMA/EMA/고저가 차트, 실소스별 polling/market session |
 | P2.8 실시간 | 기존 fixture SSE gate 유지, 인증된 history는 REST no-store로 별도 조회 | durable SSE DB event producer, session/revoke stream, gap/backpressure/reconnect 운영 검증 |
 

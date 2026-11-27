@@ -36,6 +36,8 @@ class AuthorizedMeta(Contract):
     currency: str | None
     as_of: UtcTime
     permission: str
+    collector_status: str | None = None
+    collector_checked_at: UtcTime | None = None
 
 
 class AuthorizedSeriesPage(Contract):
@@ -78,6 +80,14 @@ def list_authorized_market_observations(
                 limit=limit,
                 private_use=private_use,
             )
+            health = (
+                market.execute(
+                    "SELECT status,checked_at FROM ops.collector_health WHERE series_id=%s",
+                    (series_id,),
+                ).fetchone()
+                if entry.source_id == "pizzint"
+                else None
+            )
     except PermissionError as exc:
         raise HTTPException(401, "session invalid or insufficient scope") from exc
     except PermissionDenied as exc:
@@ -107,5 +117,7 @@ def list_authorized_market_observations(
             permission=(
                 "approved_personal_education" if private_use else "approved_with_redistribution"
             ),
+            collector_status=health[0] if health else None,
+            collector_checked_at=health[1] if health else None,
         ),
     )

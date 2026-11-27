@@ -69,6 +69,22 @@ jobs:
           curl --fail "http://127.0.0.1:18174/api/v1/market/observations?series_id=FIXTURE_PRICE" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["data"] and r["data"][0]["value"]=="123.45"'
       - run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml --profile executor-smoke run --rm executor
       - run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml --profile scraper-fixture run --rm --build scraper-fixture
+      - name: Dedicated DOUGHCON worker packaging and unapproved-source smoke (no provider requests)
+        run: |
+          set -a
+          . ./.env.phase0
+          set +a
+          export AUTOAXE_MARKET_RUNTIME_DSN="host=postgres dbname=autoaxe_market user=autoaxe_market_runtime password=$AUTOAXE_FIXTURE_MARKET_WRITE_PASSWORD"
+          export AUTOAXE_MARKET_NETWORK=autoaxe-phase0_data
+          docker compose -f infra/compose/pizzint.yaml config --quiet
+          docker compose -f infra/compose/pizzint.yaml build
+          set +e
+          output=$(docker compose -f infra/compose/pizzint.yaml run --rm pizzint-collector /app/.venv/bin/python -m autoaxe.entrypoints.pizzint_cli --once)
+          status=$?
+          set -e
+          docker compose -f infra/compose/pizzint.yaml down
+          test "$status" -eq 1
+          printf '%s\n' "$output" | grep -Fx 'pizzint: permission_required'
       - if: always()
         run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml down -v
   secret-scan:

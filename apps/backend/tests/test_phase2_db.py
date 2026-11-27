@@ -11,6 +11,8 @@ from fastapi.testclient import TestClient
 from psycopg.errors import InsufficientPrivilege
 from testcontainers.postgres import PostgresContainer
 
+from autoaxe.application.collection import FetchError
+from autoaxe.application.pizzint_poll import SERIES, poll_once
 from autoaxe.application.scrape_broker import (
     claim,
     complete,
@@ -180,6 +182,10 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
 
         # PizzINT explicitly allows reasonable public API access. An approved
         # API-only job may be queued, but default unverified source still denies it.
+        def never_fetch(_permit):
+            raise AssertionError("must not request source")
+
+        assert poll_once(market, never_fetch) == "permission_required"
         with psycopg.connect(market) as conn:
             with pytest.raises(PermissionDenied):
                 submit(conn, "pizzint", {}, "api-only-denied", deadline)
@@ -253,6 +259,91 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
                             metadata=metadata,
                         ),
                     )
+
+        # Dedicated schedule: source time identity, restart safety and durable cooldown.
+        calls = 0
+
+        def valid_fetch(permit):
+            nonlocal calls
+            calls += 1
+            permit()
+            assert poll_once(market, never_fetch) == "busy"
+            permit()
+            return doughcon
+
+        def due():
+            # Accelerate only the isolated test DB's last reservation, not wall time.
+            with psycopg.connect(market) as conn:
+                conn.execute(
+                    "UPDATE ops.poll_slots SET last_enqueued_at=clock_timestamp() "
+                    "- interval '301 seconds' WHERE series_id=%s",
+                    (SERIES,),
+                )
+
+        assert poll_once(market, valid_fetch) == "stored"
+        assert poll_once(market, never_fetch) == "not_due"
+        due()
+        assert poll_once(market, valid_fetch) == "no_update"
+        assert calls == 2
+        due()
+
+        def limited(_permit):
+            raise FetchError(429, "900")
+
+        assert poll_once(market, limited) == "http_error"
+        due()
+        assert poll_once(market, never_fetch) == "cooldown"
+        with psycopg.connect(market) as conn:
+            assert conn.execute(
+                "SELECT retry_at > clock_timestamp()+interval '800 seconds' "
+                "FROM ops.poll_circuits WHERE source_id='pizzint'"
+            ).fetchone()[0]
+            conn.execute(
+                "UPDATE ops.poll_circuits SET retry_at=clock_timestamp()-interval '1 second' "
+                "WHERE source_id='pizzint'"
+            )
+
+        def denied(_permit):
+            raise FetchError(403)
+
+        assert poll_once(market, denied) == "http_error"
+        due()
+        assert poll_once(market, never_fetch) == "cooldown"
+
+        def approve_pizza(approved):
+            with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+                set_permission(
+                    conn,
+                    "pizzint",
+                    approved=approved,
+                    evidence="synthetic polling test",
+                    fetch=approved,
+                    storage=approved,
+                )
+
+        approve_pizza(True)
+
+        def revoked_during_fetch(permit):
+            permit()
+            approve_pizza(False)
+            return {**doughcon, "value": "1"}
+
+        assert poll_once(market, revoked_during_fetch) == "permission_changed"
+        assert poll_once(market, never_fetch) == "permission_required"
+        approve_pizza(True)
+        with psycopg.connect(market) as conn:
+            assert (
+                conn.execute(
+                    "SELECT count(*) FROM market.observations WHERE series_id=%s", (SERIES,)
+                ).fetchone()[0]
+                == 1
+            )
+            assert (
+                conn.execute(
+                    "SELECT frequency FROM catalog.series WHERE series_id=%s", (SERIES,)
+                ).fetchone()[0]
+                == "5m"
+            )
 
         # Authorized event persistence must not imply public redistribution rights.
         event = EventRevision(
@@ -434,10 +525,22 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         assert personal_market.status_code == 200
         assert personal_market.json()["data"][0]["value"] == "23.45"
         assert personal_market.json()["meta"]["permission"] == "approved_personal_education"
+        pizza_route = "/api/v1/dashboard/authorized/market/" + SERIES
+        assert api.get(pizza_route).status_code == 401
+        pizza_read = api.get(pizza_route, cookies={"__Host-autoaxe-sid": authenticated_sid})
+        assert pizza_read.status_code == 200
+        assert len(pizza_read.json()["data"]) == 1
+        assert pizza_read.json()["data"][0]["value"] == "5"
+        assert pizza_read.json()["data"][0]["quality"] == "manual_unverified"
+        assert pizza_read.json()["meta"]["collector_status"] == "blocked"
         # Personal viewing cannot enable a public endpoint or allow anonymous access.
         assert api.get(route).status_code == 401
         monkeypatch.delenv("AUTOAXE_OWNER_SUBJECT_REF")
         assert api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code == 403
+        assert (
+            api.get(pizza_route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code
+            == 403
+        )
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(
                 conn,

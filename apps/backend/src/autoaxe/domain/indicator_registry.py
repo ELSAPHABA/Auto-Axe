@@ -166,7 +166,7 @@ STATIC = (
         "sentiment",
         "pizzint",
         "level",
-        "10m",
+        "5m",
         "PizzINT 공개 API 단계(1~5); 자동 주문 신호 금지",
     ),
     IndicatorDefinition(

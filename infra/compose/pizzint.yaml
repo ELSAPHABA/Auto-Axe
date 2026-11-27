@@ -1,0 +1,28 @@
+# Private operational collector. Existing migrated market DB only; no bootstrap/admin.
+name: autoaxe-pizzint
+services:
+  pizzint-collector:
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+      target: pizzint-collector
+    environment:
+      AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?set the existing market runtime DSN}
+      AUTOAXE_LIVE_ENABLED: "false"
+      AUTOAXE_EXTERNAL_MCP_ENABLED: "false"
+    networks: [market, egress]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.5
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+networks:
+  market:
+    external: true
+    name: ${AUTOAXE_MARKET_NETWORK:?set the existing private market network}
+  egress: {}
