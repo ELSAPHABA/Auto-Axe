@@ -57,3 +57,10 @@
 - 확인된 원인: `apps/web/vite.config.ts`의 Vitest 설정 `include: ["src/**/*.test.tsx"]`에서 `.test.ts` 확장자를 제외함.
 - 해결: `include: ["src/**/*.test.tsx", "src/**/*.test.ts"]`를 명시. 테스트 코드를 .tsx로 위장하거나 실행되지 않는 채 성공 주장하지 않음.
 - 재검증: 최초 설정 수정 직후 `pnpm format:check`가 vite.config.ts 포맷 경고로 exit1; `prettier --write vite.config.ts` 후 `pnpm typecheck/lint/format:check/test` 전부 exit0. `src/App.test.tsx` 2개와 `src/live.test.ts` 2개, **2 test files / 4 passed in 11.24s**. 기존 2 passed에서 SSE 2 tests가 실제 실행되도록 수정.
+
+## TS-02-09 — GitHub Actions Linux strict mypy 설정 차이
+- 발생: Phase 2 원격 `main` 커밋 `ae1770db60f7aa21dc8b9ecf7e8e93cf6644c77f`, Actions run 45925994668 (`contracts-backend` job 140267300158)에서 Ruff/format 통과 후 mypy 실패. 로컬에서는 `uv run --project apps/backend --locked mypy apps/backend/src`를 사용했으나 CI는 `uv run --project apps/backend --locked mypy --config-file apps/backend/pyproject.toml apps/backend/src`를 실행해 엄격한 함수 반환값/제네릭 타입 누락을 발견.
+- 오류: `apps/backend/src/autoaxe/adapters/dashboard_api.py:122: Function is missing a return type annotation [no-untyped-def]`, `apps/backend/src/autoaxe/entrypoints/auth.py:122: Missing type arguments for generic type "dict" [type-arg]`.
+- 원인: 명시적 mypy 설정 파일 적용 여부 차이. 런타임 문제가 아니라 새 소스 코드 두 함수의 타입 서명 누락. CI 설정을 완화하거나 검사를 건너뛰면 정적 회귀를 놓치므로 금지.
+- 수정: SSE fixture async generator를 `AsyncIterator[str]`로, auth session JSON 반환을 `dict[str, Any]`로 명시. 실행·인증·수집 권한 및 운영 플래그에는 변화 없음.
+- 재검증: 정확한 CI mypy 명령과 Ruff, 전체 테스트를 실행하고 결과/후속 원격 CI run은 Phase 2 세션 로그에 추가. CI가 완전히 통과할 때까지 Phase 2 hosted verification을 성공이라고 주장하지 않음.

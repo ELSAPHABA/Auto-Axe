@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Literal
 
@@ -119,7 +120,7 @@ def list_dashboard_indicators(
         raise HTTPException(400, "invalid dashboard cursor") from exc
 
 
-async def fixture_sse(request: Request):
+async def fixture_sse(request: Request) -> AsyncIterator[str]:
     """No external/live events; snapshot REST always follows ready."""
     yield (
         "event: ready\ndata: "

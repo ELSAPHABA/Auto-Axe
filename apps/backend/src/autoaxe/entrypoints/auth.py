@@ -3,6 +3,7 @@
 import base64
 import hmac
 import os
+from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
@@ -119,7 +120,7 @@ def callback(
 
 
 @router.get("/session", operation_id="currentWebSession")
-def current_session(sid: str | None = Cookie(None, alias=SESSION_COOKIE)) -> dict:
+def current_session(sid: str | None = Cookie(None, alias=SESSION_COOKIE)) -> dict[str, Any]:
     try:
         with psycopg.connect(_dsn(), connect_timeout=3) as conn:
             identity = authorize(conn, sid)
