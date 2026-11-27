@@ -171,15 +171,13 @@ SEIBro의 국가·조회기간별 해외주식 TOP50 매수·매도·순매수 �
 
 **지정 수집 대상:** [CNN International Fear & Greed](https://edition.cnn.com/markets/fear-and-greed), `source_url=https://edition.cnn.com/markets/fear-and-greed`. HTML 페이지의 `span.market-data-poller[data-data-url]`는 비공식 `https://production.dataviz.cnn.io/index/fearandgreed/graphdata`를 가리키는 것이 확인.
 
-### 5.3 펜타곤 피자지수
+### 5.3 PizzINT DOUGHCON
 
 | 지표 | 우선 수집 출처·방법 | 대안 및 보조 경로 | 수동·결측 처리 | 빈도 및 주의사항 |
 |---|---|---|---|---|
-| 펜타곤 피자지수 | 공개 JSON **/api/dashboard-data** 확인 (robots/Terms 권한 확인 필요) | 기본 제외 | [PizzINT](https://www.pizzint.watch/) 상태·관찰시각·분류를 수동 기록 | 실험적 `MANUAL`; 시장 신호로 자동 주문 금지 |
+| DOUGHCON | [PizzINT 공개 JSON API](https://www.pizzint.watch/api/dashboard-data)의 `defcon_level` (정수 1~5) | 없음 | 실패 또는 필수 필드 결측 시 미수집 | 10분 조회 권장; 자동 주문 신호 금지 |
 
-**지정 수집 대상:** [PizzINT](https://www.pizzint.watch/), `source_url=https://www.pizzint.watch/`. `pentagon.pizza`는 수집 대상이 아니다. 유일한 자동 수집 경로는 PizzINT가 허용하는 공개 JSON API `GET https://www.pizzint.watch/api/dashboard-data`이다. **API 사용 불가 시 HTML 스크래핑으로 대체하지 않는다.** 2026-11-22 직접 요청에서 이 API는 HTTP 200 JSON (`overall_index`, `defcon_level`, `active_spikes`, `timestamp`, `data[].current_popularity`, `data[].is_spike`, `data[].recorded_at`)을 반환했으며 일부 식당 값이 `null`. [2026-06-25 약관](https://www.pizzint.watch/terms)은 개인/교육 목적과 합리적인 공개 API 호출은 허용하되 API 외 스크래핑은 금지한다.
-
-`activity_label`, `activity_score_if_public`, `observed_at`, `source_url`, `manual_note`만 기록하고 **객관적 예측력/자동매매 신호로 확정하지 않는다**.
+**유일한 수집 대상:** `PENTAGON_PIZZA_PIZZINT` = DOUGHCON 1~5. `GET https://www.pizzint.watch/api/dashboard-data` (공개 HTTPS JSON, API key 불필요). 2026-11-27 확인한 HTTP 200 응답의 `defcon_level=5`, `timestamp=2026-11-27T04:14:22.373Z`를 계약 근거로 사용한다. `success=true`, 정수 범위, 시간대가 포함된 API timestamp를 검사하고 정규화한 단계 및 최소 검증 메타데이터만 반환한다. API timestamp는 응답 기준 시각이며 기초 데이터의 신규 갱신을 보장하지 않는다. 서버가 전체 JSON을 반환하므로 지정 필드 이외의 내용은 메모리에서 폐기하고 원본 응답은 저장·로그·전달하지 않는다. 다른 데이터 소스, HTML/수동 대체 경로는 사용하지 않는다. API 오류·결측·범위 밖 값은 실패이며 5 등 정상값으로 채우지 않는다. [약관](https://www.pizzint.watch/terms)에 따라 합리적 조회 빈도를 지키고 기존 권한 및 검수 절차를 유지한다. 자동 주문 신호 금지.
 
 ## 7. 관련 문서
 

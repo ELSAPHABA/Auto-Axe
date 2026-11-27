@@ -29,10 +29,8 @@ def test_sentiment_is_never_an_automatic_trade_signal() -> None:
         "cnn", '<div data-source="cnn-fear-greed" data-score="65" data-category="Greed"></div>'
     )
     assert cnn["value"] == "65" and cnn["automated_trading_allowed"] is False
-    pizza = parse_offline(
-        "pizzint", '<div data-source="pizzint-status" data-status="elevated"></div>'
-    )
-    assert pizza["status"] == "elevated" and pizza["automated_trading_allowed"] is False
+    with pytest.raises(SchemaChanged, match="API-only"):
+        parse_offline("pizzint", "<div>DOUGHCON 5</div>")
     with pytest.raises(SchemaChanged):
         parse_offline("cnn", '<div data-source="cnn-fear-greed" data-score="102"></div>')
 

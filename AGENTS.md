@@ -14,6 +14,8 @@ Latest correction handoff: [.ai-context/phases/phase-02/2026-11-27-03.md](.ai-co
 
 Latest UI correction: [.ai-context/phases/phase-02/2026-11-27-04.md](.ai-context/phases/phase-02/2026-11-27-04.md) supersedes the two-variable mode approach.
 
+Latest PizzINT correction: [.ai-context/phases/phase-02/2026-11-27-05.md](.ai-context/phases/phase-02/2026-11-27-05.md). Collect only DOUGHCON (API `defcon_level`, integer 1–5) with the minimal timestamp/provenance required to validate it. No other PizzINT metrics, map/restaurant collection, raw response persistence, HTML or manual fallback. The one-shot API probe does not mean the production worker/scheduler is deployed. Do not use DOUGHCON for automated trading.
+
 Use the existing Phase 0–8 numbering and original specification/contract/SEC acceptance criteria. A later Phase requires its dependency gates and user authorization. Development, fixture, paper, and LIVE approval are separate; no provider or brokerage calls without the required permission, and no direct order submissions from REST/MCP. Never store real credentials, tokens, account data, private keys, or raw tool transcripts.
 
 Update the phase log using [.ai-context/PHASE_LOG_TEMPLATE.md](.ai-context/PHASE_LOG_TEMPLATE.md) at entry, material milestones/errors, interruption, and exit. Include exact commands, real verification outcomes, failures and next actions. Keep CONTEXT synchronized while retaining historical specification. Do not claim unrun checks passed, and verify the saved commit/remote before reporting.

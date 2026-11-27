@@ -46,7 +46,7 @@ SOURCE_URLS = {
     "occ": "https://www.optionseducation.org/referencelibrary/expiration-calendar",
     "cme": "https://www.cmegroup.com/tools-information/calendars/expiration-calendar.html",
     "cnn": "https://edition.cnn.com/markets/fear-and-greed",
-    "pizzint": "https://www.pizzint.watch/",
+    "pizzint": "https://www.pizzint.watch/terms",
     "dramexchange": "https://www.dramexchange.com/",
     "seibro": "https://seibro.or.kr/websquare/control.jsp",
     "fixture": "https://github.com/ELSAPHABA/Auto-Axe",
@@ -56,7 +56,6 @@ MANUAL = {
     "DRAM_DDR5_RDIMM_32GB_SESSION_AVG": "USD/module",
     "CNN_FEAR_GREED": "index",
     "SEIBRO_OVS_STOCK_TOP50_SETTLEMENT": "USD",
-    "PENTAGON_PIZZA": "status",
     "VIX_INTRADAY": "index_point",
     "UST_2Y_INTRADAY": "percent",
     "UST_10Y_INTRADAY": "percent",
@@ -73,7 +72,6 @@ MANUAL_URLS = {
     "DRAM_DDR5_RDIMM_32GB_SESSION_AVG": "https://www.dramexchange.com/",
     "CNN_FEAR_GREED": "https://edition.cnn.com/markets/fear-and-greed",
     "SEIBRO_OVS_STOCK_TOP50_SETTLEMENT": "https://seibro.or.kr/",
-    "PENTAGON_PIZZA": "https://www.pizzint.watch/",
     "VIX_INTRADAY": "https://www.cboe.com/tradable_products/vix/",
     "UST_2Y_INTRADAY": "https://m.stock.naver.com/marketindex/bond/US2YT=RR",
 }
@@ -180,6 +178,19 @@ def catalog() -> dict[str, Series]:
         rows.append(
             Series(sid, sid, "manual:" + sid, sid, "manual_observation", unit, None, "manual", None)
         )
+    rows.append(
+        Series(
+            "PENTAGON_PIZZA_PIZZINT",
+            "PENTAGON_PIZZA_PIZZINT",
+            "pizzint",
+            "DOUGHCON",
+            "sentiment_level",
+            "level",
+            None,
+            "10m",
+            None,
+        )
+    )
     rows.extend(
         [
             Series(

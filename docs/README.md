@@ -49,5 +49,6 @@
 - [Phase 2 미완료 보강 세션 및 후속 인계](../.ai-context/phases/phase-02/2026-11-27-02.md)
 - [Phase 2 개인·교육·비영리 목적 정정 및 권한 분리](../.ai-context/phases/phase-02/2026-11-27-03.md)
 - [Phase 2 단일 최하단 고지 및 불필요한 모드 제거](../.ai-context/phases/phase-02/2026-11-27-04.md)
+- [Phase 2 PizzINT DOUGHCON 전용 수집 정정](../.ai-context/phases/phase-02/2026-11-27-05.md)
 - [개인·교육·비영리 데이터 사용 정책](./indicator-collection/PERSONAL_EDUCATIONAL_USE.md)
 - [개발 트러블슈팅 인덱스](./troubleshooting/README.md) — Phase별 재현·조사·원인·해결·검증

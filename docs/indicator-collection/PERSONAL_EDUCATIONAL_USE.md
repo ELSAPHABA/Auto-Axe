@@ -32,7 +32,7 @@
 - 서버의 `AUTOAXE_OWNER_SUBJECT_REF`는 개인 조회를 허용할 단일 OIDC `subject_ref`를 가리키는 인가 설정이다(사용자용 모드 아님). 일치하는 소유자 로그인/스코프와 공급자별 `allow_storage`·승인 근거를 모두 확인한다. 소유자가 아니거나 미설정이면 기존 `allow_redistribution` 확인을 유지한다.
 - 이전 `AUTOAXE_PRIVATE_EDUCATIONAL_MODE`와 `AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF` 두 변수는 폐기되었다. 개인 조회 여부를 공급자 수집·저장 권한이나 공개 배포 허가로 오인하지 않는다. 여러 사용자 공개 서비스로 목적이 변경되면 별도 설계·재배포 권한 검증이 필요하다.
 - `catalog.source_registry`는 외부 제공자별 승인/버전/증거가 기본 unverified이고, 이번 사용자 설명이 특정 공급자의 약관을 자동으로 approved로 변경하지 않는다.
-- PizzINT의 브로커 큐는 source_registry에서 **API에 한정해** 승인된 경우에만 허용하며, JSON 조회 helper는 고정 호스트·URL·TLS/DNS·응답 크기/타입을 검사한다. 실제 운영 worker·mTLS 배포는 별도 작업이고 이 변경으로 스케줄러를 켜지 않는다.
+- PizzINT의 브로커 큐는 source_registry에서 **DOUGHCON 공개 API에 한정해** 승인된 경우에만 허용한다. 고정 호스트·URL·TLS/DNS·응답 크기/타입을 검사하고 단계(1~5)와 최소 검증 정보만 반환한다. 원본 JSON 및 다른 지표는 보관하지 않는다. 실제 단발 API 검증은 완료됐으나 운영 worker·mTLS 배포 및 스케줄러는 아직 연결하지 않았다.
 
 ## 검증 상태
 

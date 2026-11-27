@@ -11,10 +11,11 @@ import json
 import socket
 import ssl
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any, Protocol
 from urllib.parse import urlsplit
 
-from autoaxe_scraper.policy import SourcePolicy
+from autoaxe_scraper.policy import SourcePolicy, fixed_target
 
 MAX_HTML_BYTES = 1_000_000
 MAX_JSON_BYTES = 262_144
@@ -142,21 +143,41 @@ def fetch_exact_html(
         raise SourceBlocked("unsupported HTML encoding") from exc
 
 
-def fetch_exact_json(
-    policy: SourcePolicy,
+def fetch_pizzint_doughcon(
     *,
     permit: Callable[[], None],
     resolve: Callable[..., list[tuple]] = socket.getaddrinfo,
     dial: Callable[[str, str], http.client.HTTPSConnection] = PinnedHTTPS,
 ) -> dict[str, Any]:
-    """Bounded public JSON API read. Never follow HTML fallbacks."""
-    body = _fetch_exact(policy, permit=permit, resolve=resolve, dial=dial, media="json")
+    """Return only DOUGHCON and minimal provenance from the fixed public API.
+
+    The provider sends a full dashboard response. Other fields are discarded
+    in memory and never returned, logged or persisted by this adapter.
+    """
+    body = _fetch_exact(
+        fixed_target("pizzint"), permit=permit, resolve=resolve, dial=dial, media="json"
+    )
     try:
         value: Any = json.loads(
             body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite JSON"))
         )
         if not isinstance(value, dict):
             raise ValueError("JSON object required")
-        return value
-    except (ValueError, UnicodeError) as exc:
-        raise SourceBlocked("invalid API JSON document") from exc
+        level = value.get("defcon_level")
+        stamp = value.get("timestamp")
+        if value.get("success") is not True or type(level) is not int or not 1 <= level <= 5:
+            raise ValueError("invalid DOUGHCON level")
+        if not isinstance(stamp, str):
+            raise ValueError("missing API timestamp")
+        source_at = datetime.fromisoformat(stamp)
+        if source_at.tzinfo is None or source_at > datetime.now(UTC):
+            raise ValueError("invalid API timestamp")
+        return {
+            "series_id": "PENTAGON_PIZZA_PIZZINT",
+            "value": str(level),
+            "source_event_at": source_at.astimezone(UTC).isoformat(),
+            "quality": "manual_review_required",
+            "automated_trading_allowed": False,
+        }
+    except (ValueError, UnicodeError, OverflowError) as exc:
+        raise SourceBlocked("invalid DOUGHCON API document") from exc

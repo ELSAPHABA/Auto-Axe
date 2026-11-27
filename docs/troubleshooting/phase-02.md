@@ -119,3 +119,8 @@
 - 서버 설정 단순화: 두 변수 선택형 모드를 폐기. 단일 서버 환경변수 `AUTOAXE_OWNER_SUBJECT_REF`와 현재 인증 OIDC subject 정확한 일치로 개인 소유자 조회를 식별. 공급자별 승인·저장 권한과 세션/스코프, 제3자 재배포 분리, 익명 조회 차단은 그대로 유지. 신규 환경변수가 미설정이면 기존의 재배포 허가 검사로 안전하게 폴백. `private_use.py`를 `owner_access.py`로 교체.
 - 실패 및 조치: 초기 strict mypy는 Optional subject/owner를 `hmac.compare_digest`에 그대로 전달하여 `AnyStr type-var` 오류 발생. 명시적 None/빈 문자열 가드 후 비교하도록 수정, 재검증.
 - 검증/잔여: React 단위+Playwright에서 최하단 문구 존재/불필요한 기존 푸터 부재, backend PostgreSQL 인증·권한·허가 조회, Ruff/mypy/CI 검증. 전체 결과는 최신 `.ai-context/phases/phase-02/2026-11-27-04.md`에 기재. 환경 설정은 사용자에게 UI 모드로 노출하지 않으며 실공급자 호출/실거래 배포는 별도 차단 상태.
+## TS-02-18 — PizzINT의 불필요한 수집 범위 제거
+- 증상/사용자 지시: PizzINT의 DOUGHCON 단계만 필요하며 Google Maps 및 기타 데이터 수집 내용을 모두 제거하라는 2026-11-27 요청. 기존 HTML parser와 별도 수동 항목, 범용 JSON 반환 함수 및 관련 명세가 과도한 범위였다.
+- 조사: 공개 GET /api/dashboard-data의 실제 HTTP 200 JSON에서 defcon_level(정수 1~5) 직접 제공 확인. DOUGHCON 산출 또는 다른 데이터 수집은 불필요. 실제 호출 두 번에서 응답 timestamp가 이전보다 이른 값으로도 반환되므로 신규 관측/갱신 보장으로 해석하지 않는다.
+- 수정: 고정 공개 API 전용 fetch_pizzint_doughcon으로 교체. 단계/응답시각/최소 검증 정보만 반환; 다른 필드는 폐기. HTML parser/수동 시리즈 제거, broker 후보 allowlist와 ledger 값/metadata 검증, 자동 주문 금지. 실패 시 대체값 생성 없음. 활성 문서에서 구 수집 방식을 제거하고 역사적 기록은 보존.
+- 재검증: scraper pytest 29 passed, strict mypy/Ruff 성공, 전용 어댑터 실제 공개 API 단발 조회 DOUGHCON 5 성공. 운영 스케줄/worker/mTLS는 기존 미배포. 자세한 backend/원격 검증 상태는 [최신 인계](../../.ai-context/phases/phase-02/2026-11-27-05.md) 참조.

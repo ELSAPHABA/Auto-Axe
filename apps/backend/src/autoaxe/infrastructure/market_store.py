@@ -88,6 +88,10 @@ def seed_catalog(conn: Connection[Any]) -> None:
 def gate(conn: Connection[Any], series_id: str, action: str = "storage") -> dict[str, Any]:
     if action not in {"storage", "fetch", "redistribution", "trading"}:
         raise ValueError("unsupported action")
+    if series_id == "PENTAGON_PIZZA":
+        raise PermissionDenied("retired PizzINT series")
+    if series_id == "PENTAGON_PIZZA_PIZZINT" and action == "trading":
+        raise PermissionDenied("DOUGHCON is informational only")
     with conn.cursor(row_factory=dict_row) as cur:
         row = cur.execute(
             """SELECT s.*, r.permission_status,r.enabled,r.free_only,r.allow_fetch,
@@ -167,6 +171,10 @@ def ingest(conn: Connection[Any], item: Candidate) -> tuple[str, int, bool]:
     series = catalog().get(item.series_id)
     if series is None:
         raise ValueError("unknown series")
+    if series.source_id == "pizzint" and (
+        item.value not in (None, "1", "2", "3", "4", "5") or item.metadata
+    ):
+        raise ValueError("DOUGHCON observations contain only the level and standard timestamps")
     if series.source_id.startswith("manual:") and item.quality.value != "manual_unverified":
         raise ValueError("manual observation must be unverified")
     conn.execute(
@@ -293,6 +301,8 @@ def set_permission(
     """Administrator-only; must never be exposed through an unauthenticated endpoint."""
     if source not in SOURCE_URLS or not evidence.strip():
         raise ValueError("missing source/permission evidence")
+    if source == "pizzint" and trading:
+        raise ValueError("DOUGHCON is informational only")
     conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ("source:" + source,))
     conn.execute(
         """UPDATE catalog.source_registry SET permission_status=%s,enabled=%s,
@@ -423,6 +433,7 @@ def review_manual(
     if (
         not row
         or row[1] != "manual_unverified"
+        or row[0] not in catalog()
         or not catalog()[row[0]].source_id.startswith("manual:")
     ):
         raise ValueError("not a manual observation")

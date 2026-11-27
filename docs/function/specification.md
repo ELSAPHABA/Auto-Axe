@@ -99,9 +99,9 @@ SEIBro는 국가·기간별 매수/매도/순매수 결제금액 USD를 수집�
 | FR-401 | DDR5 UDIMM 16GB 4800/5600 | DRAMeXchange Module Spot Price / Session Average |
 | FR-402 | DDR5 RDIMM 32GB 4800/5600 | 동일 표의 별도 행 / Session Average |
 | FR-403 | CNN 공포·탐욕 | CNN International Fear & Greed 지정 페이지 |
-| FR-404 | 펜타곤 피자지수 | PizzINT 지정 페이지 |
+| FR-404 | DOUGHCON (1~5) | PizzINT 공개 JSON API `defcon_level`만 수집 |
 
-DRAM은 두 독립 시계열을 유지하며 주간 원본 Last Update를 저장하고 일 1회 점검한다. 권한 확인 후 HTML 스크래핑, 단위 미확인 시 임의 확정 금지. CNN 및 PizzINT는 현재 수동 경로를 기본으로 하며 자동 수집은 명시적 허가 후에만 활성화한다. PizzINT 공개 JSON 응답 확인은 사용 허가를 뜻하지 않는다. 피자지수는 자동 주문 신호로 사용하지 않는다.
+DRAM은 두 독립 시계열을 유지하며 주간 원본 Last Update를 저장하고 일 1회 점검한다. 권한 확인 후 HTML 스크래핑, 단위 미확인 시 임의 확정 금지. CNN은 현재 수동 경로를 기본으로 하며 자동 수집은 명시적 허가 후에만 활성화한다. PizzINT는 공개 JSON API `GET /api/dashboard-data`의 DOUGHCON 단계만 수집하며 실패 시 대체값이나 수동 데이터를 생성하지 않는다. 자동 주문 신호로 사용하지 않는다.
 
 [DRAM 상세](../indicator-collection/DRAMeXchange_Module_Spot_Prices.md) · [수동 수집](../indicator-collection/Manual_Collection.md).
 

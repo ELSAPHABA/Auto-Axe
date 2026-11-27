@@ -14,7 +14,8 @@
 | 미국 주식·ETF | yfinance AsyncWebSocket day_volume, 별도 1Hz sampler, Ticker.history | 새 메시지 없음 상태·세션 리셋, 통합 시장 거래량 보장 없음 |
 | 기업 재무·기술 | Ticker.info, OHLCV, pandas rolling/EMA | point-in-time 이력, ETF 재무 필드 결측 |
 | 공식 경제·정책·가이던스 | httpx, feedparser, icalendar, lxml/XML/JSON | SEC EDGAR, BLS, FRED, EIA, Treasury, 중앙은행/거래소 공식 발표; API 키 무료 등록·권한 |
-| CNN F&G, PizzINT, SEIBro, DRAMeXchange, Naver 2Y | 승인 이후 Scrapling (Selector/Fetcher 우선, 필요한 정상 렌더링만 별도 검증) | 기본 비활성, 허가/수동 이용 범위 확인; 우회 금지 |
+| CNN F&G, SEIBro, DRAMeXchange, Naver 2Y | 승인 이후 Scrapling (Selector/Fetcher 우선, 필요한 정상 렌더링만 별도 검증) | 기본 비활성, 허가/수동 이용 범위 확인; 우회 금지 |
+| PizzINT DOUGHCON | 고정 HTTPS JSON GET, `defcon_level`만 정규화 | 1~5 정수, API timestamp 검증, 10분 조회 권장, 원본 payload 미보관, HTML/수동 폴백 없음 |
 | 수동 입력 | Pydantic DTO + 검수 UI/CSV import | 원본 URL·값·시각·입력자·단위·권한·검수, 자동으로 표기 금지 |
 
 SEIBro는 해외주식 TOP50 결제금액(매수/매도/순매수 USD)이며 전체 개인투자자 실시간 거래량이 아님. DRAM은 Module Spot Price의 DDR5 UDIMM 16GB 4800/5600 및 RDIMM 32GB 4800/5600 Session Average 두 시리즈만. 두바이유 전면 제외. 경제 발표 일정과 실제값/수정값/컨센서스는 별개 필드. 위칭은 공식 상품별 만기 일정에서 실제 3/4개 상품군 동시 만기로 판정.
@@ -35,7 +36,7 @@ SEIBro는 해외주식 TOP50 결제금액(매수/매도/순매수 USD)이며 전
 
 ScrapeRequest는 사용자 URL 대신 source_id, approved adapter version, 조회 기간/국가 등 정해진 enum/범위만 받는다. job broker를 통해 isolated scraper-worker가 받아 외부 도메인만 접근하고, 크기 제한된 typed ObservationCandidate와 source metadata를 검증 서비스에 반환한다. scraper에는 DB 직접 접근·NH credential·Docker socket·임의 파일 접근·내부망 접근 권한이 없다. 승인 취소는 새 작업 및 결과 반영을 차단한다. redirect, subresource, WebSocket, 다운로드, IPv4/IPv6 및 DNS 재해석을 포함한 egress 보안은 [전체 보안 설계](./security.md) §5를 따른다.
 
-대상별 계획: CNN/PizzINT/DRAM은 정적 파싱 우선, SEIBro WebSquare는 정상 렌더링 가능성 검증. 기존 수집 소스·상품·갱신 주기·수동 정책은 변경하지 않는다.합성 fixture로 parser/DOM 변경/오인식/권한 취소/redirect/SSRF 및 브라우저 격리 테스트 후에만 활성화한다.
+대상별 계획: CNN/DRAM은 정적 파싱 우선, SEIBro WebSquare는 정상 렌더링 가능성 검증. 합성 fixture로 parser/DOM 변경/오인식/권한 취소/redirect/SSRF 및 브라우저 격리 테스트 후에만 활성화한다. PizzINT는 Scrapling HTML 수집 대상에서 제외하고 공개 JSON API 전용 DOUGHCON 어댑터를 사용한다.
 
 ## 2. 파이프라인
 

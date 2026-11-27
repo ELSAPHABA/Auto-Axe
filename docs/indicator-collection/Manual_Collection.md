@@ -9,7 +9,6 @@
 | `DRAM_DDR5_UDIMM_16GB_SESSION_AVG` / `DRAM_DDR5_RDIMM_32GB_SESSION_AVG` | [DRAMeXchange](https://www.dramexchange.com/) Module Spot Price | 지정 Item, Session Average, 섹션 Last Update, 단위 확인 | 주간 발표 확인 | [명세](./DRAMeXchange_Module_Spot_Prices.md) |
 | `CNN_FEAR_GREED` | [CNN Fear & Greed](https://edition.cnn.com/markets/fear-and-greed) | `score` (0~100), `category`, 화면 기준시각·조회시각 | 정기 점검(예: 미국 장 중/종료 후) | CNN 제공 점수 vs 자체 심리지표 |
 | `SEIBRO_OVS_STOCK_TOP50_SETTLEMENT` | [SEIBro 해외주식 종목별내역 TOP50](https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921) | 국가·조회기간·조회기준일·매수결제/매도결제/순매수결제(USD), 종목코드·종목명·순위 | 결제 결과 게시 후 수동 조회 | **전체 시장 합계나 실시간 체결 데이터 아님.** [상세](./SEIBro_Overseas_Stock_Flows.md) |
-| `PENTAGON_PIZZA` | [PizzINT](https://www.pizzint.watch/) | 화면의 활동 상태/공개 지수(있는 경우), 측정시각·관찰 메모 | 필요시 | Google Maps 외부 축적 금지; 독립·검증된 경제지표 아님 |
 | `VIX_INTRADAY` | [Cboe VIX](https://www.cboe.com/tradable_products/vix/) | 표기된 VIX 수준, 사이트 시각·지연표시 | 장중값이 꼭 필요할 때 | 공식 Cboe **일별 CSV**와 별도 |
 | `UST_2Y_INTRADAY` | [네이버 지정 페이지](https://m.stock.naver.com/marketindex/bond/US2YT=RR) | 수익률 %, 원본 시각·지연 | | 네이버 실패/실행 불가 시에만 Treasury BC_2YEAR 임시 일별; 금리 선물로 대체 금지 |
 | `UST_10Y_INTRADAY` | [Treasury 공식 일별](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics) 외 수동 장중 수익률 출처 | 원본 출처, 현물/지표형, 10Y %, 화면 지연 | 장중 추적 필요 시 | 국채 현물 수익률 vs 선물 가격 |
@@ -54,6 +53,6 @@ CNN_FEAR_GREED,SENTIMENT,https://edition.cnn.com/markets/fear-and-greed,,2026-11
 
 ## 미지원·제약 상태
 
-- **피자:** Google Popular Times 수치용 무료 구조화 API 미확인. Google Maps 스크래핑으로 이 문제를 해결하지 않는다.
+- **PizzINT:** DOUGHCON만 공개 JSON API로 수집하며 수동 수집 항목은 없다. API 실패 시 미수집으로 처리한다.
 
-기본 시장가격은 Binance Spot BTC 및 금·은·구리·WTI·Brent 연동 영구선물이다. yfinance VIX·국채 3M/5Y/10Y/30Y는 지연 가능 지표이며 주식·ETF 지정 데이터에도 사용한다. 수동 WTI/Brent 실제 만기선물 및 현물, Yahoo 비교값은 Binance 계약과 독립 시계열이다. 네이버 2Y 최우선, 자동 수집은 허가 전 비활성; 실패/실행 불가 시에만 Treasury BC_2YEAR 임시 일별 fallback. CNN/PizzINT/SEIBro/DRAM의 자동·수동 저장 및 활용 모두 권한 범위를 확인한다. PizzINT는 자동 주문 신호에서 제외한다.
+기본 시장가격은 Binance Spot BTC 및 금·은·구리·WTI·Brent 연동 영구선물이다. yfinance VIX·국채 3M/5Y/10Y/30Y는 지연 가능 지표이며 주식·ETF 지정 데이터에도 사용한다. 수동 WTI/Brent 실제 만기선물 및 현물, Yahoo 비교값은 Binance 계약과 독립 시계열이다. 네이버 2Y 최우선, 자동 수집은 허가 전 비활성; 실패/실행 불가 시에만 Treasury BC_2YEAR 임시 일별 fallback. CNN/SEIBro/DRAM의 자동·수동 저장 및 활용 모두 권한 범위를 확인한다.

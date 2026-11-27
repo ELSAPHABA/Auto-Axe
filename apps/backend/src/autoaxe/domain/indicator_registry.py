@@ -162,12 +162,12 @@ STATIC = (
     ),
     IndicatorDefinition(
         "PENTAGON_PIZZA_PIZZINT",
-        "Pentagon Pizza Index",
+        "DOUGHCON",
         "sentiment",
         "pizzint",
-        "status",
-        "unknown",
-        "자동 주문 신호 금지",
+        "level",
+        "10m",
+        "PizzINT 공개 API 단계(1~5); 자동 주문 신호 금지",
     ),
     IndicatorDefinition(
         "SEIBRO_TOP50_USD",

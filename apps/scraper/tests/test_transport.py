@@ -6,7 +6,7 @@ from autoaxe_scraper.policy import SOURCES, SourcePolicy
 from autoaxe_scraper.transport import (
     SourceBlocked,
     fetch_exact_html,
-    fetch_exact_json,
+    fetch_pizzint_doughcon,
     public_addresses,
 )
 
@@ -136,15 +136,24 @@ def test_bounded_body_redirect_compression_and_lease_revocation():
 
 def test_pizzint_uses_documented_public_json_api_only():
     assert SOURCES["pizzint"].url == "https://www.pizzint.watch/api/dashboard-data"
-    payload = b'{"overall_index":34,"timestamp":"2026-11-27T00:00:00Z"}'
+    payload = (
+        b'{"success":true,"defcon_level":5,"timestamp":"2026-11-27T00:00:00Z",'
+        b'"overall_index":34,"active_spikes":3,"data":[{"name":"discard"}],'
+        b'"events":[{"details":"discard"}],"defcon_details":{"label":"discard"}}'
+    )
     conn = FakeConnection(FakeResponse(payload, content_type="application/json"))
-    result = fetch_exact_json(
-        SOURCES["pizzint"],
+    result = fetch_pizzint_doughcon(
         permit=lambda: None,
         resolve=lambda *_a, **_kw: address("8.8.8.8"),
         dial=lambda host, ip: conn,
     )
-    assert result["overall_index"] == 34
+    assert result == {
+        "series_id": "PENTAGON_PIZZA_PIZZINT",
+        "value": "5",
+        "source_event_at": "2026-11-27T00:00:00+00:00",
+        "quality": "manual_review_required",
+        "automated_trading_allowed": False,
+    }
     assert conn.requests[0][0:2] == ("GET", "/api/dashboard-data")
     assert conn.requests[0][2]["Accept"] == "application/json"
     assert conn.closed
@@ -156,6 +165,8 @@ def test_pizzint_uses_documented_public_json_api_only():
         (b"<html/>", "text/html", 200),
         (b'{"a":NaN}', "application/json", 200),
         (b'{"a":1}', "application/json", 302),
+        (b"{}", "application/json", 403),
+        (b"{}", "application/json", 429),
         (b"[" + b"0," * 131072 + b"0]", "application/json", 200),
         (b"null", "application/json", 200),
     ],
@@ -163,10 +174,46 @@ def test_pizzint_uses_documented_public_json_api_only():
 def test_pizzint_invalid_json_never_falls_back_to_html(body, content_type, status):
     conn = FakeConnection(FakeResponse(body, content_type=content_type), status)
     with pytest.raises(SourceBlocked):
-        fetch_exact_json(
-            SOURCES["pizzint"],
+        fetch_pizzint_doughcon(
             permit=lambda: None,
             resolve=lambda *_a, **_kw: address("8.8.8.8"),
             dial=lambda host, ip: conn,
         )
     assert conn.closed
+
+
+@pytest.mark.parametrize("level", [None, True, False, "5", 0, 6, 4.5])
+def test_pizzint_rejects_invalid_levels(level):
+    import json
+
+    body = json.dumps(
+        {"success": True, "defcon_level": level, "timestamp": "2026-11-27T00:00:00Z"}
+    ).encode()
+    conn = FakeConnection(FakeResponse(body, content_type="application/json"))
+    with pytest.raises(SourceBlocked):
+        fetch_pizzint_doughcon(
+            permit=lambda: None,
+            resolve=lambda *_a, **_kw: address("8.8.8.8"),
+            dial=lambda host, ip: conn,
+        )
+    assert conn.closed
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b'{"success":false,"defcon_level":5,"timestamp":"2026-11-27T00:00:00Z"}',
+        b'{"success":true,"timestamp":"2026-11-27T00:00:00Z"}',
+        b'{"success":true,"defcon_level":5}',
+        b'{"success":true,"defcon_level":5,"timestamp":"2026-11-27T00:00:00"}',
+        b'{"success":true,"defcon_level":5,"timestamp":"2999-01-01T00:00:00Z"}',
+    ],
+)
+def test_pizzint_no_default_or_guessed_timestamp(payload):
+    conn = FakeConnection(FakeResponse(payload, content_type="application/json"))
+    with pytest.raises(SourceBlocked):
+        fetch_pizzint_doughcon(
+            permit=lambda: None,
+            resolve=lambda *_a, **_kw: address("8.8.8.8"),
+            dial=lambda host, ip: conn,
+        )

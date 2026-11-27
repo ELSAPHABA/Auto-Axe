@@ -208,7 +208,7 @@
 | 시장 가격 | BTC 현물, 금·은·구리·WTI·Brent 연동 영구선물, Nasdaq100 연동 신호 |
 | 시장 지표 | VIX, 미국 국채 3M/2Y/5Y/10Y/30Y, Binance 롱숏 및 Taker 통계 |
 | 경제·이벤트 | Fed/BOJ/BoE/ECB, 미국 경제 발표 예정·실제·이전·전망, 트리플/쿼드러플 위칭·DTE |
-| 산업·심리 | DRAM DDR5 16GB/32GB, CNN 공포·탐욕, PizzINT, SEIBro TOP50 결제 통계 |
+| 산업·심리 | DRAM DDR5 16GB/32GB, CNN 공포·탐욕, DOUGHCON (1~5), SEIBro TOP50 결제 통계 |
 | 즐겨찾기 | 사용자 선택 종목·지표 (UI 설계 제안) |
 | 금요일 종가매수 | 별도 전략 카테고리, 월요일 상승 확률·수익률·위험·주간 패턴·모델 검증 및 Workflow 연동 |
 | 매매 Workflow | 분기 가능한 조건·트리거·논리·재사용 Workflow·매수/매도 블록 및 전체 중단; ComfyUI/n8n 스타일 캔버스, 실행 상태 및 조건 충족 현황 |

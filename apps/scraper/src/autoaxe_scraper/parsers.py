@@ -113,22 +113,6 @@ def parse_cnn(html: str) -> dict[str, Any]:
     }
 
 
-def parse_pizzint(html: str) -> dict[str, Any]:
-    blocks = Selector(html).css('[data-source="pizzint-status"]')
-    if len(blocks) != 1:
-        raise SchemaChanged("PizzINT widget not verified")
-    status = blocks[0].attrib.get("data-status")
-    if status not in ("low", "normal", "elevated", "unknown"):
-        raise SchemaChanged("unknown PizzINT category")
-    return {
-        "series_id": "PENTAGON_PIZZA_PIZZINT",
-        "status": status,
-        "quality": "manual_review_required",
-        "automated_trading_allowed": False,
-        "source_event_at": None,
-    }
-
-
 def parse_naver(html: str) -> dict[str, Any]:
     blocks = Selector(html).css('[data-symbol="US2YT=RR"]')
     if len(blocks) != 1:
@@ -194,15 +178,14 @@ def parse_seibro(html: str, *, country: str, period: str, basis: str) -> list[di
 
 
 def parse_offline(source: str, html: str, params: dict[str, str] | None = None) -> Any:
-    fixed_target(source)
+    if fixed_target(source).api_only:
+        raise SchemaChanged("API-only source has no HTML parser")
     if len(html.encode("utf-8")) > 2_000_000:
         raise ValueError("HTML exceeds source limit")
     if source == "dramexchange":
         return parse_dram(html)
     if source == "cnn":
         return parse_cnn(html)
-    if source == "pizzint":
-        return parse_pizzint(html)
     if source == "naver":
         return parse_naver(html)
     if source == "seibro":

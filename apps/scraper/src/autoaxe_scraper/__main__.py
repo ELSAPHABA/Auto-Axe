@@ -10,7 +10,7 @@ from autoaxe_scraper.policy import SOURCES
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Offline parser fixture")
-    parser.add_argument("source", choices=sorted(SOURCES))
+    parser.add_argument("source", choices=sorted(s for s, p in SOURCES.items() if not p.api_only))
     parser.add_argument("html", type=Path)
     args = parser.parse_args()
     if args.html.stat().st_size > 2_000_000:

@@ -22,7 +22,7 @@ from autoaxe.domain.market import Candidate
 from autoaxe.entrypoints.api import create_app
 from autoaxe.infrastructure.db_bootstrap import provision
 from autoaxe.infrastructure.event_store import persist_event, query_events
-from autoaxe.infrastructure.market_store import PermissionDenied, ingest, set_permission
+from autoaxe.infrastructure.market_store import PermissionDenied, gate, ingest, set_permission
 from autoaxe.infrastructure.official_quota import reserve_bls_v1
 from autoaxe.infrastructure.sessions import authorize, create_session, revoke, rotate
 
@@ -199,6 +199,60 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             ]
             api_job = submit(conn, "pizzint", {}, "api-only-allowed", new_deadline)
             assert api_job
+            pizza_lease = claim(conn, source="pizzint")
+            assert pizza_lease is not None and pizza_lease.job_id == api_job
+            doughcon = {
+                "series_id": "PENTAGON_PIZZA_PIZZINT",
+                "value": "5",
+                "source_event_at": datetime.now(UTC).isoformat(),
+                "quality": "manual_review_required",
+                "automated_trading_allowed": False,
+            }
+            for bad in (
+                [],
+                [{**doughcon, "value": "0"}],
+                [{**doughcon, "data": [{"name": "must not persist"}]}],
+                [{**doughcon, "automated_trading_allowed": True}],
+                [{**doughcon, "source_event_at": "2026-11-27T00:00:00"}],
+                [doughcon, doughcon],
+            ):
+                with pytest.raises(ValueError):
+                    complete(
+                        conn, api_job, "pizzint", pizza_lease.lease_token, pizza_lease.nonce, bad
+                    )
+            assert (
+                complete(
+                    conn, api_job, "pizzint", pizza_lease.lease_token, pizza_lease.nonce, [doughcon]
+                )
+                == "quarantined"
+            )
+            saved = conn.execute(
+                "SELECT payload FROM ops.scrape_results WHERE job_id=%s", (api_job,)
+            ).fetchone()[0]
+            assert saved["candidates"] == [doughcon]
+            with pytest.raises(PermissionDenied, match="informational only"):
+                gate(conn, "PENTAGON_PIZZA_PIZZINT", "trading")
+            with pytest.raises(PermissionDenied, match="retired"):
+                gate(conn, "PENTAGON_PIZZA")
+            pizza_at = datetime.now(UTC)
+            for wrong_value, metadata in (
+                ("0", {}),
+                ("6", {}),
+                ("5", {"data": "must not persist"}),
+            ):
+                with pytest.raises(ValueError, match="only the level"):
+                    ingest(
+                        conn,
+                        Candidate(
+                            "PENTAGON_PIZZA_PIZZINT",
+                            "reject-extra",
+                            wrong_value,
+                            pizza_at,
+                            pizza_at,
+                            pizza_at,
+                            metadata=metadata,
+                        ),
+                    )
 
         # Authorized event persistence must not imply public redistribution rights.
         event = EventRevision(

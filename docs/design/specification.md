@@ -90,7 +90,8 @@ Binance Spot BTCUSDT 및 TradFi Futures 5종은 독립 상품으로 구독한다
 | 실제 발표·정책 결정 | 예정 시각 전후 집중, 호출 제한 준수 |
 | 만기·위칭 | 주간 및 변경 공지, 해당 주 일별 확인 |
 | DRAM 모듈 | 일 1회 점검, 주간 원본 갱신만 적재 |
-| SEIBro·CNN·PizzINT·네이버 | 권한에 따른 수동 또는 승인형 수집 |
+| SEIBro·CNN·네이버 | 권한에 따른 수동 또는 승인형 수집 |
+| PizzINT DOUGHCON | 공개 JSON API의 단계(1~5)만 승인형 수집, 대체 없음 |
 
 주기는 프로젝트 제안이며 공급자의 갱신 보장이 아니다. [상세 정책](../indicator-collection/Free_Data_Collection.md).
 

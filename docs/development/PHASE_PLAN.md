@@ -75,7 +75,7 @@ Exit: FR-001~007 및 해당 시장 수집 계약, PoC parity(동일 입력 대�
 | P2.3 | Nasdaq/경제/정책 | MEXC NAS100_USDT 후보 Protobuf 전환 예정 2026-12-01 재검증, Binance QQQUSDT 별도, Yahoo NQ=F 지연 CME; BLS/BEA/Census/FOMC 일정 및 actual/revision 분리, Fed target range/FRED, BOJ 목표 vs 실효, BoE IUDBEDR, ECB DFR |
 | P2.4 | 캘린더/가이던스 | SEC EDGAR 8-K/Exhibit 99.1/IR, GAAP/adjusted, fiscal period·low/high·first_seen_at; OCC/CME/Cboe/Binance Options 만기, nominal/last_trade/processing/settlement, 4 family YES/NO/UNKNOWN triple/quad 판정, DTE 실제 세션 |
 | P2.5 | 격리 Scrapling | private broker FastAPI mTLS claim/heartbeat/result, source_id allowlist, lease/fencing/nonce/deadline/size/schema/revoke, worker DB/거래 비밀 없음, sandbox/egress/private IP/DNS/redirect/subresource 방어. HTTP 우선, 필요한 정상 렌더링만 승인; Playwright는 UI E2E 직접 사용 |
-| P2.6 | 승인형 산업/심리 | CNN 지정 URL score/category, PizzINT 지정 URL 수동/권한, 자동 주문 신호 금지; SEIBro TOP50 USD 결제(매수/매도/순매수, 기간/국가, 전체 시장 아님); DRAM DDR5 UDIMM 16GB 4800/5600, RDIMM 32GB 4800/5600, Module Spot Price Session Average/Last Update GMT+8; Naver 2Y 실제 승인형 parser; 미승인/실패는 null/manual/quarantine |
+| P2.6 | 승인형 산업/심리 | CNN 지정 URL score/category; PizzINT 공개 JSON API DOUGHCON(`defcon_level` 1~5)만, 10분 조회 권장, 실패 시 미수집, 자동 주문 신호 금지; SEIBro TOP50 USD 결제(매수/매도/순매수, 기간/국가, 전체 시장 아님); DRAM DDR5 UDIMM 16GB 4800/5600, RDIMM 32GB 4800/5600, Module Spot Price Session Average/Last Update GMT+8; Naver 2Y 실제 승인형 parser; 미승인/실패는 null/manual/quarantine |
 | P2.7 | 대시보드 및 상세 | Live3x 레퍼런스의 dark token/시장 온도계/시세카드/sparkline/글로벌 롱숏 토글/RatioBar 및 4종 상세/캔들·거래량·SMA/EMA·고저가/지표·일정·품질/공급원 정의; React Router, Query/Zustand, Lightweight Charts/ECharts, Table/Virtual, RHF/Zod, responsive/accessibility |
 | P2.8 | 실시간 UI | SSE ready→buffer→REST snapshot→version delta, gap/overflow/reconnect/권한 폐기→resync, heartbeat/세션/모드별 cache, UI coalescing만 허용, polling fallback; 실제 화면 Vitest/Playwright 및 contract |
 
@@ -177,7 +177,7 @@ FR-001~007 → P1/P2, FR-101~111 → P1/P2, FR-201~211 → P2, FR-301~310 → P2
 |---|---|---|
 | R01 | Python/Node/nhplug/MCP/Scrapling 버전 교집합, 라이선스, sandbox | 0, 2, 5, 6 |
 | R02 | source별 자동 조회/저장/재배포/거래 권리·호출 제한, MEXC 전환 및 NVDA/QLD WS 실측, VIX TTL 충족 | 1–2, 7 |
-| R03 | CNN/PizzINT/SEIBro/DRAM/Naver 스크래핑 허가와 DOM·시간·단위/수동 검수; Cboe dashboard 자동 추출 금지 | 2 |
+| R03 | CNN/SEIBro/DRAM/Naver 스크래핑 허가와 DOM·시간·단위/수동 검수; PizzINT DOUGHCON 공개 API 범위·스키마 검증; Cboe dashboard 자동 추출 금지 | 2 |
 | R04 | point-in-time history와 모델 최소 표본/기준 모델/임계값/뉴스 모델 권한 | 4 |
 | R05 | 정확한 NH master parsing, 주문 API/계좌/상품/모의 지원·수수료·한도·idempotency/대사 | 5 |
 | R06 | MCP revision/host interoperability, OAuth registration/audience, 외부 정책 | 0, 6 |

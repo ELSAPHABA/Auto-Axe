@@ -106,7 +106,8 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 | Treasury/EIA/Cboe | 게시 완료 후 일별 | 늦은 수정/빈값 탐지 |
 | Fed/BOJ/ECB RSS, BoE 결정 | 평시 수분~시간 간격, 발표 시 집중 | headline → 결정문 본문 → 수치/발효일 검증 |
 | OCC/CME 만기/휴장 | 주간, 긴급 변경 공지 | 계약별 명목 만기·처리일 변경 검증 |
-| CNN/Pizza/2Y 장중 | 자동 수집 불가 시 수동 | |
+| CNN/2Y 장중 | 자동 수집 불가 시 수동 | |
+| PizzINT DOUGHCON | 공개 JSON API, `defcon_level`(1~5)만 | 실패 시 미수집, 대체 없음 |
 
 구독이 없는 정적 원본을 매초 호출하지 않는다. 공식 무료 API의 권리·요금·호출량과 문서화를 주기적으로 재검토한다.
 

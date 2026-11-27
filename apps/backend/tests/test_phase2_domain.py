@@ -34,6 +34,14 @@ def test_all_indicator_catalog_is_registered_without_claiming_permission():
     assert len(rows) >= 90 and len({x.id for x in rows}) == len(rows)
     assert next(x for x in rows if x.id == "NASDAQ100_MEXC_PERP_USDT").source_id == "mexc"
     assert any(x.id == "DRAM_DDR5_RDIMM_AUTO" and x.unit == "unverified" for x in rows)
+    pizza = [x for x in rows if "PENTAGON_PIZZA" in x.id or x.source_id == "pizzint"]
+    assert len(pizza) == 1
+    assert (pizza[0].id, pizza[0].label, pizza[0].unit, pizza[0].cadence) == (
+        "PENTAGON_PIZZA_PIZZINT",
+        "DOUGHCON",
+        "level",
+        "10m",
+    )
 
 
 def test_technical_features_no_partial_bars_or_holiday_padding():

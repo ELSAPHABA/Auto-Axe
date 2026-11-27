@@ -200,6 +200,25 @@ def complete(
     verify_connection(conn, write=True)
     if source not in SOURCES or adapter_version != 1 or len(candidates) > 100:
         raise ValueError("unknown source/version or oversized candidate batch")
+    if source == "pizzint":
+        # Reject unrelated fields even if an old or misbehaving worker sends them.
+        # A failed collection must not manufacture a DOUGHCON 5 observation.
+        if len(candidates) != 1:
+            raise ValueError("expected exactly one DOUGHCON candidate")
+        item = candidates[0]
+        if (
+            not isinstance(item, dict)
+            or set(item)
+            != {"series_id", "value", "source_event_at", "quality", "automated_trading_allowed"}
+            or item["series_id"] != "PENTAGON_PIZZA_PIZZINT"
+            or item["value"] not in ("1", "2", "3", "4", "5")
+            or item["automated_trading_allowed"] is not False
+            or not isinstance(item["source_event_at"], str)
+        ):
+            raise ValueError("invalid DOUGHCON candidate")
+        stamp = datetime.fromisoformat(item["source_event_at"])
+        if stamp.tzinfo is None or stamp > datetime.now(stamp.tzinfo):
+            raise ValueError("invalid DOUGHCON API timestamp")
     for item in candidates:
         if (
             not isinstance(item, dict)

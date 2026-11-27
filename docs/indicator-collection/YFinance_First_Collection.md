@@ -35,7 +35,7 @@
 ## yfinance를 적용하지 않는 지표
 
 - **CNN 공탐지수**: [edition.cnn.com](https://edition.cnn.com/markets/fear-and-greed) 원본을 수동 기록. Yahoo/yfinance 대응 원본 점수 심볼 없음;
-- **PizzINT 피자지수**: [pizzint.watch](https://www.pizzint.watch/) 지정 출처; `/api/dashboard-data` 응답 확인. Yahoo/yfinance에서 동일 원본 수치 제공 안 함.
+- **PizzINT DOUGHCON**: [공개 JSON API](https://www.pizzint.watch/api/dashboard-data)의 `defcon_level`(1~5)만 수집. Yahoo/yfinance 대체 없음.
 - **기업 가이던스**: SEC EDGAR 8-K/기업 IR RSS; Yahoo 금융 실적 추정값과 기업 자체 forward guidance 혼동 금지.
 - **경제지표 발표·실제값**: BLS·BEA·Fed/중앙은행의 공식 무료 ICS·RSS·JSON/HTML 원문.
 - **파생 만기 달력**: OCC·CME 공식 공개 캘린더; Yahoo의 선물 quote만으로 상품별 실제 만기 확정 불가.
