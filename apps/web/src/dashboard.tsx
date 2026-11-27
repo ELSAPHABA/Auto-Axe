@@ -15,6 +15,11 @@ import {
 } from "./api";
 import { useAuthorizedSnapshot } from "./authorized-live";
 import { SnapshotGate, type Delta, type LiveStatus } from "./live";
+import {
+  CorporateGuidancePanel,
+  ExpiryCalendarPanel,
+  SeibroPanel,
+} from "./reviewed-panels";
 import { useUi, type RatioKind } from "./store";
 
 const FixtureChart = lazy(() =>
@@ -500,6 +505,8 @@ function OfficialEventsPanel() {
                 <th scope="col">Actual</th>
                 <th scope="col">Forecast</th>
                 <th scope="col">Revision</th>
+                <th scope="col">예정 (UTC)</th>
+                <th scope="col">실제 발표 (UTC)</th>
                 <th scope="col">최초 관측 (UTC)</th>
                 <th scope="col">원본</th>
               </tr>
@@ -521,6 +528,8 @@ function OfficialEventsPanel() {
                   </td>
                   <td>{event.forecast ?? "—"}</td>
                   <td>{event.revision}</td>
+                  <td>{event.scheduled_at ?? "—"}</td>
+                  <td>{event.released_at ?? "—"}</td>
                   <td>{event.first_seen_at}</td>
                   <td>
                     <a
@@ -615,6 +624,9 @@ export function DashboardHome() {
         ))}
       <RatioPanel rows={data} />
       <OfficialEventsPanel />
+      <CorporateGuidancePanel />
+      <ExpiryCalendarPanel />
+      <SeibroPanel />
       <section className="section-block">
         <div className="section-title">
           <div>

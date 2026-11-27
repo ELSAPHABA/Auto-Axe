@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from autoaxe.adapters.authorized_dashboard import router as authorized_dashboard_router
 from autoaxe.adapters.authorized_market_api import router as authorized_market_router
+from autoaxe.adapters.authorized_seibro import router as authorized_seibro_router
 from autoaxe.adapters.contracts import (
     ErrorDetail,
     ErrorEnvelope,
@@ -27,6 +28,8 @@ from autoaxe.adapters.contracts import (
     QuoteResponse,
 )
 from autoaxe.adapters.dashboard_api import router as dashboard_router
+from autoaxe.adapters.expiry_api import router as expiry_router
+from autoaxe.adapters.guidance_api import router as guidance_router
 from autoaxe.adapters.market_api import router as market_router
 from autoaxe.adapters.official_events_api import router as official_events_router
 from autoaxe.application.fixtures import get_quote
@@ -167,7 +170,10 @@ def create_app() -> FastAPI:
     api.include_router(market_router)
     api.include_router(dashboard_router)
     api.include_router(official_events_router)
+    api.include_router(guidance_router)
+    api.include_router(expiry_router)
     api.include_router(authorized_market_router)
+    api.include_router(authorized_seibro_router)
     api.include_router(authorized_dashboard_router)
     api.include_router(auth_router)
     return api

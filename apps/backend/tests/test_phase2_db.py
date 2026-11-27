@@ -21,9 +21,17 @@ from autoaxe.application.scrape_broker import (
     submit,
 )
 from autoaxe.domain.calendars import EventRevision
+from autoaxe.domain.canonical import canonical_sha256
 from autoaxe.domain.market import Candidate
+from autoaxe.domain.reviewed_documents import extract_boj_policy, extract_guidance
 from autoaxe.entrypoints.api import create_app
 from autoaxe.infrastructure.db_bootstrap import provision
+from autoaxe.infrastructure.document_store import (
+    candidate_payload,
+    promote_review,
+    query_guidance,
+    record_review,
+)
 from autoaxe.infrastructure.event_store import persist_event, query_events
 from autoaxe.infrastructure.market_store import PermissionDenied, gate, ingest, set_permission
 from autoaxe.infrastructure.official_quota import reserve_bls_v1
@@ -620,6 +628,116 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             "VIX"
             not in read_snapshot(authenticated_sid, "test", touch=False).snapshot.meta.versions
         )
+        # Official source document reviews are separate from runtime ingestion.
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            db_now = conn.execute("SELECT clock_timestamp()").fetchone()[0]
+            captured = min(datetime.now(UTC), db_now) - timedelta(minutes=2)
+            for source in ("boj", "sec_edgar"):
+                set_permission(
+                    conn,
+                    source,
+                    approved=True,
+                    evidence="fixture document review",
+                    fetch=True,
+                    storage=True,
+                    redistribution=False,
+                )
+        policy = extract_boj_policy(
+            "Bank of Japan\n\nThe board adopted the guideline for market operations.\n\n"
+            "The Bank will encourage the uncollateralized overnight call rate "
+            "to remain at around 0 to 0.1 percent.",
+            "https://www.boj.or.jp/en/mopo/mpmdeci/state_2024/k240319a.htm",
+            captured,
+        )
+        company = extract_guidance(
+            "FY2027Q2 GAAP revenue outlook: 10 to 12 USD billion.",
+            "https://www.sec.gov/Archives/edgar/data/1045810/000104581024000113/exhibit.htm",
+            "0001045810",
+            "0001045810-24-000113",
+            captured,
+        )
+        with psycopg.connect(market) as conn:
+            with pytest.raises(InsufficientPrivilege):
+                record_review(
+                    conn,
+                    company,
+                    expected_hash=canonical_sha256(candidate_payload(company)),
+                    reviewer_ref="fixture",
+                    evidence_ref="fixture",
+                )
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            with pytest.raises(ValueError, match="hash changed"):
+                record_review(
+                    conn,
+                    company,
+                    expected_hash="0" * 64,
+                    reviewer_ref="fixture",
+                    evidence_ref="fixture",
+                )
+            company_review = record_review(
+                conn,
+                company,
+                expected_hash=canonical_sha256(candidate_payload(company)),
+                reviewer_ref="fixture reviewer",
+                evidence_ref="synthetic filing exhibit",
+            )
+            policy_review = record_review(
+                conn,
+                policy,
+                expected_hash=canonical_sha256(candidate_payload(policy)),
+                reviewer_ref="fixture reviewer",
+                evidence_ref="synthetic decision",
+            )
+        with psycopg.connect(market_read) as conn:
+            before_promotion = conn.execute("SELECT clock_timestamp()").fetchone()[0]
+            assert query_guidance(conn, cutoff=before_promotion, private_use=True) == []
+        with psycopg.connect(market) as conn:
+            assert promote_review(conn, company_review) == "promoted"
+            assert promote_review(conn, company_review) == "duplicate"
+            assert promote_review(conn, policy_review) == "promoted"
+        with psycopg.connect(market_read) as conn:
+            cutoff = conn.execute("SELECT clock_timestamp()").fetchone()[0]
+            assert query_guidance(conn, cutoff=before_promotion, private_use=True) == []
+            assert query_guidance(conn, cutoff=cutoff, private_use=False) == []
+            assert query_guidance(conn, cutoff=cutoff, private_use=True)[0]["low"] == 10_000_000_000
+            rows = query_events(conn, cutoff=cutoff, source_id="boj", private_use=True)
+            assert {r.event_key: r.actual for r in rows} == {
+                "BOJ_POLICY_TARGET_LOWER:2024-03-19": "0",
+                "BOJ_POLICY_TARGET_UPPER:2024-03-19": "0.1",
+            }
+        guidance_route = "/api/v1/dashboard/corporate-guidance"
+        assert api.get(guidance_route).status_code == 401
+        assert (
+            api.get(guidance_route, cookies={"__Host-autoaxe-sid": authenticated_sid}).json()[
+                "data"
+            ]
+            == []
+        )
+        monkeypatch.setenv("AUTOAXE_OWNER_SUBJECT_REF", "https://idp.example/realms/a|fixture-1")
+        assert (
+            api.get(guidance_route, cookies={"__Host-autoaxe-sid": authenticated_sid}).json()[
+                "data"
+            ][0]["basis"]
+            == "GAAP"
+        )
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "sec_edgar",
+                approved=False,
+                evidence="fixture revoke",
+                fetch=False,
+                storage=False,
+            )
+        assert (
+            api.get(guidance_route, cookies={"__Host-autoaxe-sid": authenticated_sid}).json()[
+                "data"
+            ]
+            == []
+        )
+        with psycopg.connect(market) as conn:
+            with pytest.raises(PermissionDenied):
+                promote_review(conn, company_review)
         with psycopg.connect(app_runtime) as conn:
             revoke(conn, authenticated_sid)
         assert (

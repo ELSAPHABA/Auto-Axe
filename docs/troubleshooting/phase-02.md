@@ -167,3 +167,18 @@
 ## TS-02-28 — 단순 SSE invalidation에서 durable version replay로 전환
 - 이전 구현은 2초 polling 후 변경 알림만 제공하여 다수의 중간 version을 구별하지 못함. 실제 ledger range 조회와 최대 256 version, 연속성 및 overflow/reset 검사 추가. 프런트 버퍼가 gap 뒤 남은 이벤트를 무시하지 않고 계속 처리할 위험도 제거. REST snapshot 권한/quality 계약 유지.
 - BOJ 어댑터 추가 시 Ruff I001 import 순서 위반은 순서 수정으로 해결. 전체 정적 검사/회귀는 [session 09](../../.ai-context/phases/phase-02/2026-11-27-09.md) 참조. 운영 long soak와 실제 source 수집 검증은 미완료.
+
+## TS-02-29 — 검수형 수동 자료의 fetch 권한 결합
+- 증상: 기존 source registry의 enabled 조건에는 fetch와 storage가 함께 필요. 수동 OCC/CME·SEIBro까지 generic worker permission을 사용하면 보관만 승인된 자료를 처리하려고 자동 수집을 활성화해야 하는 문제가 생김.
+- 수정: 수동 전용 typed 경로에 승인/free_only/storage/evidence/current version 및 기존 audience gate를 적용하고 generic broker fetch 조건은 유지. 실제 자동 수집을 허용하지 않고 수동 capture/검수/조회 가능. 신규 migration 0011/0012; DB role 및 PIT 테스트 추가.
+- 운영 browser/DOM/거래소 원본 일정은 미검증. 저장 허가 자체를 코드로 임의 생성하지 않음.
+
+## TS-02-30 — 신규 검수 API와 프런트 테스트 정적/시간 경계
+- 초기 Ruff E501 및 mypy unused-ignore/union type, MEXC B023은 길이·Pydantic/타입 주석·loop closure 수정. Ruff 전체 108 files, strict mypy 74 source files 및 schema check 통과.
+- 기존 authorized events/ratio 테스트에 새 패널 assertions를 한 번에 추가하여 5초 전체 제한에서 timeout 발생. 기존/신규 UI 검증을 독립 테스트로 분리하고 SEIBro empty response mock 명시. 재실행 Vitest 8 passed (기존 테스트 4.631s, 새 패널 테스트 2.005s). 실제 API/IdP/공급자 검증은 아님.
+- 최종 통합 재검증과 잔여 사항은 [session 10](../../.ai-context/phases/phase-02/2026-11-27-10.md) 참조.
+
+## TS-02-31 — 첫 전체 백엔드 실행의 두 통합 테스트 실패
+- 증상: 177 passed/2 failed/19 warnings/327.53s. Phase1 scheduler 300초 경계에서 24/1 기대값 대신 0/0. SEIBro는 read-only typed snapshot 허용으로 바뀌는 중 실행되던 이전 검사에서 접근 거부를 기대하여 실패. 소스 변경 중 테스트 시작한 검증 절차 문제도 있음.
+- 조치: 모든 작업자가 수정 종료한 뒤 최신 트리에서 `test_phase1_db.py`, `test_seibro_review.py`, `test_authorized_seibro.py` 단독 직렬 재실행. 기존 scheduler 권한/간격 및 테스트 기대값 변경 없음. SEIBro raw capture/review 접근 거부, typed 조회 허용, write 차단, storage-only/owner/version 및 PIT assertion 유지.
+- 결과: 22 passed/2 warnings/75.96s. 실패 두 개 모두 재현되지 않았음. 기존 scheduler 실패의 정확한 근본 원인은 미확정이며, 최신 전체 suite 단일 실행 재검증은 필요. 결과를 합산해 전체 통과율로 과장하지 않음.

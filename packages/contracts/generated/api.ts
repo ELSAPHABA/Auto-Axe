@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/authorized/seibro": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Authorized Seibro */
+        get: operations["getAuthorizedSeibroTop50"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard/authorized/snapshot": {
         parameters: {
             query?: never;
@@ -64,6 +81,40 @@ export interface paths {
         };
         /** Snapshot */
         get: operations["getAuthorizedDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/corporate-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Guidance */
+        get: operations["listAuthorizedCorporateGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/expiry-calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Expiry Calendar */
+        get: operations["getAuthorizedExpiryCalendar"];
         put?: never;
         post?: never;
         delete?: never;
@@ -402,6 +453,110 @@ export interface components {
             /** Source Scope */
             source_scope?: string | null;
         };
+        /** ExpiryCalendarResponse */
+        ExpiryCalendarResponse: {
+            /** Evidence */
+            evidence: components["schemas"]["ReviewedExpiryView"][];
+            meta: components["schemas"]["ExpiryMeta"];
+            /** Sessions */
+            sessions: components["schemas"]["ExpirySessionView"][];
+        };
+        /** ExpiryClaimView */
+        ExpiryClaimView: {
+            /**
+             * Candidate Date
+             * Format: date
+             */
+            candidate_date: string;
+            /** Contract Ref */
+            contract_ref: string | null;
+            /** Evidence Key */
+            evidence_key: string;
+            /** Evidence Ref */
+            evidence_ref: string;
+            /**
+             * Family
+             * @enum {string}
+             */
+            family: "EQUITY_OPTION" | "INDEX_OPTION" | "INDEX_FUTURE" | "SINGLE_STOCK_FUTURE";
+            /** Family Coverage */
+            family_coverage: boolean;
+            /** Last Trade At */
+            last_trade_at: string | null;
+            /** Last Trade Date */
+            last_trade_date?: string | null;
+            /** Nominal Expiry Date */
+            nominal_expiry_date: string | null;
+            /** Processing At */
+            processing_at: string | null;
+            /** Processing Date */
+            processing_date?: string | null;
+            /**
+             * Session Date
+             * Format: date
+             */
+            session_date: string;
+            /** Settlement At */
+            settlement_at: string | null;
+            /** Settlement Basis */
+            settlement_basis: ("AM" | "PM" | "OTHER") | null;
+            /** Settlement Date */
+            settlement_date?: string | null;
+            /**
+             * Source Id
+             * @enum {string}
+             */
+            source_id: "occ" | "cme";
+            /** Source Url */
+            source_url: string;
+            status: components["schemas"]["FamilyState"];
+        };
+        /** ExpiryMeta */
+        ExpiryMeta: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Candidate Date
+             * Format: date
+             */
+            candidate_date: string;
+            /** Request Id */
+            request_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** ExpirySessionView */
+        ExpirySessionView: {
+            /** Calendar Days To Session */
+            calendar_days_to_session: number | null;
+            /** Conflicted */
+            conflicted: boolean;
+            event_type: components["schemas"]["Witching"];
+            /** Family Status */
+            family_status: {
+                [key: string]: components["schemas"]["FamilyState"];
+            };
+            /** Is Quadruple */
+            is_quadruple: boolean | null;
+            /** Is Triple */
+            is_triple: boolean | null;
+            /** Session Date */
+            session_date: string | null;
+            /** Trading Days To Session */
+            trading_days_to_session?: number | null;
+        };
+        /**
+         * FamilyState
+         * @enum {string}
+         */
+        FamilyState: "YES" | "NO" | "UNKNOWN";
         /** FixtureChange */
         FixtureChange: {
             /** Expected Version */
@@ -445,6 +600,64 @@ export interface components {
              * @constant
              */
             source: "synthetic_fixture";
+        };
+        /** GuidanceMeta */
+        GuidanceMeta: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Request Id */
+            request_id: string;
+        };
+        /** GuidancePage */
+        GuidancePage: {
+            /** Data */
+            data: components["schemas"]["GuidanceView"][];
+            meta: components["schemas"]["GuidanceMeta"];
+        };
+        /** GuidanceView */
+        GuidanceView: {
+            /** Accession */
+            accession: string;
+            /**
+             * Available At
+             * Format: date-time
+             */
+            available_at: string;
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "GAAP" | "ADJUSTED";
+            /** Cik */
+            cik: string;
+            /**
+             * First Seen At
+             * Format: date-time
+             */
+            first_seen_at: string;
+            /** Fiscal Period */
+            fiscal_period: string;
+            /** High */
+            high: string;
+            /** Issued At */
+            issued_at: string | null;
+            /** Low */
+            low: string;
+            /** Metric */
+            metric: string;
+            /**
+             * Quality
+             * @default manual_checked
+             * @constant
+             */
+            quality: "manual_checked";
+            /** Source Url */
+            source_url: string;
+            /** Unit */
+            unit: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -698,6 +911,154 @@ export interface components {
             data: components["schemas"]["Quote"];
             meta: components["schemas"]["Meta"];
         };
+        /** ReviewedExpiryView */
+        ReviewedExpiryView: {
+            /**
+             * Available At
+             * Format: date-time
+             */
+            available_at: string;
+            claim: components["schemas"]["ExpiryClaimView"];
+            /**
+             * First Seen At
+             * Format: date-time
+             */
+            first_seen_at: string;
+            /** Permission Version */
+            permission_version: number;
+            /** Revision */
+            revision: number;
+        };
+        /** SeibroMeta */
+        SeibroMeta: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Country Code
+             * @enum {string}
+             */
+            country_code: "US" | "ALL" | "HK" | "CN" | "JP" | "VN";
+            /**
+             * Period Code
+             * @enum {string}
+             */
+            period_code: "1" | "2" | "3" | "4" | "5";
+            /**
+             * Permission
+             * @enum {string}
+             */
+            permission: "approved_personal_education" | "approved_with_redistribution";
+            /**
+             * Rank Basis
+             * @enum {string}
+             */
+            rank_basis: "1" | "2" | "3" | "4";
+            /** Request Id */
+            request_id: string;
+            /**
+             * Source Id
+             * @default seibro
+             * @constant
+             */
+            source_id: "seibro";
+        };
+        /** SeibroResponse */
+        SeibroResponse: {
+            data: components["schemas"]["SeibroSnapshot"] | null;
+            meta: components["schemas"]["SeibroMeta"];
+        };
+        /** SeibroRow */
+        SeibroRow: {
+            /** Buy Settlement Usd */
+            buy_settlement_usd: string;
+            /** Country Name */
+            country_name: string;
+            /** Gross Settlement Usd */
+            gross_settlement_usd: string;
+            /** Isin */
+            isin: string;
+            /** Net Buy Settlement Usd */
+            net_buy_settlement_usd: string;
+            /** Rank */
+            rank: number;
+            /** Security Name */
+            security_name: string;
+            /** Sell Settlement Usd */
+            sell_settlement_usd: string;
+        };
+        /** SeibroSnapshot */
+        SeibroSnapshot: {
+            /**
+             * As Of Date Kst
+             * Format: date
+             */
+            as_of_date_kst: string;
+            /**
+             * Automated Trading Allowed
+             * @constant
+             */
+            automated_trading_allowed: false;
+            /**
+             * Available At
+             * Format: date-time
+             */
+            available_at: string;
+            /**
+             * Country Code
+             * @enum {string}
+             */
+            country_code: "US" | "ALL" | "HK" | "CN" | "JP" | "VN";
+            /**
+             * Currency
+             * @constant
+             */
+            currency: "USD";
+            /**
+             * First Seen At
+             * Format: date-time
+             */
+            first_seen_at: string;
+            /**
+             * Period Code
+             * @enum {string}
+             */
+            period_code: "1" | "2" | "3" | "4" | "5";
+            /** Period End */
+            period_end: string | null;
+            /** Period Start */
+            period_start: string | null;
+            /**
+             * Quality
+             * @constant
+             */
+            quality: "manual_checked";
+            /**
+             * Rank Basis
+             * @enum {string}
+             */
+            rank_basis: "1" | "2" | "3" | "4";
+            /**
+             * Retrieved At
+             * Format: date-time
+             */
+            retrieved_at: string;
+            /** Revision */
+            revision: number;
+            /** Row Count */
+            row_count: number;
+            /** Rows */
+            rows: components["schemas"]["SeibroRow"][];
+            /** Snapshot Id */
+            snapshot_id: string;
+            /**
+             * Top50 Coverage
+             * @constant
+             */
+            top50_coverage: true;
+        };
         /** SeriesDTO */
         SeriesDTO: {
             /** Activation */
@@ -785,6 +1146,11 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * Witching
+         * @enum {string}
+         */
+        Witching: "TRIPLE_WITCHING" | "QUADRUPLE_WITCHING" | "PENDING_VERIFICATION" | "NONE";
     };
     responses: never;
     parameters: never;
@@ -897,6 +1263,43 @@ export interface operations {
             };
         };
     };
+    getAuthorizedSeibroTop50: {
+        parameters: {
+            query?: {
+                country_code?: "US" | "ALL" | "HK" | "CN" | "JP" | "VN";
+                period_code?: "1" | "2" | "3" | "4" | "5";
+                rank_basis?: "1" | "2" | "3" | "4";
+                as_of?: string | null;
+                as_of_date_kst?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                "__Host-autoaxe-sid"?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeibroResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     getAuthorizedDashboard: {
         parameters: {
             query?: never;
@@ -915,6 +1318,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthorizedSnapshot"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listAuthorizedCorporateGuidance: {
+        parameters: {
+            query?: {
+                cik?: string | null;
+                as_of?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                "__Host-autoaxe-sid"?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidancePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getAuthorizedExpiryCalendar: {
+        parameters: {
+            query: {
+                candidate_date: string;
+                as_of?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                "__Host-autoaxe-sid"?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpiryCalendarResponse"];
                 };
             };
             /** @description Validation Error */

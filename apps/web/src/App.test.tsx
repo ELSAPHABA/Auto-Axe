@@ -122,73 +122,114 @@ function setup(failure = false, authorized = false) {
                       schema_version: 1,
                     },
                   }
-                : String(url).includes("dashboard/official-events")
-                  ? {
-                      data: [
-                        {
-                          event_key: "US_CPI:2026-10",
-                          source_id: "bls",
-                          revision: 2,
-                          actual: "321.75",
-                          forecast: null,
-                          previous: null,
-                          unit: "index",
-                          scheduled_at: null,
-                          released_at: null,
-                          first_seen_at: "2026-11-27T02:00:00Z",
-                          available_at: "2026-11-27T02:00:00Z",
-                          source_url: "https://www.bls.gov/developers/",
-                        },
-                      ],
-                      meta: {
-                        request_id: "test",
-                        as_of: "2026-11-27T02:00:00Z",
-                        source_scope: null,
-                        available_count: 1,
-                      },
-                    }
-                  : String(url).includes(
-                        "/dashboard/authorized/market/PENTAGON_PIZZA_PIZZINT",
-                      )
+                : String(url).includes("dashboard/authorized/seibro")
+                  ? { data: null, meta: { source_id: "seibro" } }
+                  : String(url).includes("dashboard/corporate-guidance")
                     ? {
                         data: [
                           {
-                            value: "5",
-                            source_event_at: "2026-11-27T04:00:00Z",
+                            cik: "0001045810",
+                            accession: "0001045810-24-000113",
+                            fiscal_period: "FY2027Q2",
+                            metric: "gross_margin",
+                            basis: "ADJUSTED",
+                            low: "72",
+                            high: "73",
+                            unit: "percent",
+                            issued_at: null,
+                            first_seen_at: "2026-11-27T02:00:00Z",
+                            available_at: "2026-11-27T02:00:00Z",
+                            source_url:
+                              "https://www.sec.gov/Archives/edgar/data/1045810/000104581024000113/exhibit.htm",
                           },
                         ],
-                        meta: {
-                          unit: "level",
-                          collector_status: "healthy",
-                          collector_checked_at: "2026-11-27T04:01:00Z",
-                          as_of: "2026-11-27T04:01:10Z",
-                        },
                       }
-                    : String(url).includes("/auth/session")
-                      ? { meta: { authenticated: authorized } }
-                      : String(url).includes("dashboard/indicators")
+                    : String(url).includes("dashboard/expiry-calendar")
+                      ? {
+                          evidence: [],
+                          sessions: [
+                            {
+                              session_date: null,
+                              event_type: "PENDING_VERIFICATION",
+                              family_status: {
+                                EQUITY_OPTION: "UNKNOWN",
+                                INDEX_OPTION: "UNKNOWN",
+                                INDEX_FUTURE: "UNKNOWN",
+                                SINGLE_STOCK_FUTURE: "UNKNOWN",
+                              },
+                              conflicted: false,
+                              calendar_days_to_session: null,
+                              trading_days_to_session: null,
+                            },
+                          ],
+                        }
+                      : String(url).includes("dashboard/official-events")
                         ? {
-                            data: fake,
+                            data: [
+                              {
+                                event_key: "US_CPI:2026-10",
+                                source_id: "bls",
+                                revision: 2,
+                                actual: "321.75",
+                                forecast: null,
+                                previous: null,
+                                unit: "index",
+                                scheduled_at: null,
+                                released_at: null,
+                                first_seen_at: "2026-11-27T02:00:00Z",
+                                available_at: "2026-11-27T02:00:00Z",
+                                source_url: "https://www.bls.gov/developers/",
+                              },
+                            ],
                             meta: {
-                              next_cursor: null,
-                              environment: "fixture",
-                              schema_version: 1,
-                              as_of: "2026-11-27T00:00:00Z",
-                              version: 0,
                               request_id: "test",
-                              live_enabled: false,
-                              external_mcp_enabled: false,
+                              as_of: "2026-11-27T02:00:00Z",
+                              source_scope: null,
+                              available_count: 1,
                             },
                           }
-                        : {
-                            data: {
-                              status: "ok",
-                              environment: "fixture",
-                              live_enabled: false,
-                              external_mcp_enabled: false,
-                            },
-                            meta: { request_id: "test" },
-                          },
+                        : String(url).includes(
+                              "/dashboard/authorized/market/PENTAGON_PIZZA_PIZZINT",
+                            )
+                          ? {
+                              data: [
+                                {
+                                  value: "5",
+                                  source_event_at: "2026-11-27T04:00:00Z",
+                                },
+                              ],
+                              meta: {
+                                unit: "level",
+                                collector_status: "healthy",
+                                collector_checked_at: "2026-11-27T04:01:00Z",
+                                as_of: "2026-11-27T04:01:10Z",
+                              },
+                            }
+                          : String(url).includes("/auth/session")
+                            ? { meta: { authenticated: authorized } }
+                            : String(url).includes("dashboard/indicators")
+                              ? {
+                                  data: fake,
+                                  meta: {
+                                    next_cursor: null,
+                                    environment: "fixture",
+                                    schema_version: 1,
+                                    as_of: "2026-11-27T00:00:00Z",
+                                    version: 0,
+                                    request_id: "test",
+                                    live_enabled: false,
+                                    external_mcp_enabled: false,
+                                  },
+                                }
+                              : {
+                                  data: {
+                                    status: "ok",
+                                    environment: "fixture",
+                                    live_enabled: false,
+                                    external_mcp_enabled: false,
+                                  },
+                                  meta: { request_id: "test" },
+                                },
           }),
     ),
   );
@@ -228,6 +269,11 @@ test("Phase 2 home marks synthetic and missing sources accurately", async () => 
   expect(within(pizza).queryByText("5")).not.toBeInTheDocument();
   expect(screen.getAllByText("수집 권한 미확인").length).toBeGreaterThan(0);
   expect(screen.getByText("자동 거래")).toBeVisible();
+  expect(
+    within(
+      screen.getByRole("region", { name: "기업 실적 가이던스" }),
+    ).queryByText("ADJUSTED"),
+  ).not.toBeInTheDocument();
   const box = screen.getByRole("region", { name: "롱숏 비율" });
   fireEvent.click(within(box).getByRole("checkbox"));
   expect(within(box).getByText("확인된 비율 없음")).toBeVisible();
@@ -258,6 +304,21 @@ test("only authorized, permission-gated official events appear separately", asyn
   expect(await within(ratios).findByText("LONG 60.00%")).toBeVisible();
   expect(within(ratios).getByText("SHORT 40.00%")).toBeVisible();
 });
+
+test("reviewed guidance, expiry uncertainty and SEIBro empty state stay separate", async () => {
+  setup(false, true);
+  await screen.findByRole("region", { name: "기업 실적 가이던스" });
+  const guidance = screen.getByRole("region", { name: "기업 실적 가이던스" });
+  expect(await within(guidance).findByText("ADJUSTED")).toBeVisible();
+  expect(within(guidance).getByText("72 ~ 73 percent")).toBeVisible();
+  const expiry = screen.getByRole("region", { name: "파생상품 만기 일정" });
+  expect(await within(expiry).findByText("PENDING_VERIFICATION")).toBeVisible();
+  expect(within(expiry).getByText("미확정")).toBeVisible();
+  const seibro = screen.getByRole("region", { name: "해외주식 결제 TOP50" });
+  expect(
+    await within(seibro).findByText("검수된 결제 자료가 없습니다."),
+  ).toBeVisible();
+}, 10000);
 
 test("DOUGHCON only shows an authenticated stored level and API timestamp", async () => {
   setup(false, true);

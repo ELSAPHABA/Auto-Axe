@@ -155,6 +155,21 @@ CLI는 `python -m autoaxe.entrypoints.official_poll_cli --help`, `python -m auto
 
 최종 로컬 검증: HongDev 경유 locked Python backend 110 passed/16 warnings/108.84s, scraper 45 passed, frontend Vitest 7 passed/Playwright 1 passed; Ruff, strict mypy, schema, TypeScript, ESLint, Prettier, Vite build, scheduler Compose config 성공. ECharts chunk 경고 및 실제 운영 활성화 게이트는 잔존한다.
 
+## Session 10 — 공식 문서 검수·만기 및 TOP50 원장 (2026-11-27)
+
+[최신 세션 기록](../../.ai-context/phases/phase-02/2026-11-27-10.md)을 이전 상태표에 우선한다.
+
+| 항목 | 신규 구현 | 남은 게이트 |
+|---|---|---|
+| P2.3 | BOJ 결정문 정책 하한/상한 review promotion; MEXC fixed REST adapter 및 UNKNOWN 품질 | 실제 결정문 수집/승인, MEXC durable poller/catalog, Protobuf/실측 |
+| P2.4 | SEC EX-99.1 scope 및 명시적 전망 추출·관리자 검수·PIT; OCC/CME 만기 근거·개별 날짜/시각·revision | 실제 원본 자동 수집, issuer별 parser, 제품별 공식 세션·거래일 DTE |
+| P2.6 | SEIBro storage-only manual capture, hash review, typed snapshot, 0011 및 인증 조회 | source 승인·실제 DOM/browser automation |
+| P2.7 | 기업 전망/만기/SEIBro 별도 인증 패널 및 OpenAPI/TS | 운영 실데이터·IdP E2E |
+
+자동 수집 승인을 임의로 생성하지 않는다. 운영 배포 및 전체 완료는 보류한다. 검수형 수동 자료는 실시간 금융 데이터로 표시하지 않는다.
+
+검증: backend 최초 177 passed/2 failed, 최신 실패 관련 22 tests passed(두 실패 모두 재검증 통과). 최신 전체 suite 단일 실행은 남음. Scraper 53 passed, Vitest 8 passed, Playwright 1 passed, Ruff/mypy/schema/TS/lint/build 성공. 상세 [session 10](../../.ai-context/phases/phase-02/2026-11-27-10.md), [TS-02-31](../troubleshooting/phase-02.md#ts-02-31--첫-전체-백엔드-실행의-두-통합-테스트-실패) 참조.
+
 ## 개발 Fixture 최종 검증 (2026-11-27, 이전 세션 이력)
 
 - Backend Ruff/mypy 42 files/schema: 통과. 전체 PostgreSQL 통합 포함 pytest **79 passed / 2 deprecation warnings / 118.90s**. 초기 병렬 테스트 중 포트 타임아웃 실패는 별도 [TS-02-05](../troubleshooting/phase-02.md)에 기록, 단독 재검증 1 passed/30.92s, 정책 완화 없음.

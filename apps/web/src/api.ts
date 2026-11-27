@@ -15,6 +15,61 @@ export type ApprovedMarketPage =
 export type AuthorizedSnapshot =
   paths["/api/v1/dashboard/authorized/snapshot"]["get"]["responses"][200]["content"]["application/json"];
 export type SnapshotPoint = AuthorizedSnapshot["data"][number];
+export type GuidancePage =
+  paths["/api/v1/dashboard/corporate-guidance"]["get"]["responses"][200]["content"]["application/json"];
+export type ExpiryPage =
+  paths["/api/v1/dashboard/expiry-calendar"]["get"]["responses"][200]["content"]["application/json"];
+export type SeibroPage =
+  paths["/api/v1/dashboard/authorized/seibro"]["get"]["responses"][200]["content"]["application/json"];
+
+export async function getSeibroTop50(
+  country: string,
+  period: string,
+  basis: string,
+): Promise<SeibroPage> {
+  const params = new URLSearchParams({
+    country_code: country,
+    period_code: period,
+    rank_basis: basis,
+  });
+  const response = await fetch(
+    "/api/v1/dashboard/authorized/seibro?" + params,
+    { credentials: "same-origin", cache: "no-store" },
+  );
+  if (!response.ok) throw new Error("SEIBro 결제 자료 조회 실패");
+  return (await response.json()) as SeibroPage;
+}
+
+export async function getCorporateGuidance(): Promise<GuidancePage> {
+  const response = await fetch(
+    "/api/v1/dashboard/corporate-guidance?limit=30",
+    {
+      credentials: "same-origin",
+      cache: "no-store",
+    },
+  );
+  if (!response.ok) throw new Error("기업 가이던스 조회 실패");
+  const result = (await response.json()) as GuidancePage;
+  if (!Array.isArray(result.data)) throw new Error("가이던스 계약 불일치");
+  return result;
+}
+
+export async function getExpiryCalendar(date: string): Promise<ExpiryPage> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("잘못된 조회일");
+  const response = await fetch(
+    "/api/v1/dashboard/expiry-calendar?candidate_date=" +
+      encodeURIComponent(date),
+    {
+      credentials: "same-origin",
+      cache: "no-store",
+    },
+  );
+  if (!response.ok) throw new Error("만기 일정 조회 실패");
+  const result = (await response.json()) as ExpiryPage;
+  if (!Array.isArray(result.sessions) || !Array.isArray(result.evidence))
+    throw new Error("만기 일정 계약 불일치");
+  return result;
+}
 
 export async function getAuthorizedSnapshot(): Promise<AuthorizedSnapshot> {
   const response = await fetch("/api/v1/dashboard/authorized/snapshot", {
