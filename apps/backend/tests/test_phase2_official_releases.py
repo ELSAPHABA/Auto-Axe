@@ -1,14 +1,93 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import httpx
 import pytest
 
+from autoaxe.adapters.macro_sources import BEA_ICS
 from autoaxe.adapters.official_releases import ECB_KEY, parse_release
 from autoaxe.application.official_macro import OfficialSourceError
-from autoaxe.application.official_poll import fetch_release
+from autoaxe.application.official_poll import TASKS, fetch_release
+from autoaxe.domain.economic_linkage import schedule_identities
+from autoaxe.infrastructure.market_store import PermissionDenied
 
 NOW = datetime(2026, 11, 27, tzinfo=UTC)
+
+# Synthetic rows using the publicly documented BEA subscription ICS format.
+BEA_FIXTURE = (
+    b"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID://BEA-Release-Calendar-Subscription//\r\n"
+    b"BEGIN:VEVENT\r\nUID:fixture-pce\r\n"
+    b"SUMMARY:Personal Income and Outlays\\, October 2026\r\n"
+    b"DTSTART;VALUE=DATE-TIME:20261125T133000Z\r\n"
+    b"DTSTAMP:20261101T000000Z\r\nSEQUENCE:1\r\nEND:VEVENT\r\n"
+    b"BEGIN:VEVENT\r\nUID:fixture-date-only\r\nSUMMARY:Future release\r\n"
+    b"DTSTART;VALUE=DATE:20261223\r\nSTATUS:TENTATIVE\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+)
+
+
+def test_bea_calendar_transport_and_pit(monkeypatch):
+    monkeypatch.delenv("AUTOAXE_BEA_API_KEY", raising=False)
+    calls = []
+    receipts = iter((NOW, NOW + timedelta(seconds=1)))
+
+    def permit():
+        calls.append("permit")
+
+    def respond(request):
+        assert request.method == "GET" and str(request.url) == BEA_ICS
+        assert "text/plain" in request.headers["accept"]
+        assert "authorization" not in request.headers
+        calls.append("request")
+        return httpx.Response(
+            200, headers={"content-type": "text/plain; charset=utf-8"}, content=BEA_FIXTURE
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(respond), trust_env=False) as client:
+        pce, date_only = fetch_release("bea_calendar", client, permit, clock=lambda: next(receipts))
+    assert calls == ["permit", "request", "permit"]
+    assert TASKS["bea_calendar"].source == "bea" and TASKS["bea_calendar"].seconds == 21600
+    assert TASKS["bea_calendar"].key_env is None
+    assert pce.source_url == BEA_ICS and pce.event_key == "fixture-pce" and pce.source_id == "bea"
+    assert pce.scheduled_at == datetime(2026, 11, 25, 13, 30, tzinfo=UTC)
+    assert pce.released_at is None and pce.actual is None and pce.forecast is None
+    assert pce.available_at == pce.first_seen_at == NOW + timedelta(seconds=1)
+    assert schedule_identities(pce)[0].reference_period == "2026M10"
+    assert date_only.scheduled_at is None and date_only.calendar.date_only == date(2026, 12, 23)
+    assert date_only.calendar.status == "tentative"
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"<html>error</html>",
+        BEA_FIXTURE.replace(b"//BEA-Release-Calendar-Subscription//", b"//Other calendar//"),
+        BEA_FIXTURE.replace(b"fixture-date-only", b"fixture-pce"),
+        BEA_FIXTURE.replace(b"20261125T133000Z", b"20261125T133000"),
+    ],
+)
+def test_bea_calendar_rejects_untrusted_or_ambiguous_data(raw):
+    with pytest.raises(ValueError):
+        parse_release("bea_calendar", raw, NOW)
+
+
+def test_bea_calendar_authorization_and_no_redirect():
+    requests = []
+
+    def response(request):
+        requests.append(str(request.url))
+        return httpx.Response(302, headers={"location": "https://example.test/other.ics"})
+
+    def denied():
+        raise PermissionDenied("not approved")
+
+    with httpx.Client(transport=httpx.MockTransport(response), trust_env=False) as client:
+        with pytest.raises(PermissionDenied):
+            fetch_release("bea_calendar", client, denied, clock=lambda: NOW)
+        assert not requests
+        with pytest.raises(OfficialSourceError) as exc:
+            fetch_release("bea_calendar", client, lambda: None, clock=lambda: NOW)
+        assert exc.value.status == 302 and requests == [BEA_ICS]
+    assert "census_calendar" not in TASKS and "fed_calendar" not in TASKS
 
 
 def test_bea_contract():

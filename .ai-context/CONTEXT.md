@@ -4,6 +4,8 @@
 
 ## METADATA (메타데이터)
 
+- **최신 개발 인계 2026-11-27 session 12:** [상세 구현·검증·잔여 조건](phases/phase-02/2026-11-27-12.md) 우선. Binance QQQUSDT 영속 300초 REST/0015, BEA 공식 ICS 21600초 수집, SSE heartbeat/watchdog/capacity/reconnect 및 로컬 HTTP·PG17 테스트. 실제 source/운영 및 Protobuf·브라우저 일부 미완료, DOUGHCON 전용 300초 유지, Phase 3~8 미착수.
+
 - **최신 개발 인계 2026-11-27 session 11:** [상세 구현·검증·잔여 조건](phases/phase-02/2026-11-27-11.md) 우선. MEXC 영속 300초 REST collector/0014, SEC·BOJ 승인형 원문 one-shot capture, 경제 일정/actual same-period PIT 참조 및 UI. 운영 실측과 일부 기능 미완료, DOUGHCON 전용 300초 유지, Phase 3~8 미착수.
 
 - **최신 개발 인계 2026-11-27 session 10:** [상세 구현·검증·잔여 조건](phases/phase-02/2026-11-27-10.md) 우선. BOJ 정책금리·SEC 가이던스 독립 검수, OCC/CME 만기 근거·PIT, SEIBro typed TOP50 검수/인증 조회, MEXC standalone REST 어댑터, 0011~0013 migration 및 3개 UI 패널. 실제 자동 수집/운영 미완료, DOUGHCON 300초 유지, Phase 3~8 미착수.

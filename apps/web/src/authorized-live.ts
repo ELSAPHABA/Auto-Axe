@@ -3,6 +3,21 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAuthorizedSnapshot, hasAuthorizedSession } from "./api";
 import { SnapshotGate, type Delta, type LiveStatus } from "./live";
 
+export function marketEvent(event: Event): Record<string, unknown> {
+  const payload: unknown = JSON.parse((event as MessageEvent<string>).data);
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !("schema_version" in payload) ||
+    payload.schema_version !== 1 ||
+    !("mode" in payload) ||
+    payload.mode !== "market_read"
+  ) {
+    throw new Error("invalid market stream envelope");
+  }
+  return payload as Record<string, unknown>;
+}
+
 export function useAuthorizedSession() {
   return useQuery({
     queryKey: ["auth", "session"],
@@ -51,6 +66,8 @@ export function useAuthorizedStream(): LiveStatus {
     let timer: number | undefined;
     let generation = 0;
     let refreshTimer: number | undefined;
+    let heartbeatTimer: number | undefined;
+    let failures = 0;
     const coalesce = () => {
       if (refreshTimer !== undefined) return;
       refreshTimer = window.setTimeout(() => {
@@ -83,49 +100,77 @@ export function useAuthorizedStream(): LiveStatus {
         void synchronize();
       });
     let gate = newGate();
+    const disconnect = (current: EventSource) => {
+      if (disposed || source !== current) return;
+      generation += 1;
+      source = undefined;
+      current.close();
+      gate = newGate();
+      if (heartbeatTimer !== undefined) window.clearTimeout(heartbeatTimer);
+      if (refreshTimer !== undefined) {
+        window.clearTimeout(refreshTimer);
+        refreshTimer = undefined;
+      }
+      setStatus("reconnecting");
+      purge();
+      void client.invalidateQueries({ queryKey: ["auth", "session"] });
+      failures = Math.min(failures + 1, 5);
+      timer = window.setTimeout(
+        connect,
+        Math.min(30_000, 3000 * 2 ** (failures - 1)),
+      );
+    };
     const connect = () => {
       if (disposed) return;
+      let current: EventSource;
       try {
-        source = new EventSource("/api/v1/dashboard/authorized/stream", {
+        current = new EventSource("/api/v1/dashboard/authorized/stream", {
           withCredentials: true,
         });
+        source = current;
       } catch {
         setStatus("stale");
         return; // polling fallback remains active
       }
-      source.addEventListener("ready", () => {
+      let ready = false;
+      const watchdog = () => {
+        if (heartbeatTimer !== undefined) window.clearTimeout(heartbeatTimer);
+        heartbeatTimer = window.setTimeout(() => disconnect(current), 15_000);
+      };
+      const listen = (
+        name: string,
+        handler: (payload: Record<string, unknown>) => void,
+      ) => {
+        current.addEventListener(name, (event) => {
+          if (disposed || source !== current) return;
+          try {
+            const payload = marketEvent(event);
+            if (!ready && name !== "ready") throw new Error("ready required");
+            handler(payload);
+            watchdog();
+          } catch {
+            disconnect(current);
+          }
+        });
+      };
+      watchdog(); // includes a connection that never sends ready
+      listen("ready", () => {
+        if (ready) throw new Error("duplicate ready");
+        ready = true;
         gate = newGate();
         void synchronize();
       });
-      source.addEventListener("market.invalidate", (event) => {
-        try {
-          const delta = JSON.parse(
-            (event as MessageEvent<string>).data,
-          ) as Delta;
-          if (delta.event_type !== "market.observation.recorded")
-            throw new Error("invalid event");
-          gate.receive(delta);
-        } catch {
-          gate.reconnect();
-        }
+      listen("market.invalidate", (payload) => {
+        if (payload.event_type !== "market.observation.recorded")
+          throw new Error("invalid event");
+        gate.receive(payload as unknown as Delta);
       });
-      source.addEventListener("market.refresh", coalesce);
-      source.addEventListener("resync", () => {
-        generation += 1;
-        gate = newGate();
-        source?.close();
-        setStatus("reconnecting");
-        purge();
-        void client.invalidateQueries({ queryKey: ["auth", "session"] });
-        timer = window.setTimeout(connect, 3000);
+      listen("market.refresh", coalesce);
+      listen("heartbeat", () => {
+        failures = 0; // only a confirmed healthy stream resets the delay
       });
-      source.onerror = () => {
-        generation += 1;
-        gate = newGate();
-        setStatus("reconnecting");
-        purge();
-        void client.invalidateQueries({ queryKey: ["auth", "session"] });
-      };
+      current.addEventListener("resync", () => disconnect(current));
+      current.onerror = () => disconnect(current);
     };
     connect();
     const fallback = window.setInterval(refresh, 15_000);
@@ -135,6 +180,7 @@ export function useAuthorizedStream(): LiveStatus {
       source?.close();
       if (timer !== undefined) window.clearTimeout(timer);
       if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
+      if (heartbeatTimer !== undefined) window.clearTimeout(heartbeatTimer);
       window.clearInterval(fallback);
     };
   }, [authenticated, client]);

@@ -78,7 +78,17 @@ export async function getAuthorizedSnapshot(): Promise<AuthorizedSnapshot> {
   });
   if (!response.ok) throw new Error("승인된 시장 데이터 조회 실패");
   const data = (await response.json()) as AuthorizedSnapshot;
-  if (data.meta?.mode !== "market_read" || !Array.isArray(data.data))
+  if (
+    data.meta?.mode !== "market_read" ||
+    data.meta.schema_version !== 1 ||
+    !Array.isArray(data.data) ||
+    !data.meta.versions ||
+    typeof data.meta.versions !== "object" ||
+    Array.isArray(data.meta.versions) ||
+    Object.values(data.meta.versions).some(
+      (version) => !Number.isSafeInteger(version) || version < 0,
+    )
+  )
     throw new Error("시장 데이터 계약 불일치");
   return data;
 }

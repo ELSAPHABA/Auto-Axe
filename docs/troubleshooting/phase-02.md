@@ -193,3 +193,13 @@
 - 수정: 관측의 영속 `series_version`을 조회 CTE에 포함하고 partition_at이 동일할 때 `series_version DESC`를 UUID 앞에 적용. 일봉 날짜 정렬, 원본 시각/PIT, 권한 조건은 유지. 테스트는 첫 두 값의 순서 [24.5, 24]까지 확인.
 - 재검증: 수정된 `test_phase2_db.py` 전체 통합 테스트 1 passed/20 warnings/20.81s. 신규 MEXC·official document·경제 일정 DB assertion도 도달 및 통과. 최종 전체 재실행 결과는 session 11 기록 참조.
 - 최종 고정 트리 재실행: 208 passed / 20 warnings / 113.70s / exit 0. 최초 실패를 단독 결과와 합산하지 않고 전체 단일 실행으로 검증 완료.
+
+## TS-02-34 — SSE heartbeat 관측·admission 수명 및 복구 경계
+- 조사: comment heartbeat는 EventSource listener에서 수신 확인할 수 없고 기존 capacity 반환은 generator finally에만 있어 첫 본문 yield 전 종료를 포괄하지 못할 가능성이 있었다. 실제 기존 누수 발생은 재현하지 않았으므로 예방적 보강으로 기록. client는 연결별 watchdog/명시 backoff가 없었음.
+- 변경: named heartbeat version/mode, ASGI response finally, disconnect sleep 이후 재검사, browser 15초 watchdog, 3~30초 reconnect, old stream 무시, cache purge, snapshot mode/schema/version 검증. 450회 가속 polling 및 8개 실제 로컬 HTTP socket + 9번째 503 + revoke/close/reopen 검증 7 passed. production soak 아님.
+- 프런트 신규 Vitest 2개 초기 통과 후 TypeScript TS18048 (배열 index가 undefined 가능) 발생. 명시 guard 추가, 이후 typecheck/lint/Prettier/전체 Vitest 10 passed/build/Playwright 1 passed. ECharts 기존 505.25kB warning 유지.
+
+## TS-02-35 — 공식 캘린더 및 Protobuf 계약의 근거 범위
+- BEA 공식 ICS는 text/plain MIME으로 제공되는 경우가 있어 공식 링크 및 PRODID 확인 후 제한적으로 허용. HTML/다른 producer/중복 UID/naive time/redirect는 거부. Census/Fed HTML과 MEXC 공식 proto의 접근 실패를 임의 endpoint/field number 추정으로 우회하지 않음.
+- Binance QQQ 상장/endpoint 공식 문서와 실제 regional availability/응답 권리는 다름. 독립 series+300초 예약, UNKNOWN, fixed GET 및 permission/circuit fence. 기존 source-level grant evidence가 QQQ를 포함해야 하며 상품별 기계 검증은 미구현. scoped 51 passed, BEA 관련 28 passed, PG17 통합 1 passed. [세션 12](../../.ai-context/phases/phase-02/2026-11-27-12.md) 참조.
+- 최종 고정 트리 전체 backend 265 passed / 21 warnings / 116.58s / exit 0, 정적 검사 및 Compose 설정 통과. 공급자 실측 및 운영 부하 검증으로 확대 해석하지 않음.

@@ -103,3 +103,26 @@ bypass it. BOJ fetch-boj accepts only official HTML statement URLs, not PDF.
 SEC fair-access applies to the total traffic of all SEC clients in deployment.
 Inspect and independently approve candidates using `document_review_cli` before
 promotion. See the latest Phase 2 session log for constraints and verification.
+
+## Phase 2 Binance QQQ REST and BEA calendar
+
+Use market DB head `0015_qqq` or later. The QQQUSDT perpetual is an
+ETF-linked USDT instrument, not the Nasdaq-100 cash index or CME NQ. Its
+5-minute snapshots remain UNKNOWN until live/session verification. Obtain a
+source approval whose evidence explicitly covers QQQUSDT; the registry gate
+is source-level and does not independently validate the product scope. The
+dedicated worker requires explicit opt-in; do not add it to the generic poller.
+The BEA calendar is the official key-free ICS feed, polled every 21600 seconds.
+It does not establish the actual release timestamp or vintage.
+
+After verifying the existing restricted networks, DB and source approvals:
+
+```sh
+docker compose -f infra/compose/phase2-collectors.yaml --profile approved run --rm binance-qqq /app/.venv/bin/python -m autoaxe.entrypoints.binance_qqq_cli --allow-binance-qqq
+docker compose -f infra/compose/phase2-collectors.yaml --profile approved run --rm official /app/.venv/bin/python -m autoaxe.entrypoints.official_poll_cli --execute-approved --tasks bea_calendar
+```
+
+Add `--daemon` only for an approved ongoing service. No provider calls or
+production deployment were performed in the implementation session. SSE uses
+named heartbeat messages; keep proxy buffering disabled and verify the actual
+IdP, TLS, database and proxy configuration before operating it.

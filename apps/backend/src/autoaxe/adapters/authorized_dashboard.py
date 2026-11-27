@@ -18,6 +18,7 @@ from fastapi import APIRouter, Cookie, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from psycopg.rows import dict_row
 from starlette.concurrency import run_in_threadpool
+from starlette.types import Receive, Scope, Send
 
 from autoaxe.adapters.contracts import Contract, Identifier, UtcTime
 from autoaxe.domain.catalog import catalog
@@ -255,6 +256,8 @@ async def market_stream(
         if await request.is_disconnected():
             return
         await asyncio.sleep(POLL_SECONDS)
+        if await request.is_disconnected():
+            return
         try:
             current = await run_in_threadpool(
                 read_snapshot, sid, request.state.request_id, touch=False, previous=previous
@@ -267,7 +270,17 @@ async def market_stream(
             if event.startswith("event: resync\n"):
                 return
         previous = current
-        yield ": heartbeat\n\n"
+        yield sse_event("heartbeat", {"schema_version": 1, "mode": "market_read"})
+
+
+class CapacityResponse(StreamingResponse):
+    """Release admission even if ASGI disconnects before the first body yield."""
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            _connections.release()
 
 
 @router.get("/stream", include_in_schema=False)
@@ -283,15 +296,8 @@ async def stream(
         _connections.release()
         raise
 
-    async def bounded() -> AsyncIterator[str]:
-        try:
-            async for event in market_stream(request, sid, initial):
-                yield event
-        finally:
-            _connections.release()
-
-    return StreamingResponse(
-        bounded(),
+    return CapacityResponse(
+        market_stream(request, sid, initial),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
     )

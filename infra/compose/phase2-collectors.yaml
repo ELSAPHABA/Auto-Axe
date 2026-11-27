@@ -44,6 +44,15 @@ services:
     command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.mexc_cli", "--help"]
     environment:
       AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?existing market runtime DSN required}
+  binance-qqq:
+    <<: *common
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+      target: backend
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.binance_qqq_cli", "--help"]
+    environment:
+      AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?existing market runtime DSN required}
 networks:
   market:
     external: true

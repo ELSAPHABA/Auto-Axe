@@ -10,6 +10,11 @@ from icalendar import Calendar
 from autoaxe.domain.calendars import CalendarEvidence, EventRevision
 from autoaxe.domain.types import decimal_string, utc_datetime
 
+# Official subscription page links this file directly (no API key):
+# https://www.bea.gov/news/schedule/icalendar
+BEA_ICS = "https://www.bea.gov/news/schedule/ics/online-calendar-subscription.ics"
+BEA_CALENDAR_PRODID = "//BEA-Release-Calendar-Subscription//"
+
 BLS_IDS = {
     "CUUR0000SA0": ("US_CPI", "index"),
     "CES0000000001": ("US_NONFARM_PAYROLL", "thousand"),
@@ -76,6 +81,11 @@ def parse_official_ics(raw: bytes, received: datetime, source: str) -> list[Even
         raise ValueError("unregistered/oversize calendar")
     utc_datetime(received)
     calendar = Calendar.from_ical(raw)
+    if source == "bea" and (
+        str(calendar.get("PRODID", "")) != BEA_CALENDAR_PRODID
+        or str(calendar.get("VERSION", "")) != "2.0"
+    ):
+        raise ValueError("unexpected BEA subscription calendar identity")
     results: list[EventRevision] = []
     for event in calendar.walk("VEVENT"):
         uid = str(event.get("UID", ""))
@@ -122,7 +132,7 @@ def parse_official_ics(raw: bytes, received: datetime, source: str) -> list[Even
                 1,
                 {
                     "bls": "https://www.bls.gov/schedule/",
-                    "bea": "https://www.bea.gov/news/schedule",
+                    "bea": BEA_ICS,
                     "fed": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
                 }[source],
                 CalendarEvidence(title, date_only, status),

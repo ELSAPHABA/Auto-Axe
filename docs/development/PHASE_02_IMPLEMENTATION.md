@@ -185,6 +185,20 @@ MEXC REST 관측은 실제 거래소 지수 또는 실시간 CME 시세가 아�
 
 최종 검증: 전체 backend 208 passed / 20 warnings / 113.70s (exit 0), frontend Vitest 8 passed / Playwright 1 passed, Ruff 118 files, strict mypy 80 source files, schema/TS/lint/build/Prettier/Compose config 통과. 동일 시각 시계열 정렬의 UUID 불안정은 영속 series_version 정렬로 수정 ([TS-02-33](../troubleshooting/phase-02.md)).
 
+## Session 12 — QQQ, BEA 일정 및 SSE 복구 (2026-11-27)
+
+[최신 세션 기록](../../.ai-context/phases/phase-02/2026-11-27-12.md)이 이전 표에 우선한다.
+
+| 항목 | 신규 구현 및 검증 | 남은 게이트 |
+|---|---|---|
+| P2.3 | QQQUSDT 0015 catalog/300초 영속 REST, UNKNOWN, 별도 CLI/Compose | 실제 권한·응답·세션, MEXC 정확한 Protobuf schema/WS, Yahoo NQ |
+| P2.3/P2.4 | BEA 공식 ICS 21600초 영속 수집, 명시 기간 PIT 연결 | 실제 전체 제목 문법, Census/Fed 기계 판독 일정, 발표 vintage |
+| P2.8 | SSE named heartbeat/15초 watchdog/backoff, capacity 반환 및 8개 동시 로컬 HTTP 연결, 450회 가속 poll 검증 | 운영 DB+IdP+HTTPS 실제 지속시간 soak/부하 |
+
+실제 외부 공급자 데이터 수집과 운영 배포는 이번에 하지 않았다. QQQ는 Nasdaq 지수·CME NQ·QQQ 현물이 아니며 actual/live/session 검증 전 UNKNOWN을 유지한다. 세션 12 로그의 최종 검증을 참조한다.
+
+최종 검증: 전체 backend 265 passed / 21 warnings / 116.58s, frontend Vitest 10 passed / Playwright 1 passed, Ruff 125 files, strict mypy 83 source files, schema/TS/lint/build/Prettier/Compose config 통과. 실제 운영 부하와 공급자 검증은 별도.
+
 ## 개발 Fixture 최종 검증 (2026-11-27, 이전 세션 이력)
 
 - Backend Ruff/mypy 42 files/schema: 통과. 전체 PostgreSQL 통합 포함 pytest **79 passed / 2 deprecation warnings / 118.90s**. 초기 병렬 테스트 중 포트 타임아웃 실패는 별도 [TS-02-05](../troubleshooting/phase-02.md)에 기록, 단독 재검증 1 passed/30.92s, 정책 완화 없음.

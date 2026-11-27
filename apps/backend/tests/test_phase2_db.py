@@ -13,11 +13,15 @@ from psycopg.errors import InsufficientPrivilege
 from testcontainers.postgres import PostgresContainer
 
 from autoaxe.adapters.authorized_dashboard import changes, read_snapshot
+from autoaxe.adapters.binance_qqq_rest import SERIES_ID as QQQ_SERIES
+from autoaxe.adapters.macro_sources import BEA_ICS
 from autoaxe.adapters.mexc_rest import SERIES_ID as MEXC_SERIES
+from autoaxe.application.binance_qqq_poll import poll_once as poll_qqq
 from autoaxe.application.collection import FetchError
 from autoaxe.application.document_fetch import capture_once
 from autoaxe.application.mexc_poll import poll_once as poll_mexc
 from autoaxe.application.official_macro import OfficialSourceError
+from autoaxe.application.official_poll import poll_once as poll_official
 from autoaxe.application.pizzint_poll import SERIES, poll_once
 from autoaxe.application.scrape_broker import (
     claim,
@@ -861,6 +865,123 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         assert (
             next(p for p in mexc_snapshot.data if p.series_id == MEXC_SERIES).quality == "unknown"
         )
+
+        # Dedicated QQQ REST ledger is distinct from MEXC, generic futures and CME NQ.
+        assert asyncio.run(poll_qqq(market, no_mexc, enabled=True)) == "permission_required"
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "binance_futures",
+                approved=True,
+                evidence="synthetic QQQ fixture grant",
+                fetch=True,
+                storage=True,
+                redistribution=False,
+            )
+        qqq = Candidate(
+            QQQ_SERIES,
+            "fixture-qqq",
+            "612.34",
+            mexc_now,
+            mexc_now,
+            mexc_now,
+            Quality.UNKNOWN,
+            {
+                "symbol": "QQQUSDT",
+                "instrument_type": "etf_linked_perpetual",
+                "underlying": "Invesco QQQ Trust Series 1",
+                "quote_currency": "USDT",
+                "settlement_currency": "USDT",
+                "price_unit": "0.01",
+                "provenance": "binance_qqq_rest_candidate",
+                "session_verified": False,
+                "live_verified": False,
+            },
+        )
+
+        async def fetch_qqq(permit):
+            permit()
+            assert await poll_qqq(market, no_mexc, enabled=True) == "busy"
+            return qqq
+
+        assert asyncio.run(poll_qqq(market, fetch_qqq, enabled=True)) == "stored"
+        assert asyncio.run(poll_qqq(market, no_mexc, enabled=True)) == "not_due"
+        with psycopg.connect(market) as conn:
+            conn.execute(
+                "UPDATE ops.poll_slots SET last_enqueued_at=clock_timestamp() "
+                "- interval '301 seconds' WHERE series_id=%s",
+                (QQQ_SERIES,),
+            )
+        assert asyncio.run(poll_qqq(market, fetch_qqq, enabled=True)) == "no_update"
+        qqq_state = read_snapshot(authenticated_sid, "test", touch=False).snapshot
+        assert qqq_state.meta.versions[QQQ_SERIES] == 1
+        assert qqq_state.meta.versions[MEXC_SERIES] == 1
+        assert next(p for p in qqq_state.data if p.series_id == QQQ_SERIES).quality == "unknown"
+
+        # BEA subscription uses a separate durable reservation and same-source PIT linkage.
+        bea_seen = captured
+        bea_calendar = EventRevision(
+            "fixture-bea-pce",
+            "bea",
+            bea_seen - timedelta(days=1),
+            None,
+            bea_seen,
+            bea_seen,
+            None,
+            None,
+            None,
+            "event",
+            1,
+            BEA_ICS,
+            CalendarEvidence("Personal Income and Outlays, October 2026", None, "confirmed"),
+        )
+        bea_actual = EventRevision(
+            "US_PCE:2026M10",
+            "bea",
+            None,
+            None,
+            bea_seen,
+            bea_seen,
+            "0.2",
+            None,
+            None,
+            "percent_mom",
+            1,
+            "https://www.bea.gov/news/",
+        )
+        calendar_calls = []
+
+        def fetch_bea(permit):
+            permit()
+            calendar_calls.append(1)
+            return [bea_calendar]
+
+        assert poll_official(market, "bea_calendar", fetch_bea) == "blocked"
+        assert calendar_calls == []
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "bea",
+                approved=True,
+                evidence="synthetic BEA fixture grant",
+                fetch=True,
+                storage=True,
+                redistribution=False,
+            )
+        assert poll_official(market, "bea_calendar", fetch_bea) == "stored"
+        assert poll_official(market, "bea_calendar", fetch_bea) == "not_due"
+        assert calendar_calls == [1]
+        with psycopg.connect(market) as conn:
+            persist_event(conn, bea_actual)
+        bea_response = api.get(
+            "/api/v1/dashboard/official-events",
+            params={"source_id": "bea"},
+            cookies={"__Host-autoaxe-sid": authenticated_sid},
+        )
+        assert bea_response.status_code == 200
+        bea_row = next(r for r in bea_response.json()["data"] if r["actual"] is not None)
+        assert bea_row["period_match"]["event_key"] == "fixture-bea-pce"
+        assert bea_row["released_at"] is None
         with psycopg.connect(app_runtime) as conn:
             revoke(conn, authenticated_sid)
         assert (

@@ -10,7 +10,7 @@ import httpx
 import psycopg
 from psycopg import Connection
 
-from autoaxe.adapters.macro_sources import BLS_IDS
+from autoaxe.adapters.macro_sources import BEA_ICS, BLS_IDS
 from autoaxe.adapters.official_releases import (
     BEA_URL,
     BLS_ICS,
@@ -45,6 +45,9 @@ CSV = ("text/csv", "application/vnd.sdmx.data+csv", "application/csv")
 TASKS = {
     "bls_actual": Task("bls", "", JSON, 3600),
     "bls_calendar": Task("bls", BLS_ICS, ("text/calendar", "application/ics"), 21600),
+    # BEA publishes its subscription file with text/plain as well as ICS media.
+    # Its parser checks the VCALENDAR producer identity, not arbitrary plain text.
+    "bea_calendar": Task("bea", BEA_ICS, ("text/calendar", "application/ics", "text/plain"), 21600),
     "bea_gdp": Task("bea", BEA_URL, JSON, 21600, "AUTOAXE_BEA_API_KEY"),
     "bea_pce": Task("bea", BEA_URL, JSON, 21600, "AUTOAXE_BEA_API_KEY"),
     "census_retail": Task("census", CENSUS_URL, JSON, 21600, "AUTOAXE_CENSUS_API_KEY"),

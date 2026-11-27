@@ -28,12 +28,12 @@ STATIC = (
     ),
     IndicatorDefinition(
         "NASDAQ100_BINANCE_QQQ_PERP_USDT",
-        "QQQ 연동 영구선물",
+        "Binance QQQ ETF 연동 영구선물 (REST)",
         "market",
         "binance_futures",
-        "USDT/contract",
-        "stream",
-        "나스닥 지수 아님",
+        "USDT/QQQ",
+        "5m",
+        "QQQ ETF 연동, NQ·NDX·MEXC와 다름; 거래세션·실시간성 미검증",
     ),
     IndicatorDefinition(
         "NASDAQ100_CME_NQ_YAHOO_DELAYED",

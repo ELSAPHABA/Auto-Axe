@@ -233,6 +233,7 @@ def parse_boj_effective(raw: bytes, now: datetime) -> list[EventRevision]:
 def parse_release(task: str, raw: bytes, now: datetime) -> list[EventRevision]:
     parsers: dict[str, Any] = {
         "bls_calendar": lambda: parse_official_ics(raw, now, "bls"),
+        "bea_calendar": lambda: parse_official_ics(raw, now, "bea"),
         "bea_gdp": lambda: parse_bea(raw, now, table="T10101"),
         "bea_pce": lambda: parse_bea(raw, now, table="T20807"),
         "census_retail": lambda: parse_census(raw, now),
