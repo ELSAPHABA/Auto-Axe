@@ -13,6 +13,7 @@ import {
   hasAuthorizedSession,
   type IndicatorView,
 } from "./api";
+import { useAuthorizedSnapshot } from "./authorized-live";
 import { SnapshotGate, type Delta, type LiveStatus } from "./live";
 import { useUi, type RatioKind } from "./store";
 
@@ -189,22 +190,38 @@ function DoughconCard({ row }: { row: IndicatorView }) {
 }
 
 function IndicatorCard({ row }: { row: IndicatorView }) {
+  const snapshot = useAuthorizedSnapshot();
+  const point = snapshot?.data.find(
+    (item) => item.series_id === row.indicator_id,
+  );
   if (row.indicator_id === "PENTAGON_PIZZA_PIZZINT")
     return <DoughconCard row={row} />;
   return (
     <article className="indicator-card" aria-label={row.label}>
       <div className="indicator-card-top">
         <span className="indicator-source">{row.source_id}</span>
-        <DataStatus row={row} />
+        {point ? (
+          <span className="data-status">{point.quality}</span>
+        ) : (
+          <DataStatus row={row} />
+        )}
       </div>
       <h3 title={row.label}>{row.label}</h3>
       <div className="indicator-value">
-        {row.value !== null ? row.value : "—"}
-        <span>{row.value !== null ? row.unit : "데이터 없음"}</span>
+        {point ? (point.value ?? "—") : (row.value ?? "—")}
+        <span>
+          {point?.value != null || row.value !== null
+            ? row.unit
+            : "데이터 없음"}
+        </span>
       </div>
-      <p className="indicator-note">{row.source_note || row.cadence}</p>
+      <p className="indicator-note">
+        {point?.source_event_at
+          ? "원본 시각 (UTC): " + point.source_event_at
+          : row.source_note || row.cadence}
+      </p>
       <span className="indicator-frequency">{row.cadence}</span>
-      {row.category === "market" && (
+      {(row.category === "market" || point) && (
         <Link
           className="indicator-detail-link"
           to={"/market/" + encodeURIComponent(row.indicator_id)}
@@ -332,6 +349,12 @@ function SummaryStrip({ total }: { total: number }) {
 }
 
 function MarketThermometer() {
+  const snapshot = useAuthorizedSnapshot();
+  const point = snapshot?.data.find(
+    (item) => item.series_id === "CNN_FEAR_GREED_CNN",
+  );
+  const score = point?.value == null ? NaN : Number(point.value);
+  const valid = Number.isFinite(score) && score >= 0 && score <= 100;
   return (
     <section className="panel thermometer-panel" aria-label="시장 온도계">
       <div>
@@ -340,12 +363,25 @@ function MarketThermometer() {
         <p className="subline">CNN Fear &amp; Greed · 검증된 수집 근거 필요</p>
       </div>
       <div className="thermometer-content">
-        <span className="thermometer-value">—</span>
+        <span className="thermometer-value">{valid ? score : "—"}</span>
         <div>
           <div
             className="thermometer-track"
-            aria-label="확인된 심리 지표 없음"
-          />
+            aria-label={
+              valid ? "승인된 심리 지표 " + score : "확인된 심리 지표 없음"
+            }
+          >
+            {valid && (
+              <span
+                style={{
+                  display: "block",
+                  width: score + "%",
+                  height: "100%",
+                  background: "currentColor",
+                }}
+              />
+            )}
+          </div>
           <div className="thermometer-legend">
             <span>EXTREME FEAR</span>
             <span>NEUTRAL</span>
@@ -354,7 +390,12 @@ function MarketThermometer() {
         </div>
       </div>
       <p className="indicator-note">
-        실제 지표 수집 권한이 확인되기 전에는 점수와 포인터를 표시하지 않습니다.
+        {valid
+          ? "원본 시각: " +
+            (point?.source_event_at ?? "미확인") +
+            " · " +
+            point?.quality
+          : "실제 지표 수집 권한이 확인되기 전에는 점수와 포인터를 표시하지 않습니다."}
       </p>
     </section>
   );
@@ -370,7 +411,7 @@ function OfficialEventsPanel() {
   const events = useQuery({
     queryKey: ["official-events", "approved"],
     queryFn: getOfficialEvents,
-    enabled: session.data === true,
+    enabled: session.data === true && !session.isError,
     retry: false,
     staleTime: 60_000,
   });
@@ -382,7 +423,7 @@ function OfficialEventsPanel() {
         이용 목적에 맞는 공식 데이터 보관·열람 권한과 계정 인증을 확인합니다.
         발표 시각이 확인되지 않으면 임의로 채우지 않습니다.
       </p>
-      {session.data !== true ? (
+      {session.data !== true || session.isError ? (
         <p className="panel-empty">
           인증 및 제공자 권한 확인 전 — 표시 가능한 공식 발표값이 없습니다.
         </p>
@@ -449,6 +490,7 @@ function OfficialEventsPanel() {
 }
 
 export function DashboardHome() {
+  const market = useAuthorizedSnapshot();
   const health = useQuery({
     queryKey: ["health"],
     queryFn: getHealth,
@@ -467,7 +509,11 @@ export function DashboardHome() {
         <div>
           <p className="eyebrow">AUTO-AXE / MARKET OVERVIEW</p>
           <h1>시장 대시보드</h1>
-          <p>실시간 금융 데이터가 아닌 합성 Fixture 기반 개발 화면입니다.</p>
+          <p>
+            {market
+              ? "승인된 저장 관측값과 합성 검증 데이터를 구분하여 표시합니다."
+              : "실시간 금융 데이터가 아닌 합성 Fixture 기반 개발 화면입니다."}
+          </p>
         </div>
         <StreamBadge status={stream} />
       </div>
@@ -620,7 +666,7 @@ export function MarketDetailPage() {
   const history = useQuery({
     queryKey: ["authorized", "history", instrumentId],
     queryFn: () => getApprovedMarketSeries(instrumentId!),
-    enabled: session.data === true && !!instrumentId,
+    enabled: session.data === true && !session.isError && !!instrumentId,
     retry: false,
   });
   const data = dashboard.data?.pages.flatMap((p) => p.data) ?? [];
@@ -649,7 +695,7 @@ export function MarketDetailPage() {
           <Suspense fallback={<p>합성 차트 로딩 중…</p>}>
             <FixtureChart />
           </Suspense>
-        ) : session.data !== true ? (
+        ) : session.data !== true || session.isError ? (
           <p className="panel-empty">
             시세 내역은 인증 및 원본 재배포 권한이 확인된 경우에만 조회합니다.
           </p>

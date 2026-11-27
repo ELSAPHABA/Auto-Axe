@@ -1,8 +1,7 @@
-"""Single-target TLS-pinned HTTP reader for an explicitly approved broker lease.
+"""Single-target TLS-pinned HTTP reader for an explicitly approved collection.
 
-This is a building block, not a network-enabled worker: the Compose fixture
-profile has network_mode:none and no valid mTLS broker identity. Caller must
-first validate an authorized lease and source terms.
+The generic worker verifies its broker lease; the dedicated PizzINT reader has
+its own permission and cadence checks. The fixture profile remains offline.
 """
 
 import http.client
@@ -10,7 +9,7 @@ import ipaddress
 import json
 import socket
 import ssl
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any, Protocol
 from urllib.parse import urlsplit
@@ -42,16 +41,22 @@ class Response(Protocol):
 
 
 def public_addresses(
-    host: str, *, resolve: Callable[..., list[tuple]] = socket.getaddrinfo
+    host: str, *, resolve: Callable[..., Sequence[tuple[Any, ...]]] = socket.getaddrinfo
 ) -> tuple[str, ...]:
     """Reject DNS answers with *any* non-global IP, not just selected endpoints."""
     results = resolve(host, 443, type=socket.SOCK_STREAM)
     if not results:
         raise SourceBlocked("DNS did not return a public destination")
-    addresses = {str(ipaddress.ip_address(row[4][0])) for row in results}
-    if not addresses or not all(ipaddress.ip_address(ip).is_global for ip in addresses):
+    parsed = {ipaddress.ip_address(row[4][0]) for row in results}
+    if not parsed or any(
+        not ip.is_global
+        or ip.is_multicast
+        or ip.is_reserved
+        or (isinstance(ip, ipaddress.IPv6Address) and (ip.ipv4_mapped or ip.scope_id))
+        for ip in parsed
+    ):
         raise SourceBlocked("DNS response contains private or reserved addresses")
-    return tuple(sorted(addresses))
+    return tuple(sorted(str(ip) for ip in parsed))
 
 
 class PinnedHTTPS(http.client.HTTPSConnection):
@@ -77,7 +82,7 @@ def _fetch_exact(
     policy: SourcePolicy,
     *,
     permit: Callable[[], None],
-    resolve: Callable[..., list[tuple]],
+    resolve: Callable[..., Sequence[tuple[Any, ...]]],
     dial: Callable[[str, str], http.client.HTTPSConnection],
     media: str,
 ) -> bytes:
@@ -116,18 +121,21 @@ def _fetch_exact(
             raise ProviderHTTPError(response.status, response.getheader("retry-after"))
         content_type = (response.getheader("content-type", "") or "").lower()
         expected = "application/json" if media == "json" else "text/html"
-        if not content_type.startswith(expected):
+        if content_type.split(";", 1)[0].strip() != expected:
             raise SourceBlocked("unexpected content type")
         encoding = (response.getheader("content-encoding", "identity") or "identity").lower()
         if encoding != "identity":
             raise SourceBlocked("compressed HTML not enabled")
         size = response.getheader("content-length")
         limit = MAX_JSON_BYTES if media == "json" else MAX_HTML_BYTES
-        if size and (not size.isdecimal() or int(size) > limit):
+        transfer = (response.getheader("transfer-encoding", "") or "").lower().strip()
+        if transfer not in ("", "chunked") or (transfer and size is not None):
+            raise SourceBlocked("ambiguous or unsupported transfer encoding")
+        if size is not None and (not size.isdecimal() or int(size) > limit):
             raise SourceBlocked("source content length exceeds limit")
         body = response.read(limit + 1)
-        if len(body) > limit:
-            raise SourceBlocked("source stream exceeds limit")
+        if len(body) > limit or (size is not None and len(body) != int(size)):
+            raise SourceBlocked("source stream size mismatch or limit exceeded")
         # Do not allow source revoke to race successful data collection.
         permit()
         return body
@@ -139,7 +147,7 @@ def fetch_exact_html(
     policy: SourcePolicy,
     *,
     permit: Callable[[], None],
-    resolve: Callable[..., list[tuple]] = socket.getaddrinfo,
+    resolve: Callable[..., Sequence[tuple[Any, ...]]] = socket.getaddrinfo,
     dial: Callable[[str, str], http.client.HTTPSConnection] = PinnedHTTPS,
 ) -> str:
     """HTML retrieval; API-only sources never fall back to homepage scraping."""
@@ -153,7 +161,7 @@ def fetch_exact_html(
 def fetch_pizzint_doughcon(
     *,
     permit: Callable[[], None],
-    resolve: Callable[..., list[tuple]] = socket.getaddrinfo,
+    resolve: Callable[..., Sequence[tuple[Any, ...]]] = socket.getaddrinfo,
     dial: Callable[[str, str], http.client.HTTPSConnection] = PinnedHTTPS,
 ) -> dict[str, Any]:
     """Return only DOUGHCON and minimal provenance from the fixed public API.

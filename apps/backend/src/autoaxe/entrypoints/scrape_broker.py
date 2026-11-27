@@ -1,17 +1,24 @@
-"""Private broker HTTP contract; inert until real server-side mTLS identity is verified.
+"""Private broker with direct mutually authenticated TLS (never trust HTTP headers)."""
 
-DO NOT include this router in the public API. A trusted TLS gateway/ASGI server
-must implement a verified certificate-to-principal binding; request headers
-are never proof. Fixture tests may override the dependency explicitly.
-"""
-
+import asyncio
+import hashlib
+import hmac
 import os
+import re
+import ssl
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
+from uuid import UUID
 
 import psycopg
-from fastapi import Depends, FastAPI, HTTPException
+import uvicorn
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.responses import JSONResponse
+from starlette.types import Message, Receive, Scope, Send
+from uvicorn.protocols.http.h11_impl import H11Protocol
 
 from autoaxe.application.scrape_broker import (
     claim,
@@ -44,8 +51,8 @@ class LeaseResponse(StrictDTO):
 
 
 class HeartbeatRequest(StrictDTO):
-    job_nonce: str
-    lease_token: str
+    job_nonce: str = Field(min_length=10, max_length=256, pattern=r"^[A-Za-z0-9_-]+$")
+    lease_token: str = Field(min_length=10, max_length=256, pattern=r"^[A-Za-z0-9_-]+$")
 
 
 class ResultRequest(HeartbeatRequest):
@@ -54,9 +61,79 @@ class ResultRequest(HeartbeatRequest):
     candidates: list[dict[str, Any]] = Field(max_length=100)
 
 
-def service_identity() -> str:
-    """Deliberately unimplemented until verified mutual-TLS transport is deployed."""
-    raise HTTPException(503, "verified scraper mTLS service identity unavailable")
+MAX_REQUEST_BYTES = 262_144
+_VERIFIED_PEER = object()
+_PEER_KEY = "autoaxe.scrape.verified_peer"
+HTTP_SOURCES = frozenset({"cnn", "dramexchange", "naver"})
+
+
+def _allowed_fingerprints() -> tuple[str, ...]:
+    pins = tuple(os.environ.get("AUTOAXE_SCRAPER_CERT_SHA256", "").lower().split(","))
+    if not all(re.fullmatch(r"[0-9a-f]{64}", pin) for pin in pins) or len(pins) > 2:
+        raise ValueError("configure one or two scraper certificate SHA256 fingerprints")
+    return pins
+
+
+class VerifiedTLSProtocol(H11Protocol):
+    """Bind a per-connection ASGI app to the real, CA-verified TLS peer.
+
+    Uvicorn's ordinary ASGI scope does not expose the client certificate.
+    This protocol is used only by the dedicated TLS listener below.
+    """
+
+    def connection_made(self, transport: asyncio.Transport) -> None:  # type: ignore[override]
+        super().connection_made(transport)
+        tls = transport.get_extra_info("ssl_object")
+        cert = None
+        if isinstance(tls, (ssl.SSLObject, ssl.SSLSocket)):
+            if tls.context.verify_mode == ssl.CERT_REQUIRED:
+                cert = tls.getpeercert(binary_form=True)
+        try:
+            pins = _allowed_fingerprints()
+        except ValueError:
+            pins = ()
+        if not cert or not any(
+            hmac.compare_digest(hashlib.sha256(cert).hexdigest(), pin) for pin in pins
+        ):
+            transport.close()
+            return
+        original = self.app
+
+        async def bound(scope: Scope, receive: Receive, send: Send) -> None:
+            # The sentinel is injected in-process from the verified connection,
+            # not copied from any header or forwarded proxy metadata.
+            scope[_PEER_KEY] = _VERIFIED_PEER
+            body = bytearray()
+            try:
+                async with asyncio.timeout(10):
+                    while True:
+                        message = await receive()
+                        if message["type"] != "http.request":
+                            return
+                        body.extend(message.get("body", b""))
+                        if len(body) > MAX_REQUEST_BYTES:
+                            await JSONResponse({"detail": "request too large"}, 413)(
+                                scope, receive, send
+                            )
+                            return
+                        if not message.get("more_body", False):
+                            break
+            except TimeoutError:
+                await JSONResponse({"detail": "request timeout"}, 408)(scope, receive, send)
+                return
+
+            async def replay() -> Message:
+                return {"type": "http.request", "body": bytes(body), "more_body": False}
+
+            await original(scope, replay, send)
+
+        self.app = bound
+
+
+def service_identity(request: Request) -> str:
+    if request.scope.get(_PEER_KEY) is not _VERIFIED_PEER:
+        raise HTTPException(503, "verified scraper mTLS service identity unavailable")
+    return "scraper-worker"
 
 
 def broker_dsn() -> str:
@@ -66,8 +143,72 @@ def broker_dsn() -> str:
     return dsn
 
 
+def validate_candidates(source: str, candidates: list[dict[str, Any]]) -> None:
+    """Constrain quarantined candidate schema even if a trusted worker is compromised."""
+    common = {"series_id", "value", "source_event_at", "quality"}
+    dram_items = {
+        "DRAM_DDR5_UDIMM_16GB_SESSION_AVG": "DDR5 UDIMM 16GB 4800/5600",
+        "DRAM_DDR5_RDIMM_32GB_SESSION_AVG": "DDR5 RDIMM 32GB 4800/5600",
+    }
+    expected = {
+        "cnn": {"CNN_FEAR_GREED_CNN"},
+        "naver": {"UST_2Y_NAVER"},
+        "dramexchange": set(dram_items),
+    }[source]
+    if len(candidates) != len(expected):
+        raise ValueError("candidate count mismatch")
+    seen: set[str] = set()
+    for item in candidates:
+        sid = item.get("series_id")
+        if not isinstance(sid, str) or sid not in expected or sid in seen:
+            raise ValueError("unexpected candidate series")
+        seen.add(sid)
+        raw = item.get("value")
+        if not isinstance(raw, str) or len(raw) > 64:
+            raise ValueError("invalid candidate value")
+        try:
+            value = Decimal(raw)
+        except InvalidOperation as exc:
+            raise ValueError("invalid candidate value") from exc
+        if not value.is_finite() or item.get("quality") != "manual_review_required":
+            raise ValueError("invalid candidate quality or value")
+        if source == "cnn":
+            if (
+                set(item) != common | {"category", "automated_trading_allowed"}
+                or not 0 <= value <= 100
+                or item["category"]
+                not in ("Extreme Fear", "Fear", "Neutral", "Greed", "Extreme Greed")
+                or item["automated_trading_allowed"] is not False
+                or item["source_event_at"] is not None
+            ):
+                raise ValueError("invalid CNN candidate")
+        else:
+            stamp = item.get("source_event_at")
+            if not isinstance(stamp, str) or len(stamp) > 64:
+                raise ValueError("invalid source timestamp")
+            parsed = datetime.fromisoformat(stamp)
+            if parsed.tzinfo is None:
+                raise ValueError("source timestamp must be timezone aware")
+            if source == "naver" and set(item) != common:
+                raise ValueError("invalid Naver candidate")
+            if source == "dramexchange" and (
+                set(item) != common | {"item", "unit", "unit_verified", "source_id"}
+                or item["item"] != dram_items[sid]
+                or item["unit"] is not None
+                or item["unit_verified"] is not False
+                or item["source_id"] != source
+                or value <= 0
+            ):
+                raise ValueError("invalid DRAM candidate")
+
+
 def create_broker_app() -> FastAPI:
     api = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+    @api.exception_handler(RequestValidationError)
+    async def invalid_request(_: Request, __: RequestValidationError) -> JSONResponse:
+        # Never echo rejected lease credentials or candidate payloads.
+        return JSONResponse({"detail": "invalid broker request"}, 422)
 
     @api.post("/internal/v1/scrape/jobs/claim", response_model=LeaseResponse | None)
     def claim_job(
@@ -76,6 +217,8 @@ def create_broker_app() -> FastAPI:
     ) -> LeaseResponse | None:
         if identity != "scraper-worker":
             raise HTTPException(403, "unrecognized service principal")
+        if body.source_id not in HTTP_SOURCES:
+            raise HTTPException(403, "source not enabled for generic HTTP worker")
         try:
             with psycopg.connect(broker_dsn(), connect_timeout=3) as conn:
                 lease = claim(conn, source=body.source_id, lease_seconds=body.lease_seconds)
@@ -100,7 +243,7 @@ def create_broker_app() -> FastAPI:
 
     @api.post("/internal/v1/scrape/jobs/{job_id}/heartbeat")
     def heartbeat_job(
-        job_id: str,
+        job_id: UUID,
         body: HeartbeatRequest,
         identity: Annotated[str, Depends(service_identity)],
     ) -> dict[str, str]:
@@ -108,25 +251,30 @@ def create_broker_app() -> FastAPI:
             raise HTTPException(403, "unrecognized service principal")
         try:
             with psycopg.connect(broker_dsn(), connect_timeout=3) as conn:
-                if not heartbeat(conn, job_id, body.lease_token, body.job_nonce):
-                    raise HTTPException(409, "expired or revoked lease")
+                valid = heartbeat(conn, str(job_id), body.lease_token, body.job_nonce)
         except psycopg.Error as exc:
             raise HTTPException(503, "broker unavailable") from exc
+        if not valid:
+            # Commit the revoked state before returning the rejection.
+            raise HTTPException(409, "expired or revoked lease")
         return {"status": "leased"}
 
     @api.post("/internal/v1/scrape/jobs/{job_id}/result")
     def submit_result(
-        job_id: str,
+        job_id: UUID,
         body: ResultRequest,
         identity: Annotated[str, Depends(service_identity)],
     ) -> dict[str, str]:
         if identity != "scraper-worker":
             raise HTTPException(403, "unrecognized service principal")
+        if body.source_id not in HTTP_SOURCES:
+            raise HTTPException(403, "source not enabled for generic HTTP worker")
         try:
+            validate_candidates(body.source_id, body.candidates)
             with psycopg.connect(broker_dsn(), connect_timeout=3) as conn:
                 state = complete(
                     conn,
-                    job_id,
+                    str(job_id),
                     body.source_id,
                     body.lease_token,
                     body.job_nonce,
@@ -145,3 +293,27 @@ def create_broker_app() -> FastAPI:
 
 
 app = create_broker_app()
+
+
+def main() -> None:
+    """Only the private broker process loads client trust and server key material."""
+    _allowed_fingerprints()
+    uvicorn.run(
+        app,
+        host=os.environ.get("AUTOAXE_SCRAPE_BROKER_HOST", "127.0.0.1"),
+        port=int(os.environ.get("AUTOAXE_SCRAPE_BROKER_PORT", "8443")),
+        http=VerifiedTLSProtocol,
+        ws="none",
+        proxy_headers=False,
+        ssl_certfile=os.environ["AUTOAXE_SCRAPE_BROKER_CERT"],
+        ssl_keyfile=os.environ["AUTOAXE_SCRAPE_BROKER_KEY"],
+        ssl_ca_certs=os.environ["AUTOAXE_SCRAPE_BROKER_CLIENT_CA"],
+        ssl_cert_reqs=ssl.CERT_REQUIRED,
+        limit_concurrency=16,
+        timeout_keep_alive=2,
+        access_log=False,
+    )
+
+
+if __name__ == "__main__":
+    main()

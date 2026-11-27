@@ -19,11 +19,15 @@ from autoaxe.domain.canonical import canonical_sha256
 from autoaxe.domain.types import utc_datetime
 from autoaxe.infrastructure.market_store import PermissionDenied, verify_connection
 
+OFFICIAL_EVENT_SOURCES = frozenset(
+    {"bls", "bea", "census", "fed", "sec_edgar", "fred", "boj", "boe", "ecb"}
+)
+
 
 def require_event_permission(conn: Connection[Any], source_id: str) -> int:
     """Official release persistence is allowed only by a versioned admin grant."""
     verify_connection(conn, write=True)
-    if source_id not in {"bls", "bea", "census", "fed", "sec_edgar"}:
+    if source_id not in OFFICIAL_EVENT_SOURCES:
         raise PermissionDenied("unrecognized official event source")
     row = conn.execute(
         """SELECT permission_status,enabled,free_only,allow_fetch,allow_storage,
@@ -124,7 +128,7 @@ def query_events(
     """Latest revision visible at cutoff, not the latest revision known today."""
     verify_connection(conn, write=False)
     utc_datetime(cutoff)
-    if source_id is not None and source_id not in {"bls", "bea", "census", "fed", "sec_edgar"}:
+    if source_id is not None and source_id not in OFFICIAL_EVENT_SOURCES:
         raise ValueError("unsupported source")
     if not 1 <= limit <= 200:
         raise ValueError("invalid event query limit")

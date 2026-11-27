@@ -1,0 +1,54 @@
+# Explicit existing infrastructure only; no identity bootstrap or published port.
+name: autoaxe-authorized-bff
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+      target: api
+    environment:
+      AUTOAXE_ENVIRONMENT: fixture
+      AUTOAXE_LIVE_ENABLED: "false"
+      AUTOAXE_EXTERNAL_MCP_ENABLED: "false"
+      AUTOAXE_APP_RUNTIME_DSN: ${AUTOAXE_APP_RUNTIME_DSN:?existing app runtime DSN required}
+      AUTOAXE_MARKET_READ_DSN: ${AUTOAXE_MARKET_READ_DSN:?existing market read DSN required}
+      AUTOAXE_OWNER_SUBJECT_REF: ${AUTOAXE_OWNER_SUBJECT_REF:?configured owner required}
+      AUTOAXE_PUBLIC_ORIGIN: ${AUTOAXE_PUBLIC_ORIGIN:?HTTPS origin required}
+      AUTOAXE_OIDC_ISSUER: ${AUTOAXE_OIDC_ISSUER:?OIDC issuer required}
+      AUTOAXE_OIDC_CLIENT_ID: ${AUTOAXE_OIDC_CLIENT_ID:?OIDC client required}
+      AUTOAXE_OIDC_REDIRECT_URI: ${AUTOAXE_OIDC_REDIRECT_URI:?HTTPS callback required}
+      AUTOAXE_OIDC_CLIENT_SECRET: ${AUTOAXE_OIDC_CLIENT_SECRET:-}
+      AUTOAXE_SESSION_KEY: ${AUTOAXE_SESSION_KEY:?session key required}
+    networks: [app, identity, market]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    init: true
+    restart: "no"
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    environment:
+      AUTOAXE_API_TARGET: http://api:8000
+    networks: [app, edge]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    init: true
+    restart: "no"
+networks:
+  app:
+    external: true
+    name: ${AUTOAXE_BFF_APP_NETWORK:?private Caddy/API/Web network required}
+  edge:
+    external: true
+    name: ${AUTOAXE_BFF_EDGE_NETWORK:?private reverse proxy network required}
+  identity:
+    external: true
+    name: ${AUTOAXE_IDENTITY_NETWORK:?private app DB and approved OIDC route required}
+  market:
+    external: true
+    name: ${AUTOAXE_MARKET_NETWORK:?private market DB network required}

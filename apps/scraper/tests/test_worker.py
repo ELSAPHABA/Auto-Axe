@@ -1,0 +1,77 @@
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
+import pytest
+
+from autoaxe_scraper import worker
+
+
+class FakeBroker:
+    def __init__(self, *, revoked=False, invalid=False, idle=False):
+        self.calls = []
+        self.revoked = revoked
+        self.invalid = invalid
+        self.idle = idle
+        self.job = {
+            "job_id": str(uuid4()),
+            "source_id": "cnn",
+            "adapter_version": 1,
+            "schema_version": 1,
+            "params": {},
+            "job_nonce": "n" * 43,
+            "lease_token": "t" * 43,
+            "deadline_at": (datetime.now(UTC) + timedelta(seconds=60)).isoformat(),
+            "lease_expires_at": (datetime.now(UTC) + timedelta(seconds=30)).isoformat(),
+            "permission_version": 1,
+        }
+
+    def post(self, path, data):
+        self.calls.append((path, data))
+        if path.endswith("/claim"):
+            if self.idle:
+                return None
+            return self.job | ({"params": {"url": "https://bad.invalid"}} if self.invalid else {})
+        if path.endswith("/heartbeat"):
+            return {"status": "revoked" if self.revoked else "leased"}
+        return {"status": "quarantined"}
+
+
+def test_worker_checks_lease_and_quarantines_exact_candidate(monkeypatch):
+    def fetch(policy, *, permit):
+        assert policy.source_id == "cnn"
+        permit()
+        permit()
+        return '<div data-source="cnn-fear-greed" data-score="32" data-category="Fear"/>'
+
+    monkeypatch.setattr(worker, "fetch_exact_html", fetch)
+    broker = FakeBroker()
+    assert worker.run_once(broker, "cnn") == "quarantined"
+    assert [path.rsplit("/", 1)[1] for path, _ in broker.calls] == [
+        "claim",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "result",
+    ]
+    candidate = broker.calls[-1][1]["candidates"][0]
+    assert candidate["value"] == "32" and candidate["quality"] == "manual_review_required"
+    assert candidate["automated_trading_allowed"] is False
+
+
+@pytest.mark.parametrize("mode", ["idle", "invalid", "revoked", "pizzint", "seibro"])
+def test_worker_never_dials_provider_without_valid_lease(monkeypatch, mode):
+    def guarded_fetch(_policy, *, permit):
+        permit()
+        raise AssertionError("provider must not be contacted")
+
+    monkeypatch.setattr(worker, "fetch_exact_html", guarded_fetch)
+    broker = FakeBroker(**{mode: True}) if mode in {"idle", "invalid", "revoked"} else FakeBroker()
+    source = mode if mode in {"pizzint", "seibro"} else "cnn"
+    if mode == "idle":
+        assert worker.run_once(broker, source) == "idle"
+    else:
+        with pytest.raises(worker.BrokerError):
+            worker.run_once(broker, source)
+    assert not any(path.endswith("/result") for path, _ in broker.calls)
+    if mode in {"pizzint", "seibro"}:
+        assert broker.calls == []

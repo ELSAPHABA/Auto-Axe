@@ -34,6 +34,12 @@ def test_any_private_dns_answer_blocks_every_outbound_call():
         )
 
 
+@pytest.mark.parametrize("ip", ["224.0.0.1", "ff02::1", "::ffff:8.8.8.8"])
+def test_non_unicast_or_mapped_dns_answer_rejected(ip):
+    with pytest.raises(SourceBlocked):
+        public_addresses("example.org", resolve=lambda *_a, **_kw: address(ip))
+
+
 def test_pizzint_api_only_terms_and_browser_sources_never_fetch():
     with pytest.raises(SourceBlocked, match="API-only"):
         fetch_exact_html(
@@ -107,6 +113,7 @@ def test_bounded_body_redirect_compression_and_lease_revocation():
         (FakeResponse(b"<p>x</p>"), 302),
         (FakeResponse(b"X" * 1_000_001), 200),
         (FakeResponse(b"<p>x</p>", encoding="gzip"), 200),
+        (FakeResponse(b"<p>x</p>", content_type="text/html-extra"), 200),
     ]:
         conn = FakeConnection(response, status)
         with pytest.raises(SourceBlocked):
@@ -132,6 +139,30 @@ def test_bounded_body_redirect_compression_and_lease_revocation():
             resolve=lambda *_a, **_kw: address("8.8.8.8"),
             dial=lambda host, ip: FakeConnection(FakeResponse(b"<p>x</p>")),
         )
+
+
+@pytest.mark.parametrize(
+    "extra_headers",
+    [
+        {"content-length": "10"},
+        {"content-length": "8", "transfer-encoding": "chunked"},
+        {"transfer-encoding": "gzip"},
+    ],
+)
+def test_ambiguous_or_incomplete_provider_response_rejected(extra_headers):
+    class FramingResponse(FakeResponse):
+        def getheader(self, name, default=None):
+            return extra_headers.get(name, super().getheader(name, default))
+
+    conn = FakeConnection(FramingResponse(b"<p>x</p>"))
+    with pytest.raises(SourceBlocked):
+        fetch_exact_html(
+            SOURCES["cnn"],
+            permit=lambda: None,
+            resolve=lambda *_a, **_kw: address("8.8.8.8"),
+            dial=lambda host, ip: conn,
+        )
+    assert conn.closed
 
 
 def test_pizzint_uses_documented_public_json_api_only():

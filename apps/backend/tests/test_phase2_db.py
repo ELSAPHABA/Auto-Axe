@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from psycopg.errors import InsufficientPrivilege
 from testcontainers.postgres import PostgresContainer
 
+from autoaxe.adapters.authorized_dashboard import changes, read_snapshot
 from autoaxe.application.collection import FetchError
 from autoaxe.application.pizzint_poll import SERIES, poll_once
 from autoaxe.application.scrape_broker import (
@@ -113,6 +114,22 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             deadline = conn.execute("SELECT clock_timestamp()+interval '3 minutes'").fetchone()[0]
             with pytest.raises(PermissionDenied):
                 submit(conn, "cnn", {}, "initial-block", deadline)
+            from autoaxe.application.official_poll import reserve
+
+            with pytest.raises(PermissionDenied):
+                reserve(conn, "ecb_dfr")
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "ecb",
+                approved=True,
+                evidence="synthetic official scheduler fixture",
+                fetch=True,
+                storage=True,
+            )
+        with psycopg.connect(market) as conn:
+            assert reserve(conn, "ecb_dfr") is not None
+            assert reserve(conn, "ecb_dfr") is None
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(
                 conn,
@@ -498,8 +515,10 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
                 storage=True,
                 redistribution=False,
             )
-        now = datetime.now(UTC)
         with psycopg.connect(market) as conn:
+            db_clock = conn.execute("SELECT clock_timestamp()").fetchone()
+            assert db_clock is not None
+            now = min(datetime.now(UTC), db_clock[0]) - timedelta(seconds=2)
             assert (
                 ingest(
                     conn,
@@ -525,6 +544,27 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         assert personal_market.status_code == 200
         assert personal_market.json()["data"][0]["value"] == "23.45"
         assert personal_market.json()["meta"]["permission"] == "approved_personal_education"
+        snapshot_route = "/api/v1/dashboard/authorized/snapshot"
+        assert api.get(snapshot_route).status_code == 401
+        snapshot_response = api.get(
+            snapshot_route, cookies={"__Host-autoaxe-sid": authenticated_sid}
+        )
+        assert snapshot_response.status_code == 200
+        payload = snapshot_response.json()
+        assert payload["meta"]["mode"] == "market_read"
+        assert payload["meta"]["versions"]["VIX"] == 1
+        points = {row["series_id"]: row for row in payload["data"]}
+        assert points["VIX"]["value"] == "23.45"
+        assert "FIXTURE_PRICE" not in points
+        initial = read_snapshot(authenticated_sid, "test", touch=False)
+        with psycopg.connect(market) as conn:
+            db_clock = conn.execute("SELECT clock_timestamp()").fetchone()
+            assert db_clock is not None
+            clock = min(datetime.now(UTC), db_clock[0]) - timedelta(seconds=1)
+            ingest(conn, Candidate("VIX", "next-tick", "24.5", clock, clock, clock))
+        after_tick = read_snapshot(authenticated_sid, "test", touch=False)
+        assert after_tick.snapshot.meta.versions["VIX"] == 2
+        assert changes(initial, after_tick)[0].startswith("event: market.invalidate\n")
         pizza_route = "/api/v1/dashboard/authorized/market/" + SERIES
         assert api.get(pizza_route).status_code == 401
         pizza_read = api.get(pizza_route, cookies={"__Host-autoaxe-sid": authenticated_sid})
@@ -536,6 +576,9 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         # Personal viewing cannot enable a public endpoint or allow anonymous access.
         assert api.get(route).status_code == 401
         monkeypatch.delenv("AUTOAXE_OWNER_SUBJECT_REF")
+        after_owner_change = read_snapshot(authenticated_sid, "test", touch=False)
+        assert "VIX" not in after_owner_change.snapshot.meta.versions
+        assert changes(after_tick, after_owner_change)[0].startswith("event: resync\n")
         assert api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code == 403
         assert (
             api.get(pizza_route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code
@@ -553,7 +596,7 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             )
         allowed = api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid})
         assert allowed.status_code == 200
-        assert allowed.json()["data"][0]["value"] == "23.45"
+        assert allowed.json()["data"][0]["value"] == "24.5"
         assert allowed.json()["meta"]["source_id"] == "yfinance"
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(
@@ -566,3 +609,13 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
                 redistribution=False,
             )
         assert api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code == 403
+        assert (
+            "VIX"
+            not in read_snapshot(authenticated_sid, "test", touch=False).snapshot.meta.versions
+        )
+        with psycopg.connect(app_runtime) as conn:
+            revoke(conn, authenticated_sid)
+        assert (
+            api.get(snapshot_route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code
+            == 401
+        )

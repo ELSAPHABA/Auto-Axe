@@ -1,14 +1,122 @@
 import { useEffect, useMemo, useRef } from "react";
 import * as echarts from "echarts/core";
-import { LineChart } from "echarts/charts";
+import { BarChart, CandlestickChart, LineChart } from "echarts/charts";
 import { GridComponent, TooltipComponent } from "echarts/components";
 import { SVGRenderer } from "echarts/renderers";
 
 import type { ApprovedMarketPage } from "./api";
 
-echarts.use([LineChart, GridComponent, TooltipComponent, SVGRenderer]);
+echarts.use([
+  BarChart,
+  CandlestickChart,
+  LineChart,
+  GridComponent,
+  TooltipComponent,
+  SVGRenderer,
+]);
 
 export function ApprovedChart({ page }: { page: ApprovedMarketPage }) {
+  const daily = page.data
+    .flatMap((item) => (item.bar ? [item.bar] : []))
+    .sort((a, b) => a.session_date.localeCompare(b.session_date));
+  const fundamentals = page.data[0]?.fundamentals;
+  if (daily.length) return <DailyChart rows={daily} />;
+  if (fundamentals)
+    return (
+      <div>
+        <p>수집 당시 재무 지표 · 과거 발표 시각 미검증</p>
+        <dl>
+          {Object.entries(fundamentals).map(([key, value]) => (
+            <div key={key}>
+              <dt>{key}</dt>
+              <dd>{value ?? "—"}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    );
+  return <LineHistory page={page} />;
+}
+
+type DailyBar = NonNullable<ApprovedMarketPage["data"][number]["bar"]>;
+
+function DailyChart({ rows }: { rows: DailyBar[] }) {
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!root.current || !root.current.clientWidth) return;
+    const chart = echarts.init(root.current, undefined, { renderer: "svg" });
+    const dates = rows.map((row) => row.session_date);
+    chart.setOption({
+      animation: false,
+      tooltip: { trigger: "axis" },
+      grid: [
+        { left: 65, right: 18, top: 12, height: "60%" },
+        { left: 65, right: 18, top: "76%", height: "16%" },
+      ],
+      xAxis: [
+        { type: "category", data: dates, axisLabel: { show: false } },
+        {
+          type: "category",
+          data: dates,
+          gridIndex: 1,
+          axisLabel: { color: "#96aec8" },
+        },
+      ],
+      yAxis: [
+        { scale: true, axisLabel: { color: "#96aec8" } },
+        { gridIndex: 1, axisLabel: { color: "#96aec8" } },
+      ],
+      series: [
+        {
+          type: "candlestick",
+          name: "조정 OHLC",
+          data: rows.map((r) => [
+            Number(r.open),
+            Number(r.close),
+            Number(r.low),
+            Number(r.high),
+          ]),
+        },
+        {
+          type: "bar",
+          name: "거래량",
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          data: rows.map((r) => Number(r.volume)),
+        },
+      ],
+    });
+    const resize = () => chart.resize();
+    window.addEventListener("resize", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+      chart.dispose();
+    };
+  }, [rows]);
+  return (
+    <div className="demo-chart">
+      <p>조정 일봉 · 수집 시점 기준, 거래소 세션 및 과거 시점 유효성 미검증</p>
+      <div
+        ref={root}
+        role="img"
+        aria-label="조정 일봉 및 거래량"
+        style={{ height: 380, width: "100%" }}
+      />
+      <dl>
+        {Object.entries(rows[rows.length - 1]?.features ?? {}).map(
+          ([key, value]) => (
+            <div key={key}>
+              <dt>{key}</dt>
+              <dd>{value ?? "워밍업"}</dd>
+            </div>
+          ),
+        )}
+      </dl>
+    </div>
+  );
+}
+
+function LineHistory({ page }: { page: ApprovedMarketPage }) {
   const root = useRef<HTMLDivElement>(null);
   const rows = useMemo(
     () =>

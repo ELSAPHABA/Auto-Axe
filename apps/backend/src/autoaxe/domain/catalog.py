@@ -261,6 +261,27 @@ def catalog() -> dict[str, Series]:
             ),
         ]
     )
+    for symbol, kind in (("NVDA", "us_equity"), ("QLD", "us_etf")):
+        volume = f"US_STOCK_DAILY_CUM_VOLUME_1S_{symbol}"
+        fundamentals = f"{symbol}_FUNDAMENTALS"
+        bars = f"{symbol}_DAILY_OHLCV"
+        rows.extend(
+            [
+                Series(volume, volume, "yfinance", symbol, kind, "shares", "USD", "local_1hz", 5),
+                Series(
+                    fundamentals,
+                    fundamentals,
+                    "yfinance",
+                    symbol,
+                    kind,
+                    "mixed",
+                    "USD",
+                    "daily",
+                    None,
+                ),
+                Series(bars, bars, "yfinance", symbol, kind, "USD", "USD", "1d", None),
+            ]
+        )
     rows.append(
         Series(
             "FIXTURE_PRICE",

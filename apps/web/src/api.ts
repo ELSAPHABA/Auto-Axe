@@ -12,6 +12,21 @@ export type OfficialEventsPage =
   paths["/api/v1/dashboard/official-events"]["get"]["responses"][200]["content"]["application/json"];
 export type ApprovedMarketPage =
   paths["/api/v1/dashboard/authorized/market/{series_id}"]["get"]["responses"][200]["content"]["application/json"];
+export type AuthorizedSnapshot =
+  paths["/api/v1/dashboard/authorized/snapshot"]["get"]["responses"][200]["content"]["application/json"];
+export type SnapshotPoint = AuthorizedSnapshot["data"][number];
+
+export async function getAuthorizedSnapshot(): Promise<AuthorizedSnapshot> {
+  const response = await fetch("/api/v1/dashboard/authorized/snapshot", {
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error("승인된 시장 데이터 조회 실패");
+  const data = (await response.json()) as AuthorizedSnapshot;
+  if (data.meta?.mode !== "market_read" || !Array.isArray(data.data))
+    throw new Error("시장 데이터 계약 불일치");
+  return data;
+}
 
 export async function getApprovedMarketSeries(
   seriesId: string,

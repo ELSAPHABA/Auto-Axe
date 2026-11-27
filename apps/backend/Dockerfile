@@ -14,6 +14,12 @@ COPY apps/scraper/src/autoaxe_scraper/__init__.py apps/scraper/src/autoaxe_scrap
 ENV PYTHONPATH=/opt/pizzint
 CMD ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.pizzint_cli"]
 
+FROM backend AS equity-collector
+USER root
+RUN uv sync --locked --no-dev --group collection-smoke
+USER 10001
+CMD ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.equity_cli"]
+
 FROM backend AS api
 EXPOSE 8000
 CMD ["/app/.venv/bin/uvicorn", "autoaxe.entrypoints.api:app", "--host", "0.0.0.0", "--port", "8000"]

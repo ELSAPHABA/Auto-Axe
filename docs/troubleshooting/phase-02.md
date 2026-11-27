@@ -131,6 +131,21 @@
 - 해결: 인증된 GitHub connector로 기존 parent `7146970946b4058c09b2c9b662b17fb21d63bd94`의 tree를 바탕으로 변경 29개 파일을 생성. 전체 tree SHA `5e3b0582c3cef99c7d793600d23534e0e69b5b11`가 로컬 구현과 일치한 뒤 원격 commit `c2d90cccbd32765a7a2f111eca4618f64ab30082` 생성 및 expected parent 기반 non-force ref update. 이후 `git fetch origin main` 및 clean/tree 검증, CAS local update-ref로 정렬. 자격증명 저장/출력, 강제 push, 기존 데이터 삭제 없음.
 - 재검증: 재개 시 local HEAD=origin/main, clean 상태 확인. [GitHub Actions 45942185124](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45942185124) completed/success, 4/4 jobs. 인증 문제는 GitHub connector 경로로 해결했으며 로컬 git credential 자체를 수리한 것은 아니다. 동일 문제 재발 시 검증된 방식만 사용하고 원격 변경과 충돌하면 중단·재확인한다.
 
+## TS-02-21 — 사용자 Conda와 프로젝트 Python 계약 불일치
+- HongDev Python 3.10.20은 프로젝트 3.12 전용 요구와 호환하지 않는다. 공유 환경/잠금 파일을 변경하지 않고 `conda run --no-capture-output -n HongDev`에서 절대경로 uv 실행기로 각 project locked venv Python 3.12.10을 사용. 상대 uv 경로 실행 실패(9009), Windows cp949 콘솔 Ruff 출력 UnicodeEncodeError는 절대경로 및 PYTHONIOENCODING=utf-8로 수정. Python 버전/CONDA_DEFAULT_ENV 직접 확인.
+
+## TS-02-22 — yfinance HTTP 내부 fallback/retry의 제한 위반 위험
+- 잠금 SDK 1.8.0 HTTP 구현은 cookie strategy 변경 등으로 실패 후 추가 요청을 만들 수 있다. 외부 요청 각각을 permission/cooldown으로 보호할 수 있다는 증거가 없어 NVDA daily/fundamentals 실제 HTTP adapter는 SDK 생성 전 명시적으로 실패하도록 차단. ETF corporate metrics도 요청하지 않음. WS는 독립 수신/heartbeat 및 제한적 reconnect 경로로 구현. 새 regression은 HTTP 호출 금지 경계를 검사하며, 합성 일봉/feature 테스트를 실제 Yahoo 응답 검증으로 바꾸지 않는다.
+
+## TS-02-23 — PostgreSQL snapshot 테스트에서 host/DB 시각 차이 가능성
+- 초기 전체 backend 102 passed / 1 failed: VIX version=1인데 snapshot value=null. 별도 역사 조회는 23.45를 반환했다. snapshot의 transaction timestamp와 available/ingested cutoff는 보안/데이터 시간 계약이므로 제거하지 않음. Windows host와 Docker DB 시각 차이가 원인 후보이며 직접 계측된 확정 원인은 아님. test fixture timestamp를 min(host UTC, DB clock_timestamp)-2s/-1s로 설정. 동일 test_phase2_db.py 단독 재검증 1 passed/16 warnings/39.22s. 전체 재실행 결과는 session 08 참조.
+
+## TS-02-24 — 프런트엔드 snapshot mock 및 정적 검사
+- 새 authorized snapshot REST 경로의 mock을 추가하고 기존 공식 지표 테스트의 대기 시간을 5s로 조정(병렬 Docker 부하에서 1s timeout 발생). pnpm workspace filter에서 formatter 실행, backend schema 명령은 `python -m autoaxe.adapters.schema` 사용. Vitest 6 passed, Playwright 1 passed, typecheck/lint/build 성공. ECharts bundle 500kB 경고는 잔존.
+
+## TS-02-25 — 공식 poll CLI strict mypy lambda 추론 오류
+- Ruff 포맷 및 E501/B023 조치 뒤 전체 strict mypy에서 official_poll_cli.py:28 Cannot infer type of lambda. loop variable capture가 필요한 콜백을 `functools.partial(fetch_release, task, client)`로 바꿔 late binding과 추론 문제를 제거. 최종 strict mypy 60 files, Ruff check/format 83 files, schema check 성공. 전체 backend 회귀 104 passed/16 warnings/99.28s로 TS-02-23의 초기 실패도 재검증됨. 권한/실패 정책 및 CLI opt-in 유지.
+
 ## TS-02-20 — DOUGHCON 전용 스케줄러 검증 중 정적 검사 및 운영 테스트 정리
 - 요구/환경: 2026-11-27 사용자 5분 상시 수집 및 운영 연결 구현. 일반 poller의 queued retry/catch-up을 그대로 적용하면 요청 간격을 보장하기 어려워 전용 DB 예약 기반 poller를 선택.
 - 최초 검사 실패: Ruff E501 다섯 건(긴 source permission 조건, SQL ON CONFLICT, health 호출 및 BFF 테스트 assert). 동작 변경 없이 식/SQL/문장을 여러 줄로 나누고 Ruff formatter 적용. 이후 Ruff/mypy 52 source files/schema check 통과 및 전체 backend 88 passed.

@@ -23,6 +23,13 @@ MAX_SERIES = 3
 class OfficialSourceError(RuntimeError):
     """Retriable and non-retriable provider failures both fail closed."""
 
+    def __init__(
+        self, message: str, *, status: int | None = None, retry_header: str | None = None
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.retry_header = retry_header
+
 
 def collect_bls_v1(
     client: httpx.Client,
@@ -53,9 +60,17 @@ def collect_bls_v1(
             timeout=httpx.Timeout(10.0),
         ) as response:
             if response.status_code in (401, 403, 429):
-                raise OfficialSourceError(f"BLS access denied or throttled: {response.status_code}")
+                raise OfficialSourceError(
+                    f"BLS access denied or throttled: {response.status_code}",
+                    status=response.status_code,
+                    retry_header=response.headers.get("retry-after"),
+                )
             if response.status_code != 200:
-                raise OfficialSourceError(f"BLS unavailable: {response.status_code}")
+                raise OfficialSourceError(
+                    f"BLS unavailable: {response.status_code}",
+                    status=response.status_code,
+                    retry_header=response.headers.get("retry-after"),
+                )
             content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
             if content_type != "application/json":
                 raise OfficialSourceError("BLS response is not JSON")

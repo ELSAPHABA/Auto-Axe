@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from autoaxe.adapters.authorized_dashboard import router as authorized_dashboard_router
 from autoaxe.adapters.authorized_market_api import router as authorized_market_router
 from autoaxe.adapters.contracts import (
     ErrorDetail,
@@ -167,6 +168,7 @@ def create_app() -> FastAPI:
     api.include_router(dashboard_router)
     api.include_router(official_events_router)
     api.include_router(authorized_market_router)
+    api.include_router(authorized_dashboard_router)
     api.include_router(auth_router)
     return api
 

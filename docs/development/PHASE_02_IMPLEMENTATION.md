@@ -126,7 +126,21 @@ CLI 실행은 사용자/관리자의 별도 승인과 정책 확인 후에만 �
 - 이는 **구현 및 격리/합성 검증**이다. 실제 BLS/SEC/시장 API 호출, source rights·Keycloak+mTLS 운영 경계와 실시간 SSE, 실제 주문 실행은 전부 미검증/비활성.
 - [후속 개발 구현 커밋 7e68159](https://github.com/ELSAPHABA/Auto-Axe/commit/7e68159f84e0f0b2587b6a0f8e7f73adee2f53f1)에 대한 [GitHub Actions 45928981099](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45928981099)는 completed/success, 4/4 jobs. 허가된 실제 웹 소스나 배포 검증의 증거로 확대 해석하지 말 것.
 
-## 개발 Fixture 최종 검증 (2026-11-27)
+## Session 08 — 승인형 수집·인증 전달 추가 구현 (2026-11-27)
+
+최신 [작업/검증 기록](../../.ai-context/phases/phase-02/2026-11-27-08.md)을 이전 상태 표보다 우선한다. 사용자 지정 HongDev Conda를 경유해 프로젝트의 잠금 Python 3.12 runtime으로 시험했다.
+
+| 항목 | 추가 구현 | 남은 작업 |
+|---|---|---|
+| P2.1 | 기존 DB 및 IdP에 연결하는 private BFF Compose | 실제 Keycloak/Caddy HTTPS 로그인·철회 |
+| P2.2 | NVDA/QLD 1Hz 로컬 sampler, version fence 및 재연결, 6개 series와 migration 0007 | 실제 Yahoo WS 및 calendar, 안전한 daily/fundamentals HTTP; SDK 내부 retry 때문에 해당 HTTP 경로 차단 |
+| P2.3/P2.4 | 10개 고정 공식 feed task, 영속 예약·quota/circuit (0008), BLS/BEA/Census/FRED/ECB/BoE/SEC 어댑터 | 실제 응답 검증/승인, BOJ/MEXC, 경제 일정 연결, 정량 guidance 및 실제 만기 |
+| P2.5/P2.6 | CA+leaf pin 실제 loopback mTLS, private worker claim/heartbeat/result, 고정 DNS/TLS transport | 실제 DOM/권한 및 운영 egress, SEIBro browser, durable generic scheduler/검증된 ledger 승격. DOUGHCON 전용 5m 구현 유지 |
+| P2.7/P2.8 | 승인된 READ ONLY committed snapshot, DB version polling SSE invalidation+REST resync, 권한 폐기 처리, approved chart/volume/feature UI | 실데이터 운영 E2E, 장시간 부하 및 durable event replay |
+
+CLI는 `python -m autoaxe.entrypoints.official_poll_cli --help`, `python -m autoaxe.entrypoints.equity_cli --help`를 참고한다. 신규 Compose 파일은 기본 collector command가 도움말이며 자동으로 외부 공급자를 호출하지 않는다. source registry 권한·기존 운영 DB와 네트워크 및 실제 인증 구성이 선행되어야 한다. 인증 snapshot은 `/api/v1/dashboard/authorized/snapshot`; authorized stream은 전체 시세 이벤트 replay가 아닌 2초 DB 확인 기반 invalidation이며 클라이언트가 REST로 재조회한다. 합성 데이터를 실데이터로 표시하지 않는다. 운영 완료 판정은 보류한다.
+
+## 개발 Fixture 최종 검증 (2026-11-27, 이전 세션 이력)
 
 - Backend Ruff/mypy 42 files/schema: 통과. 전체 PostgreSQL 통합 포함 pytest **79 passed / 2 deprecation warnings / 118.90s**. 초기 병렬 테스트 중 포트 타임아웃 실패는 별도 [TS-02-05](../troubleshooting/phase-02.md)에 기록, 단독 재검증 1 passed/30.92s, 정책 완화 없음.
 - 격리 Scrapling Ruff/mypy 4 files/pytest **5 passed**, network_mode none+read_only Docker scraper **5 passed / 0 warnings / 0.54s**. 실제 사이트 DOM·권한 검증과는 구분.

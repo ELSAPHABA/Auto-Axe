@@ -83,70 +83,97 @@ function setup(failure = false, authorized = false) {
         : Promise.resolve({
             ok: true,
             json: async () =>
-              String(url).includes("dashboard/official-events")
+              String(url).includes("dashboard/authorized/snapshot")
                 ? {
                     data: [
                       {
-                        event_key: "US_CPI:2026-10",
-                        source_id: "bls",
-                        revision: 2,
-                        actual: "321.75",
-                        forecast: null,
-                        previous: null,
-                        unit: "index",
-                        scheduled_at: null,
-                        released_at: null,
-                        first_seen_at: "2026-11-27T02:00:00Z",
-                        available_at: "2026-11-27T02:00:00Z",
-                        source_url: "https://www.bls.gov/developers/",
+                        series_id: "BITCOIN_BINANCE_SPOT",
+                        source_id: "binance_spot",
+                        unit: "USDT/BTC",
+                        value: "98765",
+                        quality: "valid",
+                        version: 1,
+                        source_event_at: "2026-11-27T02:00:00Z",
+                        received_at: "2026-11-27T02:00:00Z",
+                        collector_status: "healthy",
+                        collector_checked_at: null,
                       },
                     ],
                     meta: {
-                      request_id: "test",
+                      mode: "market_read",
+                      versions: { BITCOIN_BINANCE_SPOT: 1 },
                       as_of: "2026-11-27T02:00:00Z",
-                      source_scope: null,
-                      available_count: 1,
+                      request_id: "test",
+                      schema_version: 1,
                     },
                   }
-                : String(url).includes(
-                      "/dashboard/authorized/market/PENTAGON_PIZZA_PIZZINT",
-                    )
+                : String(url).includes("dashboard/official-events")
                   ? {
                       data: [
-                        { value: "5", source_event_at: "2026-11-27T04:00:00Z" },
+                        {
+                          event_key: "US_CPI:2026-10",
+                          source_id: "bls",
+                          revision: 2,
+                          actual: "321.75",
+                          forecast: null,
+                          previous: null,
+                          unit: "index",
+                          scheduled_at: null,
+                          released_at: null,
+                          first_seen_at: "2026-11-27T02:00:00Z",
+                          available_at: "2026-11-27T02:00:00Z",
+                          source_url: "https://www.bls.gov/developers/",
+                        },
                       ],
                       meta: {
-                        unit: "level",
-                        collector_status: "healthy",
-                        collector_checked_at: "2026-11-27T04:01:00Z",
-                        as_of: "2026-11-27T04:01:10Z",
+                        request_id: "test",
+                        as_of: "2026-11-27T02:00:00Z",
+                        source_scope: null,
+                        available_count: 1,
                       },
                     }
-                  : String(url).includes("/auth/session")
-                    ? { meta: { authenticated: authorized } }
-                    : String(url).includes("dashboard/indicators")
-                      ? {
-                          data: fake,
-                          meta: {
-                            next_cursor: null,
-                            environment: "fixture",
-                            schema_version: 1,
-                            as_of: "2026-11-27T00:00:00Z",
-                            version: 0,
-                            request_id: "test",
-                            live_enabled: false,
-                            external_mcp_enabled: false,
+                  : String(url).includes(
+                        "/dashboard/authorized/market/PENTAGON_PIZZA_PIZZINT",
+                      )
+                    ? {
+                        data: [
+                          {
+                            value: "5",
+                            source_event_at: "2026-11-27T04:00:00Z",
                           },
-                        }
-                      : {
-                          data: {
-                            status: "ok",
-                            environment: "fixture",
-                            live_enabled: false,
-                            external_mcp_enabled: false,
-                          },
-                          meta: { request_id: "test" },
+                        ],
+                        meta: {
+                          unit: "level",
+                          collector_status: "healthy",
+                          collector_checked_at: "2026-11-27T04:01:00Z",
+                          as_of: "2026-11-27T04:01:10Z",
                         },
+                      }
+                    : String(url).includes("/auth/session")
+                      ? { meta: { authenticated: authorized } }
+                      : String(url).includes("dashboard/indicators")
+                        ? {
+                            data: fake,
+                            meta: {
+                              next_cursor: null,
+                              environment: "fixture",
+                              schema_version: 1,
+                              as_of: "2026-11-27T00:00:00Z",
+                              version: 0,
+                              request_id: "test",
+                              live_enabled: false,
+                              external_mcp_enabled: false,
+                            },
+                          }
+                        : {
+                            data: {
+                              status: "ok",
+                              environment: "fixture",
+                              live_enabled: false,
+                              external_mcp_enabled: false,
+                            },
+                            meta: { request_id: "test" },
+                          },
           }),
     ),
   );
@@ -203,9 +230,12 @@ test("fixture dashboard backend failure never displays a live price", async () =
 
 test("only authorized, permission-gated official events appear separately", async () => {
   setup(false, true);
-  expect(await screen.findByText("US_CPI:2026-10")).toBeVisible();
+  expect(
+    await screen.findByText("US_CPI:2026-10", {}, { timeout: 5000 }),
+  ).toBeVisible();
   expect(screen.getByText("321.75 index")).toBeVisible();
   expect(screen.getByText("합성 검증 값")).toBeVisible();
+  expect(await screen.findByText("98765", {}, { timeout: 5000 })).toBeVisible();
 });
 
 test("DOUGHCON only shows an authenticated stored level and API timestamp", async () => {

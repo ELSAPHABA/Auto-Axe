@@ -80,6 +80,24 @@ STATIC = (
         "daily",
         "ETF 기업비율 기본 null",
     ),
+    IndicatorDefinition(
+        "NVDA_DAILY_OHLCV",
+        "NVDA 일봉·기술지표",
+        "equities",
+        "yfinance",
+        "USD",
+        "1d",
+        "조정 과거봉, 거래소 세션 및 PIT 검증 별도",
+    ),
+    IndicatorDefinition(
+        "QLD_DAILY_OHLCV",
+        "QLD 일봉·기술지표",
+        "equities",
+        "yfinance",
+        "USD",
+        "1d",
+        "조정 과거봉, 거래소 세션 및 PIT 검증 별도",
+    ),
     IndicatorDefinition("US_CPI", "미국 CPI", "macro", "bls", "index", "release"),
     IndicatorDefinition(
         "US_NONFARM_PAYROLL", "미국 비농업 고용", "macro", "bls", "thousand", "release"

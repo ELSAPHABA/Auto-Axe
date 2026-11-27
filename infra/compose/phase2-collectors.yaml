@@ -1,0 +1,44 @@
+# Opt-in only: existing migrated DB and administrator-approved source registry.
+name: autoaxe-phase2-collectors
+x-common: &common
+  profiles: [approved]
+  networks: [market, egress]
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  init: true
+  restart: "no"
+  pids_limit: 128
+  mem_limit: 768m
+  cpus: 1.0
+services:
+  official:
+    <<: *common
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+      target: backend
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.official_poll_cli", "--help"]
+    environment:
+      AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?existing market runtime DSN required}
+      AUTOAXE_BEA_API_KEY: ${AUTOAXE_BEA_API_KEY:-}
+      AUTOAXE_CENSUS_API_KEY: ${AUTOAXE_CENSUS_API_KEY:-}
+      AUTOAXE_FRED_API_KEY: ${AUTOAXE_FRED_API_KEY:-}
+      AUTOAXE_SEC_CONTACT: ${AUTOAXE_SEC_CONTACT:-}
+  equity:
+    <<: *common
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+      target: equity-collector
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.equity_cli", "--help"]
+    environment:
+      AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?existing market runtime DSN required}
+networks:
+  market:
+    external: true
+    name: ${AUTOAXE_MARKET_NETWORK:?existing private market network required}
+  egress:
+    external: true
+    name: ${AUTOAXE_COLLECTOR_EGRESS_NETWORK:?existing restricted egress network required}

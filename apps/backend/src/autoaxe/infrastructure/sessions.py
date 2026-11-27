@@ -85,6 +85,7 @@ def authorize(
     *,
     required_scope: str = "indicators:read",
     csrf: str | None = None,
+    touch: bool = True,
 ) -> SessionGrant:
     """Check session and current principal version in DB for every protected request."""
     _check_app_role(conn)
@@ -111,11 +112,12 @@ def authorize(
     scopes = frozenset(row["scopes"])
     if required_scope not in scopes:
         raise PermissionError("insufficient scope")
-    conn.execute(
-        """UPDATE identity.web_sessions SET last_seen_at=%s,
-        idle_expires_at=LEAST(%s,absolute_expires_at) WHERE session_hash=%s""",
-        (row["now"], row["now"] + IDLE, digest(session_id)),
-    )
+    if touch:
+        conn.execute(
+            """UPDATE identity.web_sessions SET last_seen_at=%s,
+            idle_expires_at=LEAST(%s,absolute_expires_at) WHERE session_hash=%s""",
+            (row["now"], row["now"] + IDLE, digest(session_id)),
+        )
     return SessionGrant(
         row["subject_ref"], row["role"], scopes, row["auth_version"], digest(session_id)
     )

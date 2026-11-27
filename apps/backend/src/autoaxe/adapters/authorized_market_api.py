@@ -1,12 +1,13 @@
 """Scoped BFF historical market read: approved sources only, never public."""
 
 import os
+from datetime import date
 from typing import Annotated
 
 import psycopg
 from fastapi import APIRouter, Cookie, HTTPException, Query, Request
 
-from autoaxe.adapters.contracts import Contract, Identifier, UtcTime
+from autoaxe.adapters.contracts import Contract, Identifier, Money, UtcTime
 from autoaxe.domain.catalog import catalog
 from autoaxe.domain.owner_access import is_configured_owner
 from autoaxe.entrypoints.auth import SESSION_COOKIE
@@ -18,6 +19,16 @@ from autoaxe.infrastructure.sessions import authorize
 router = APIRouter(prefix="/api/v1/dashboard/authorized", tags=["dashboard-authorized"])
 
 
+class DailyBar(Contract):
+    session_date: date
+    open: Money
+    high: Money
+    low: Money
+    close: Money
+    volume: Money
+    features: dict[str, Money | None]
+
+
 class AuthorizedPoint(Contract):
     event_key: str
     revision: int
@@ -26,6 +37,8 @@ class AuthorizedPoint(Contract):
     source_event_at: UtcTime | None
     received_at: UtcTime
     available_at: UtcTime
+    bar: DailyBar | None = None
+    fundamentals: dict[str, Money | None] | None = None
 
 
 class AuthorizedMeta(Contract):
@@ -104,6 +117,25 @@ def list_authorized_market_observations(
                 source_event_at=row["source_event_at"],
                 received_at=row["received_at"],
                 available_at=row["available_at"],
+                bar=DailyBar(
+                    session_date=date.fromisoformat(row["metadata"]["session_date"]),
+                    open=row["metadata"]["open"],
+                    high=row["metadata"]["high"],
+                    low=row["metadata"]["low"],
+                    close=row["metadata"]["close"],
+                    volume=row["metadata"]["volume"],
+                    features={
+                        k: v["value"] for k, v in row["metadata"].get("features", {}).items()
+                    },
+                )
+                if series_id in {"NVDA_DAILY_OHLCV", "QLD_DAILY_OHLCV"}
+                else None,
+                fundamentals={
+                    k: row["metadata"]["metrics"].get(k)
+                    for k in ("per_ttm", "per_forward", "pbr", "roe_ratio")
+                }
+                if series_id in {"NVDA_FUNDAMENTALS", "QLD_FUNDAMENTALS"}
+                else None,
             )
             for row in rows
         ],

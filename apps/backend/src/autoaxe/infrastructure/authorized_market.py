@@ -62,10 +62,18 @@ def authorized_observations(
                     o.partition_at,o.observation_id
                  FROM market.observations o
                  WHERE o.series_id=%s
-                   AND o.available_at<=%s AND o.ingested_at<=%s
+                   AND o.available_at<=%s AND o.ingested_at<=%s AND o.mapping_version=%s
                  ORDER BY o.source_event_key,o.revision DESC
                )
-               SELECT * FROM visible ORDER BY partition_at DESC,
+               SELECT * FROM visible ORDER BY
+                  CASE WHEN %s THEN source_event_key END DESC NULLS LAST, partition_at DESC,
                   observation_id DESC LIMIT %s""",
-            (series_id, cutoff, cutoff, limit),
+            (
+                series_id,
+                cutoff,
+                cutoff,
+                series.mapping_version,
+                series_id in {"NVDA_DAILY_OHLCV", "QLD_DAILY_OHLCV"},
+                limit,
+            ),
         ).fetchall()

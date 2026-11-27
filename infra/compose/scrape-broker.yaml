@@ -1,0 +1,76 @@
+# Opt-in private deployment. The operator must provision both CAs/certificates,
+# and independently enforce host-level egress restrictions before use.
+# No default public listener or general-purpose Internet network is created.
+name: autoaxe-scrape
+services:
+  scrape-broker:
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+      target: backend
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.scrape_broker"]
+    environment:
+      AUTOAXE_SCRAPE_BROKER_HOST: "0.0.0.0"
+      AUTOAXE_SCRAPE_BROKER_PORT: "8443"
+      AUTOAXE_SCRAPE_BROKER_MARKET_DSN: ${AUTOAXE_SCRAPE_BROKER_MARKET_DSN:?set broker runtime DSN}
+      AUTOAXE_SCRAPE_BROKER_CERT: /run/scrape-tls/server.pem
+      AUTOAXE_SCRAPE_BROKER_KEY: /run/scrape-tls/server.key
+      AUTOAXE_SCRAPE_BROKER_CLIENT_CA: /run/scrape-tls/client-ca.pem
+      AUTOAXE_SCRAPER_CERT_SHA256: ${AUTOAXE_SCRAPER_CERT_SHA256:?pin the scraper leaf certificate}
+    volumes:
+      - type: bind
+        source: ${AUTOAXE_SCRAPE_BROKER_TLS_DIR:?set broker-only TLS directory}
+        target: /run/scrape-tls
+        read_only: true
+        bind:
+          create_host_path: false
+    networks: [market, control]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.5
+    init: true
+    restart: unless-stopped
+  scraper-worker:
+    profiles: [worker]
+    build:
+      context: ../..
+      dockerfile: apps/scraper/Dockerfile
+    entrypoint: ["/app/.venv/bin/python", "-m", "autoaxe_scraper.worker"]
+    # Explicitly override with the approved source when running one job.
+    command: ["--help"]
+    environment:
+      AUTOAXE_SCRAPE_BROKER_HOST: scrape-broker
+      AUTOAXE_SCRAPE_BROKER_PORT: "8443"
+      AUTOAXE_SCRAPE_BROKER_CA: /run/scrape-tls/server-ca.pem
+      AUTOAXE_SCRAPER_CERT: /run/scrape-tls/worker.pem
+      AUTOAXE_SCRAPER_KEY: /run/scrape-tls/worker.key
+    volumes:
+      - type: bind
+        source: ${AUTOAXE_SCRAPER_TLS_DIR:?set worker-only TLS directory}
+        target: /run/scrape-tls
+        read_only: true
+        bind:
+          create_host_path: false
+    networks: [control, restricted-egress]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 32
+    mem_limit: 256m
+    cpus: 0.5
+    init: true
+    restart: "no"
+networks:
+  control:
+    internal: true
+  market:
+    external: true
+    name: ${AUTOAXE_MARKET_NETWORK:?set private market network}
+  restricted-egress:
+    external: true
+    name: ${AUTOAXE_SCRAPE_RESTRICTED_EGRESS_NETWORK:?set an externally enforced restricted egress network}

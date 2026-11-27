@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/authorized/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Snapshot */
+        get: operations["getAuthorizedDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard/indicators": {
         parameters: {
             query?: never;
@@ -243,8 +260,13 @@ export interface components {
              * Format: date-time
              */
             available_at: string;
+            bar?: components["schemas"]["DailyBar"] | null;
             /** Event Key */
             event_key: string;
+            /** Fundamentals */
+            fundamentals?: {
+                [key: string]: string | null;
+            } | null;
             /** Quality */
             quality: string;
             /**
@@ -265,11 +287,39 @@ export interface components {
             data: components["schemas"]["AuthorizedPoint"][];
             meta: components["schemas"]["AuthorizedMeta"];
         };
+        /** AuthorizedSnapshot */
+        AuthorizedSnapshot: {
+            /** Data */
+            data: components["schemas"]["SnapshotPoint"][];
+            meta: components["schemas"]["SnapshotMeta"];
+        };
         /** CatalogResponse */
         CatalogResponse: {
             /** Data */
             data: components["schemas"]["SeriesDTO"][];
             meta: components["schemas"]["MarketMeta"];
+        };
+        /** DailyBar */
+        DailyBar: {
+            /** Close */
+            close: string;
+            /** Features */
+            features: {
+                [key: string]: string | null;
+            };
+            /** High */
+            high: string;
+            /** Low */
+            low: string;
+            /** Open */
+            open: string;
+            /**
+             * Session Date
+             * Format: date
+             */
+            session_date: string;
+            /** Volume */
+            volume: string;
         };
         /** DashboardMeta */
         DashboardMeta: {
@@ -675,6 +725,53 @@ export interface components {
             /** Unit */
             unit: string;
         };
+        /** SnapshotMeta */
+        SnapshotMeta: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Mode
+             * @default market_read
+             */
+            mode: string;
+            /** Request Id */
+            request_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /** Versions */
+            versions: {
+                [key: string]: number;
+            };
+        };
+        /** SnapshotPoint */
+        SnapshotPoint: {
+            /** Collector Checked At */
+            collector_checked_at: string | null;
+            /** Collector Status */
+            collector_status: string | null;
+            /** Quality */
+            quality: string;
+            /** Received At */
+            received_at: string | null;
+            /** Series Id */
+            series_id: string;
+            /** Source Event At */
+            source_event_at: string | null;
+            /** Source Id */
+            source_id: string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: string | null;
+            /** Version */
+            version: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -787,6 +884,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthorizedSeriesPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getAuthorizedDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                "__Host-autoaxe-sid"?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizedSnapshot"];
                 };
             };
             /** @description Validation Error */

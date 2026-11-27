@@ -1,5 +1,6 @@
 import { Link, NavLink, Route, Routes } from "react-router";
 import { DashboardHome, IndicatorsPage, MarketDetailPage } from "./dashboard";
+import { useAuthorizedStream, useAuthorizedSnapshot } from "./authorized-live";
 
 const NAV = [
   { to: "/", label: "시장 대시보드", icon: "◫" },
@@ -29,6 +30,8 @@ function Placeholder({ name }: { name: string }) {
 }
 
 function Shell() {
+  const stream = useAuthorizedStream();
+  const market = useAuthorizedSnapshot();
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="주요 메뉴">
@@ -60,7 +63,8 @@ function Shell() {
         <div className="sidebar-footer">
           <span className="footer-label">DEVELOPMENT ENVIRONMENT</span>
           <strong>
-            <span className="status-dot" /> Fixture Only
+            <span className="status-dot" />{" "}
+            {market ? "승인된 시장 데이터" : "Fixture Only"}
           </strong>
           <p>외부 MCP: OFF · LIVE: OFF</p>
           <Link to="/about">개발 범위 확인</Link>
@@ -70,7 +74,14 @@ function Shell() {
         <header className="topbar">
           <span>시장 데이터 관제 / Phase 2</span>
           <div>
-            <span className="topbar-pill">DEMO / SYNTHETIC</span>
+            <span className="topbar-pill">
+              {market
+                ? stream === "ready"
+                  ? "MARKET / CONNECTED"
+                  : "MARKET / REST"
+                : "DEMO / SYNTHETIC"}
+            </span>
+            {!market && <a href="/api/v1/auth/login">로그인</a>}
             <span className="topbar-avatar" aria-label="개발 환경">
               DEV
             </span>
