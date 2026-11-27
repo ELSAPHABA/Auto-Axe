@@ -458,6 +458,7 @@ export interface components {
             /** Evidence */
             evidence: components["schemas"]["ReviewedExpiryView"][];
             meta: components["schemas"]["ExpiryMeta"];
+            projection?: components["schemas"]["ExpiryProjectionView"] | null;
             /** Sessions */
             sessions: components["schemas"]["ExpirySessionView"][];
         };
@@ -531,6 +532,24 @@ export interface components {
              * @constant
              */
             schema_version: 1;
+        };
+        /** ExpiryProjectionView */
+        ExpiryProjectionView: {
+            /** Calendar Days */
+            calendar_days: number | null;
+            /** Calendar Version */
+            calendar_version: string | null;
+            /** Equity Session Days */
+            equity_session_days: number | null;
+            /** Estimated Date */
+            estimated_date: string | null;
+            /**
+             * Nominal Date
+             * Format: date
+             */
+            nominal_date: string;
+            /** Rule Version */
+            rule_version: string;
         };
         /** ExpirySessionView */
         ExpirySessionView: {
@@ -1433,8 +1452,8 @@ export interface operations {
     };
     getAuthorizedExpiryCalendar: {
         parameters: {
-            query: {
-                candidate_date: string;
+            query?: {
+                candidate_date?: string | null;
                 as_of?: string | null;
             };
             header?: never;

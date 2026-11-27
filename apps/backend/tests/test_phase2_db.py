@@ -537,6 +537,26 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         assert linked_actual["link_status"] == "period_match"
         assert linked_actual["period_match"]["event_key"] == "fixture-cpi-calendar"
         assert linked_actual["scheduled_at"] is None and linked_actual["released_at"] is None
+        # Rule estimates require no OCC/CME source grant and never assert
+        # verified active contracts. The explicit candidate remains the key.
+        expiry = api.get(
+            "/api/v1/dashboard/expiry-calendar",
+            cookies={"__Host-autoaxe-sid": authenticated_sid},
+            params={"candidate_date": "2027-06-18"},
+        )
+        assert expiry.status_code == 200
+        assert expiry.json()["projection"]["estimated_date"] == "2027-06-17"
+        assert expiry.json()["evidence"] == []
+        assert expiry.json()["sessions"][0]["event_type"] == "PENDING_VERIFICATION"
+        automatic = api.get(
+            "/api/v1/dashboard/expiry-calendar",
+            cookies={"__Host-autoaxe-sid": authenticated_sid},
+        )
+        assert automatic.status_code == 200
+        automatic_body = automatic.json()
+        assert (
+            automatic_body["meta"]["candidate_date"] == automatic_body["projection"]["nominal_date"]
+        )
         monkeypatch.delenv("AUTOAXE_OWNER_SUBJECT_REF")
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(

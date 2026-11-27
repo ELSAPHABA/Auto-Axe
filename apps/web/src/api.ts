@@ -54,11 +54,12 @@ export async function getCorporateGuidance(): Promise<GuidancePage> {
   return result;
 }
 
-export async function getExpiryCalendar(date: string): Promise<ExpiryPage> {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("잘못된 조회일");
+export async function getExpiryCalendar(date?: string): Promise<ExpiryPage> {
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date))
+    throw new Error("잘못된 조회일");
   const response = await fetch(
-    "/api/v1/dashboard/expiry-calendar?candidate_date=" +
-      encodeURIComponent(date),
+    "/api/v1/dashboard/expiry-calendar" +
+      (date ? "?candidate_date=" + encodeURIComponent(date) : ""),
     {
       credentials: "same-origin",
       cache: "no-store",

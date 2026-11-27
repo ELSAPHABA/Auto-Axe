@@ -90,7 +90,7 @@ SEIBro는 국가·기간별 매수/매도/순매수 결제금액 USD를 수집�
 
 발표 예정·실제 공개·최초 수집·수정 시각과 actual/previous/consensus를 구분한다. 컨센서스가 확인되지 않으면 결측 또는 근거 있는 수동 입력. 정책 목표금리와 시장 실효금리, 결정일과 발효일을 분리한다. 만기는 명목 만기·최종 거래·처리·정산 시각을 분리하고 휴장 예외를 검증한다.
 
-위칭은 분기 셋째 금요일을 후보로 생성하되 실제 계약을 확인한다. 4개 상품군 YES/NO/UNKNOWN을 기록하고 CME 개별주식 선물 재도입 이후에도 실제 계약 기준으로 판정한다. TRIPLE_WITCHING과 QUADRUPLE_WITCHING은 상호 배타적이며 미확인은 PENDING_VERIFICATION. IS_TRIPLE_WITCHING_DAY, IS_QUADRUPLE_WITCHING_DAY, IS_WITCHING_DAY, DTE_TRIPLE_WITCHING, DTE_QUADRUPLE_WITCHING, TRADING_DAYS_TO_WITCHING을 산출한다. [위칭 상세](../indicator-collection/US_Equity_Witching_Calendar.md).
+위칭 기본 예상 일정은 분기 셋째 금요일 후보를 검수된 미국 주식시장 거래일 달력으로 휴장일 자동 보정하여 생성한다(2026-11-27 사용자 변경). 예상일과 달력/주식시장 DTE는 실제 계약 근거 및 확정 지표와 분리한다. 실제 계약을 확인한 4개 상품군 YES/NO/UNKNOWN을 기록하고 CME 개별주식 선물 재도입 이후에도 실제 계약 기준으로 판정한다. TRIPLE_WITCHING과 QUADRUPLE_WITCHING은 상호 배타적이며 미확인은 PENDING_VERIFICATION. IS_TRIPLE_WITCHING_DAY, IS_QUADRUPLE_WITCHING_DAY, IS_WITCHING_DAY, DTE_TRIPLE_WITCHING, DTE_QUADRUPLE_WITCHING, TRADING_DAYS_TO_WITCHING은 해당 확정 근거에 따라 산출한다. [위칭 상세](../indicator-collection/US_Equity_Witching_Calendar.md).
 
 ## 6. 산업·시장심리 보조 지표
 

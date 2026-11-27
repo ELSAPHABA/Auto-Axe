@@ -492,6 +492,16 @@
           "meta": {
             "$ref": "#/components/schemas/ExpiryMeta"
           },
+          "projection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExpiryProjectionView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "sessions": {
             "items": {
               "$ref": "#/components/schemas/ExpirySessionView"
@@ -728,6 +738,75 @@
           "candidate_date"
         ],
         "title": "ExpiryMeta",
+        "type": "object"
+      },
+      "ExpiryProjectionView": {
+        "additionalProperties": false,
+        "properties": {
+          "calendar_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Days"
+          },
+          "calendar_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Version"
+          },
+          "equity_session_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equity Session Days"
+          },
+          "estimated_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Date"
+          },
+          "nominal_date": {
+            "format": "date",
+            "title": "Nominal Date",
+            "type": "string"
+          },
+          "rule_version": {
+            "title": "Rule Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nominal_date",
+          "estimated_date",
+          "calendar_days",
+          "equity_session_days",
+          "calendar_version",
+          "rule_version"
+        ],
+        "title": "ExpiryProjectionView",
         "type": "object"
       },
       "ExpirySessionView": {
@@ -3148,11 +3227,18 @@
           {
             "in": "query",
             "name": "candidate_date",
-            "required": true,
+            "required": false,
             "schema": {
-              "format": "date",
-              "title": "Candidate Date",
-              "type": "string"
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Candidate Date"
             }
           },
           {

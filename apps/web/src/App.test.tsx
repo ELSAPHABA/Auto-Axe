@@ -146,6 +146,15 @@ function setup(failure = false, authorized = false) {
                       }
                     : String(url).includes("dashboard/expiry-calendar")
                       ? {
+                          projection: {
+                            nominal_date: "2027-06-18",
+                            estimated_date: "2027-06-17",
+                            calendar_days: 1,
+                            equity_session_days: 1,
+                            calendar_version: "fixture",
+                            rule_version:
+                              "us_equity_quarterly_previous_session_v1",
+                          },
                           evidence: [],
                           sessions: [
                             {
@@ -313,6 +322,10 @@ test("reviewed guidance, expiry uncertainty and SEIBro empty state stay separate
   expect(within(guidance).getByText("72 ~ 73 percent")).toBeVisible();
   const expiry = screen.getByRole("region", { name: "파생상품 만기 일정" });
   expect(await within(expiry).findByText("PENDING_VERIFICATION")).toBeVisible();
+  expect(
+    within(expiry).getByText(/규칙 기반 예상 만기:.*2027-06-17/),
+  ).toBeVisible();
+  expect(within(expiry).getByText(/휴장일 보정/)).toBeVisible();
   expect(within(expiry).getByText("미확정")).toBeVisible();
   const seibro = screen.getByRole("region", { name: "해외주식 결제 TOP50" });
   expect(

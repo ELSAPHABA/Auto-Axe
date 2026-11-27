@@ -10,12 +10,14 @@ from fastapi import APIRouter, Cookie, HTTPException, Request
 
 from autoaxe.adapters.contracts import Contract, Identifier, UtcTime
 from autoaxe.domain.calendars import FamilyState, Witching, witching_flags
+from autoaxe.domain.equity_calendar import load_calendar
 from autoaxe.domain.expiry_dte import (
     calendar_expiry_dte,
     calendar_witching_dte,
     product_session_dte,
 )
 from autoaxe.domain.expiry_evidence import ExpiryClassification, Family, Source, classify_reviewed
+from autoaxe.domain.expiry_projection import next_projection, project_expiry
 from autoaxe.domain.owner_access import is_configured_owner
 from autoaxe.entrypoints.auth import SESSION_COOKIE
 from autoaxe.entrypoints.auth import _dsn as identity_dsn
@@ -76,7 +78,17 @@ class ExpiryMeta(Contract):
     schema_version: Literal[1] = 1
 
 
+class ExpiryProjectionView(Contract):
+    nominal_date: date
+    estimated_date: date | None
+    calendar_days: int | None
+    equity_session_days: int | None
+    calendar_version: str | None
+    rule_version: str
+
+
 class ExpiryCalendarResponse(Contract):
+    projection: ExpiryProjectionView | None = None
     evidence: list[ReviewedExpiryView]
     sessions: list[ExpirySessionView]
     meta: ExpiryMeta
@@ -89,7 +101,7 @@ class ExpiryCalendarResponse(Contract):
 )
 def get_expiry_calendar(
     request: Request,
-    candidate_date: date,
+    candidate_date: date | None = None,
     session_id: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None,
     as_of: UtcTime | None = None,
 ) -> ExpiryCalendarResponse:
@@ -107,6 +119,19 @@ def get_expiry_calendar(
             cutoff = as_of or clock[0]
             if cutoff > clock[0]:
                 raise HTTPException(400, "future cutoff")
+            # Load the current pinned manifest, then filter each schedule by
+            # review date in the calculator. A historical query must not fail
+            # solely because another year was reviewed later.
+            try:
+                equity_calendar = load_calendar()
+            except (OSError, ValueError) as exc:
+                raise HTTPException(503, "equity calendar authority unavailable") from exc
+            projection = (
+                project_expiry(candidate_date, cutoff, equity_calendar)
+                if candidate_date is not None
+                else next_projection(cutoff, equity_calendar)
+            )
+            candidate_date = projection.nominal_date
             evidence = query_expiry(
                 market,
                 candidate_date=candidate_date,
@@ -147,6 +172,7 @@ def get_expiry_calendar(
     except psycopg.Error as exc:
         raise HTTPException(503, "expiry authority unavailable") from exc
     return ExpiryCalendarResponse(
+        projection=ExpiryProjectionView.model_validate(asdict(projection)),
         evidence=evidence_views,
         sessions=[
             ExpirySessionView(

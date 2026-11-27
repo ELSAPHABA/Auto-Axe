@@ -213,3 +213,8 @@
 - Nasdaq 직접 페이지 접근 거부는 우회하지 않고 공식 근거 초안·검수 manifest 및 연도 범위를 강제한다. QLD 공식 2027–28 일정만 추가한다. OCC/CME/Cboe 승인 자료 import 및 세션 DTE는 직접 자동 취득과 구분한다.
 - 최종 캘린더 footnote 수정 직후 Ruff format check 1개 실패는 slice 공백 정렬만 수정했다. 재검증 결과는 세션 13 기록 참조.
 - 공식 proto 원본 3개의 EOF blank line은 byte-identical 보존을 위해 수정하지 않고 나머지 staged diff의 whitespace check를 통과했다. Gitleaks의 generic-api-key 1건은 UcenterFaceAuthNotify.proto의 공개 SHA-256 값으로 실제 파일 hash와 일치했다. `.gitleaks.toml`은 기본 규칙 전체를 유지하고 해당 manifest 경로와 정확한 checksum이 모두 일치하는 경우만 허용하며 재검사에서 no leaks found/exit 0을 확인했다.
+
+## TS-02-38 — 휴장일 보정 후 다음 분기 선택
+- 기존 프런트는 UTC 명목 셋째 금요일을 선택하므로 휴장으로 목요일에 앞당겨진 만기가 끝난 금요일에도 지난 분기를 조회할 수 있었다. 서버에서 America/New_York 기준 보정 세션을 계산해 다음 후보를 선택하도록 변경했다. 2027-06-18 02:00 UTC(ET 목요일)는 DTE 0, 04:00 UTC(ET 금요일)는 다음 9월 분기. 테스트로 검증.
+- 검수 manifest의 다른 미래 연도 존재만으로 과거 조회 실패 가능성 제거: 현재 pin 검증 후 개별 연도 review date 적용. 공식 달력이 없는 후보는 null, 권한/실제 확정 상태는 변경하지 않음. 초기 통합 assertion E501은 중간 변수로 수정. 신규 단위 테스트 6 passed. 전체 검증은 Session 14 기록.
+- strict mypy 최초 오류: ReviewedCalendar 변수와 ProductSessionCalendar | None 변수가 동일 이름이라 assignment/arg-type 두 건 발생. 주식시장 calendar를 equity_calendar로 분리하고 재검사하여 96 source files 통과. 데이터 계약 또는 타입 검사 완화 없음.

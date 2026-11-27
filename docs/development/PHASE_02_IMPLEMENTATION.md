@@ -216,6 +216,12 @@ MEXC REST 관측은 실제 거래소 지수 또는 실시간 CME 시세가 아�
 
 최종 고정 트리: Backend 347 passed / 21 warnings / 142.56s, scraper 69 passed, Vitest 10 passed, Playwright 1 passed. Ruff 148 files, strict mypy 95 source files, schema/TS/lint/format/build/Compose config 및 Gitleaks 통과. 실제 공급자 연속 수집 및 운영 환경 검증은 별도.
 
+## Session 14 — 규칙 기반 분기 만기 일정 (2026-11-27)
+
+사용자 승인으로 P2.4 기본 만기 일정은 명목 분기 셋째 금요일을 검수된 NYSE Arca 주식시장 캘린더로 이전 거래일에 자동 보정한다. ET 기준 서버 다음 후보 선택, 달력/주식시장 DTE, 버전, API 및 UI 연결 완료. 실제 계약 근거 및 triple/quad 판정은 분리 유지. 직접 OCC/CME/Cboe 수집은 기본 예상 일정의 필수 조건 아님. 공식 달력 미확인 기간은 null. [상세 기록](../../.ai-context/phases/phase-02/2026-11-27-14.md).
+
+최종 검증: backend 353 passed / 23 warnings / 198.45s, frontend Vitest 10 passed 및 Playwright 1 passed, Ruff 150 files, strict mypy 96 source files, schema/TS/lint/format/build/Gitleaks 통과. 변경 없는 scraper는 재실행하지 않음. 실제 공급자/운영 검증은 별도.
+
 ## 개발 Fixture 최종 검증 (2026-11-27, 이전 세션 이력)
 
 - Backend Ruff/mypy 42 files/schema: 통과. 전체 PostgreSQL 통합 포함 pytest **79 passed / 2 deprecation warnings / 118.90s**. 초기 병렬 테스트 중 포트 타임아웃 실패는 별도 [TS-02-05](../troubleshooting/phase-02.md)에 기록, 단독 재검증 1 passed/30.92s, 정책 완화 없음.

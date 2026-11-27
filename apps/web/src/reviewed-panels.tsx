@@ -231,30 +231,14 @@ export function CorporateGuidancePanel() {
   );
 }
 
-function nextCandidateDate() {
-  const today = new Date();
-  const year = today.getUTCFullYear();
-  for (const y of [year, year + 1]) {
-    for (const month of [2, 5, 8, 11]) {
-      const first = new Date(Date.UTC(y, month, 1));
-      const date = new Date(
-        Date.UTC(y, month, 1 + ((5 - first.getUTCDay() + 7) % 7) + 14),
-      );
-      if (date.toISOString().slice(0, 10) >= today.toISOString().slice(0, 10))
-        return date.toISOString().slice(0, 10);
-    }
-  }
-  return "";
-}
-
 export function ExpiryCalendarPanel() {
-  const [date, setDate] = useState(nextCandidateDate);
+  const [date, setDate] = useState("");
   const session = useAuthorizedSession();
   const allowed = session.data === true && !session.isError;
   const result = useQuery({
     queryKey: ["authorized", "expiry", date],
     queryFn: () => getExpiryCalendar(date),
-    enabled: allowed && !!date,
+    enabled: allowed,
     retry: false,
     refetchInterval: 60_000,
   });
@@ -263,28 +247,49 @@ export function ExpiryCalendarPanel() {
       <p className="eyebrow">EXPIRY / SESSION EVIDENCE</p>
       <h2>파생상품 만기 일정</h2>
       <p className="subline">
-        분기 셋째 금요일은 조회 후보일이며 실제 만기 확정이 아닙니다.
+        기본 일정은 분기 셋째 금요일을 미국 주식시장 휴장일에 맞춰 이전 거래일로
+        보정한 예상치입니다. 계약별 확정 근거는 별도로 표시합니다.
       </p>
       <label>
         조회 후보일{" "}
         <input
           type="date"
-          value={date}
+          value={
+            date ||
+            (allowed ? (result.data?.projection?.nominal_date ?? "") : "")
+          }
           onChange={(event) => setDate(event.target.value)}
         />
       </label>
+      <button type="button" onClick={() => setDate("")}>
+        다음 만기 자동 선택
+      </button>
       {!allowed ? (
         <p className="panel-empty">인증된 조회 권한이 필요합니다.</p>
-      ) : !date ? (
-        <p className="panel-empty">조회 후보일을 선택하세요.</p>
       ) : result.isError ? (
         <p className="panel-empty" role="status">
           만기 일정 연결 또는 권한 확인 필요
         </p>
       ) : result.isPending ? (
-        <p className="panel-empty">공식 만기 근거 조회 중…</p>
+        <p className="panel-empty">예상 만기 및 공식 근거 조회 중…</p>
       ) : (
         <>
+          {result.data.projection && (
+            <p className="subline">
+              규칙 기반 예상 만기:{" "}
+              {result.data.projection.estimated_date ?? "일정 미확인"}
+              {" · 달력 DTE: "}
+              {result.data.projection.calendar_days ?? "—"}
+              {" · 주식시장 거래일 DTE: "}
+              {result.data.projection.equity_session_days ?? "—"}
+              {" · 상품별 실제 만기와 다를 수 있음"}
+              {result.data.projection.nominal_date !==
+                result.data.projection.estimated_date &&
+              result.data.projection.estimated_date
+                ? " · 휴장일 보정"
+                : ""}
+            </p>
+          )}
           <div className="official-events-table-wrap">
             <table className="official-events-table">
               <thead>

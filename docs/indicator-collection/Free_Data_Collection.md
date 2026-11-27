@@ -147,7 +147,7 @@ SEIBro의 국가·조회기간별 해외주식 TOP50 매수·매도·순매수 �
 | 지표 | 우선 수집 출처·방법 | 대안 및 보조 경로 | 수동·결측 처리 | 빈도 및 주의사항 |
 |---|---|---|---|---|
 | 파생상품 만기 | [OCC/OIC Expiration Calendar](https://www.optionseducation.org/referencelibrary/expiration-calendar) 공식 공개 자료, CME 상품 계약 사양 | 거래소 공개 이벤트 표/캘린더의 자동 파싱 | 예외·휴장·AM/PM 결제 등 수동 교차검증 | **예정 이벤트**; 실시간 DTE는 자체 계산 |
-| 미국 트리플·쿼드러플 위칭 | OCC/OIC·Cboe·CME 계약별 공식 만기 일정 | 분기 셋째 금요일 후보 생성 후 공식 확인 | 미확인 시 보류 | 별도 이벤트 유형·플래그·DTE 및 거래일 수 계산. [명세](./US_Equity_Witching_Calendar.md) |
+| 미국 트리플·쿼드러플 위칭 | 기본: 검수 NYSE Arca 거래일 달력 및 로컬 규칙; 확정: OCC/OIC·Cboe·CME 계약별 공식 근거 | 분기 셋째 금요일 생성·휴장일 이전 거래일 보정 | 예상 일정 기본 제공, 미확인 연도/확정 근거는 보류 | 예상 DTE와 확정 이벤트 유형·플래그·상품별 DTE 분리. [명세](./US_Equity_Witching_Calendar.md) |
 
 [OCC/OIC 공개 만기 달력](https://www.optionseducation.org/referencelibrary/expiration-calendar), Cboe 상품 설명/계약별 일정, CME 상품별 만기 명세를 무료 공개 페이지/파일에서 읽는다. 일반적인 월간 규칙 계산은 **예비 후보일 생성용**이고 실제 확정은 상품 계약/휴장 공지로 교차검증. OCC 2026-06-19 Juneteenth에 명목 expiration date와 processing date가 다른 사례([OCC 인포메모](https://infomemo.theocc.com/infomemos?number=56694))를 반영. `expiry_date`, `last_trade_at`, `processing_at`, `settlement_at`, `exercise_style`, `am_pm`, `source_url` 각각 저장. 공식 캘린더의 기계 판독이 어려우면 수동.
 
