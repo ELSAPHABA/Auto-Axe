@@ -167,3 +167,37 @@ one query and stages the result for independent review. Basis 1/2 preserve
 only the displayed buy/sell amount, with the other three fields null. Basis
 3/4 preserve the full amount set, marking derived values explicitly. Never attach the
 browser to the market network or disable the Chromium sandbox.
+
+## Yahoo HTTP, VIX and oil collectors (0020_oil_ws)
+
+These commands require independently reviewed source grants and existing private
+networks/DB. They do not establish vendor permission. The default commands are
+help-only; no Yahoo requests were made in Session 17. Do not use synthetic
+evidence references in production.
+
+```sh
+docker compose -f infra/compose/phase2-collectors.yaml --profile approved run --rm oil /app/.venv/bin/python -m autoaxe.entrypoints.oil_fallback_cli --allow-binance-oil --daemon
+docker compose -f infra/compose/phase2-collectors.yaml --profile approved run --rm vix /app/.venv/bin/python -m autoaxe.entrypoints.vix_cli --allow-vix-ws --evidence-ref REVIEWED_REF --daemon
+```
+
+Oil Yahoo fallback requires the additional `--yahoo-provider-evidence REVIEWED_REF`
+matching the Yahoo source grant. Independent bounded sessions (60 seconds) select
+Binance first; Yahoo opens only after genuine connection failure and closes before
+the next Binance probe. No continuous trade-ledger guarantee. VIX uses a dedicated
+quote stream, origin TTL 10 seconds, a separate 60-second reconnect budget,
+and internal `refresh_vix`; unverified quotes cannot satisfy fresh signals.
+
+The equity daily worker can compute from authorized, confirmed local OHLCV without
+HTTP. Remote missing-range collection additionally requires a reviewed JSON
+manifest mounted read-only with `AUTOAXE_YAHOO_HTTP_CONTRACT` (container path)
+and `AUTOAXE_YAHOO_HTTP_CONTRACT_SHA256` (exact file digest), supplied via
+`docker compose run -v ...:ro -e ...`. Manifest keys: `version` (1),
+`evidence_ref`, `expires_at` (timezone-aware), `adjustment_generation`,
+`chart_url` (`https://query2.finance.yahoo.com/v8/finance/chart`),
+`summary_url` (`https://query2.finance.yahoo.com/v10/finance/quoteSummary`),
+and `final_sessions` (symbol -> ISO session date -> independently reviewed
+finality evidence reference). Grant evidence must match; no fabricated manifest
+or date-based finality inference. Run the equity service with
+`/app/.venv/bin/python -m autoaxe.entrypoints.equity_cli daily --allow-yahoo`
+and optionally `--continuous`. The local-cache path does not make remote calls
+when the needed confirmed observations already exist.

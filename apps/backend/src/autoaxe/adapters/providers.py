@@ -159,6 +159,10 @@ def normalize_yahoo(
     quality = (
         Quality.NO_DATA if value is None else (Quality.UNKNOWN if stamp is None else Quality.VALID)
     )
+    if sid == "VIX" and value is not None and stamp is not None:
+        # A minute-bar label is not an event timestamp. Never mark a VIX
+        # history response as a verified live quote even inside its TTL.
+        quality = Quality.STALE if (received - stamp).total_seconds() > 10 else Quality.UNKNOWN
     # A bar's start time is not a quote event or proof of closed-bar status.
     return Candidate(
         sid,

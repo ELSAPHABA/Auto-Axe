@@ -27,17 +27,35 @@ async def run_stream(
     max_reconnects: int = 3,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     sleep: Callable[[float], Awaitable[None]],
+    futures_symbols: tuple[str, ...] | None = None,
 ) -> bool:
     """One bounded reconnect session. No implicit network access; transport is injected."""
     ids = ["BITCOIN_BINANCE_SPOT"] if spot else [row[0] for row in FUTURES.values()]
+    if futures_symbols is not None:
+        if spot or not futures_symbols or len(set(futures_symbols)) != len(futures_symbols):
+            raise ValueError("invalid futures stream scope")
+        if not set(futures_symbols) <= set(FUTURES):
+            raise ValueError("unknown futures symbol")
+        ids = [FUTURES[symbol][0] for symbol in futures_symbols]
     source = "binance_spot" if spot else "binance_futures"
     with psycopg.connect(dsn, autocommit=True) as leader:
         verify_connection(leader, write=True)
-        lock = leader.execute(
-            "SELECT pg_try_advisory_lock(hashtextextended(%s,0))", ("stream:" + source,)
-        ).fetchone()
+        lock_sql = (
+            "SELECT pg_try_advisory_lock_shared(hashtextextended(%s,0))"
+            if futures_symbols is not None
+            else "SELECT pg_try_advisory_lock(hashtextextended(%s,0))"
+        )
+        lock = leader.execute(lock_sql, ("stream:" + source,)).fetchone()
         if not lock or not lock[0]:
             return False
+        if futures_symbols is not None:
+            for symbol in sorted(futures_symbols):
+                lock = leader.execute(
+                    "SELECT pg_try_advisory_lock(hashtextextended(%s,0))",
+                    ("stream:binance_futures:" + symbol,),
+                ).fetchone()
+                if not lock or not lock[0]:
+                    return False
         permissions = {sid: gate(leader, sid, "fetch")["permission_version"] for sid in ids}
         checkpoints: dict[str, int] = dict(
             leader.execute(
@@ -82,6 +100,7 @@ async def run_stream(
                 max_reconnects=max_reconnects,
                 sleep=sleep,
                 checkpoints=checkpoints,
+                series_ids=tuple(ids),
             )
         except PermissionDenied:
             for sid in ids:

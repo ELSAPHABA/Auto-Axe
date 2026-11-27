@@ -45,6 +45,24 @@ services:
     environment:
       AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?existing market runtime DSN required}
       AUTOAXE_SEC_CONTACT: ${AUTOAXE_SEC_CONTACT:-}
+  vix:
+    <<: *common
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+      target: equity-collector
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.vix_cli", "--help"]
+    environment:
+      AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?existing market runtime DSN required}
+  oil:
+    <<: *common
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+      target: equity-collector
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.oil_fallback_cli", "--help"]
+    environment:
+      AUTOAXE_MARKET_RUNTIME_DSN: ${AUTOAXE_MARKET_RUNTIME_DSN:?existing market runtime DSN required}
   mexc:
     <<: *common
     build:

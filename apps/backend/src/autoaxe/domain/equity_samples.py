@@ -1,7 +1,7 @@
 """Canonical equity samples and as-of daily snapshots."""
 
 from dataclasses import replace
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Literal, TypedDict
 
@@ -211,14 +211,43 @@ def history_candidates(
         bar = ClosedBar(
             session, values["close"], values["high"], values["low"], now, True, "adjusted"
         )
-        items.append((bar, values, close_at))
+        items.append(
+            (
+                bar,
+                {
+                    **values,
+                    **{
+                        key: row[key]
+                        for key in ("adjustment_generation", "provider_final_evidence")
+                        if key in row
+                    },
+                },
+                close_at,
+            )
+        )
     items.sort(key=lambda pair: pair[0].session)
     bars = [item[0] for item in items]
     result: list[Candidate] = []
     for i, (bar, values, close_at) in enumerate(items):
         # Only the latest historical bar receives a current snapshot of
         # calculated features; avoid suggesting earlier PIT feature values.
-        features = derive_features(bars, now, basis="adjusted") if i == len(items) - 1 else {}
+        # A standalone response cannot bridge missing exchange sessions.
+        contiguous = [bar]
+        if i == len(items) - 1:
+            for earlier in reversed(bars[:i]):
+                day = date.fromisoformat(earlier.session)
+                next_day = date.fromisoformat(contiguous[-1].session)
+                cursor = day + timedelta(days=1)
+                while cursor < next_day and calendar.close(symbol, cursor, as_of=today) is None:
+                    cursor += timedelta(days=1)
+                if cursor != next_day:
+                    break
+                contiguous.append(earlier)
+        features = (
+            derive_features(list(reversed(contiguous)), now, basis="adjusted")
+            if i == len(items) - 1
+            else {}
+        )
         metadata: DailyMetadata = {
             "symbol": symbol,
             "session_date": bar.session,
@@ -254,7 +283,14 @@ def history_candidates(
                 now,
                 now,
                 Quality.UNKNOWN,
-                dict(metadata),
+                {
+                    **dict(metadata),
+                    **{
+                        key: values[key]
+                        for key in ("adjustment_generation", "provider_final_evidence")
+                        if key in values
+                    },
+                },
             )
         )
     return result

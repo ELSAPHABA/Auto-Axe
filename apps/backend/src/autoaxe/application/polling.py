@@ -16,11 +16,11 @@ from autoaxe.infrastructure.market_store import PermissionDenied, gate, verify_c
 
 # Poll interval is NOT TTL or an approved provider quota. External activation stays off.
 CADENCE = {
-    s.id: (
-        300 if s.interval == "5m" else 60 if s.id == "VIX" else 3600 if s.interval == "1d" else 300
-    )
+    s.id: (300 if s.interval == "5m" else 3600 if s.interval == "1d" else 300)
     for s in catalog().values()
     if s.source_id != "pizzint"
+    and s.id not in {"VIX", "VIX_YAHOO_WS"}  # dedicated quote worker
+    and s.id not in {"WTI_YAHOO_FUTURES_WS", "BRENT_YAHOO_FUTURES_WS"}
     and s.symbol not in {"NVDA", "QLD"}
     and (s.source_id in {"yfinance", "treasury"} or s.interval == "5m")
 }

@@ -116,14 +116,28 @@ class ProviderTransport:
             raise ValueError("invalid recovery array")
         return result
 
-    async def trades(self, *, spot: bool) -> AsyncIterator[dict[str, Any]]:
+    async def trades(
+        self, *, spot: bool, futures_symbols: tuple[str, ...] | None = None
+    ) -> AsyncIterator[dict[str, Any]]:
         series = ["BITCOIN_BINANCE_SPOT"] if spot else [x[0] for x in FUTURES.values()]
+        url = SPOT_WS if spot else FUTURES_WS
+        if futures_symbols is not None:
+            if spot or not futures_symbols or len(set(futures_symbols)) != len(futures_symbols):
+                raise ValueError("invalid futures scope")
+            if not set(futures_symbols) <= set(FUTURES):
+                raise ValueError("unknown futures symbol")
+            series = [FUTURES[symbol][0] for symbol in futures_symbols]
+            url = (
+                FUTURES_WS.split("?streams=", 1)[0]
+                + "?streams="
+                + "/".join(symbol.lower() + "@aggTrade" for symbol in futures_symbols)
+            )
         for sid in series:
             self.check(sid)
         # websockets handles ping/pong; bounded queue backpressure and max message size.
         try:
             async with _FixedConnect(
-                SPOT_WS if spot else FUTURES_WS,
+                url,
                 open_timeout=10,
                 close_timeout=5,
                 ping_interval=20,
@@ -173,9 +187,13 @@ def fetch_yahoo(
         raise ValueError("Yahoo transport not enabled")
     authorize(sid)
     if ticker_factory is None:
-        import yfinance  # type: ignore[import-untyped]  # upstream has no py.typed/stubs
+        from autoaxe.adapters.equity_http import fetch_market_bar, load_approved_http
 
-        ticker_factory = yfinance.Ticker
+        contract = load_approved_http()
+        if contract is None:
+            raise ValueError("reviewed Yahoo HTTP transport contract required")
+        with httpx.Client(trust_env=False, follow_redirects=False) as client:
+            return fetch_market_bar(client, contract, sid, lambda: authorize(sid))
     symbol = YAHOO[sid]
     ticker = ticker_factory(symbol)
     bars = ticker.history(period="1d", interval="1m", auto_adjust=False, timeout=15)

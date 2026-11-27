@@ -228,3 +228,7 @@
 - QQQ exchangeInfo HTTP200 실제 contractType=TRADIFI_PERPETUAL, 기존 PERPETUAL expectation 변경. MEXC detail/country type2는 문서상 suspended-pair class, state0/futureType1 및 pair_type provenance 검증. 재실측 두 REST adapter 정상 UNKNOWN. Protobuf 101 binary tickerDetail 실제 수신. 시세를 지수/실거래 또는 활성 거래 세션으로 단정하지 않음.
 - Binance WS spot 및 futures 6개 symbol의 실제 T가 수신보다 +1.020~1.173초 앞섬. w32tm 0x80070426 서비스 미기동. 읽기 전용 `w32tm /stripchart /computer:time.windows.com /dataonly /samples:3` +1.1912681/+1.1906111/+1.1857723s 확인, clock skew와 일치. source timestamp 위조/허용 범위 완화 금지. 관리자 동기화 후 한 번 재실측. Fixed WS redirect 거부와 recv 전후 grant fence, REST 25초 deadline.
 - 실제 시장 DB 재실행: MEXC REST 1건 성공, WS 3건 저장 후 invalid_response, QQQ invalid_response 0건, Binance ratio는 shared circuit으로 실행하지 않음. 정확한 후속 오류 trigger는 미확정(시계 불일치로 단정 금지). exit1, no circuit bypass. [Session 15](../../.ai-context/phases/phase-02/2026-11-27-15.md) 상세.
+
+## TS-02-41 — Yahoo 원본 검증과 WS 전환
+- 동기화 후 w32tm offset 약 -0.31초, Leap 3 및 한 번 timeout. 미래 timestamp 검사를 유지한 실제 Binance 원유 17건 임시 PG 저장 성공.
+- Yahoo 일반 이용약관의 자동 접근 권한과 yfinance의 개인/연구 이용 안내를 구별. 명시 허가 없는 요청/쿠키 우회 미실행. HTTP는 승인 manifest, VIX/원유 WS는 원본 권한과 계약 검증 필요. VIX 원본 TTL10 유지, UNKNOWN/STALE로 신호 차단. 원유 정상 primary와 fallback을 중복 연결하지 않고 별도 단위/상품 원장 유지. [Session 17](../../.ai-context/phases/phase-02/2026-11-28-17.md) 상세.

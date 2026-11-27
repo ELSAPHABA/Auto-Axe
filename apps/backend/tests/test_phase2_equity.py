@@ -186,15 +186,14 @@ def test_unverified_daily_http_never_constructs_sdk(monkeypatch):
             fetch("NVDA", revoked)
 
 
-def test_disabled_daily_worker_never_connects_or_reserves(monkeypatch):
+def test_daily_worker_local_only_without_http_contract(monkeypatch):
     def unexpected(*args, **kwargs):
         raise AssertionError("disabled daily worker must not open DB or network")
 
     monkeypatch.setattr("autoaxe.application.equity_worker.psycopg.connect", unexpected)
     monkeypatch.setattr(equity_yahoo, "_yahoo", unexpected)
-    for continuous in (False, True):
-        with pytest.raises(equity_yahoo.DailyTransportUnavailable):
-            run_daily("invalid-dsn", enabled=True, continuous=continuous)
+    with pytest.raises(PermissionDenied):
+        run_daily("invalid-dsn", enabled=False)
 
 
 @pytest.mark.asyncio

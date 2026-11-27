@@ -16,7 +16,7 @@
 - NVDA/QLD WS day_volume 로컬 1Hz 기록, 후행/예상 PER·PBR 일별, ROE 실적 발표 후, 확정 OHLCV 기반 SMA 5/20/60/120/200 및 EMA 12/26, 최근 5/10/20 실제 거래 세션 고저가를 유지한다. ETF 기업 재무비율은 결측. NQ=F 지연 1분봉 비교도 유지.
 - yfinance HTTP 구현은 기존 명세대로 복원하는 방향으로 확정한다. 최초 과거 OHLCV 일괄 확보 후 증분 수집(일봉 확정 후 거래일 1회, 정정·분할·배당 및 워밍업 보존), 캐시·single-flight·bounded request/concurrency/timeout, 429 Retry-After/backoff 및 403 중단, UI refresh와 정기 외부 호출 분리. 내부 재시도/쿠키 요청 포함 실제 호출량 제어 검증 필요. 개인·연구·교육·비영리, 제3자 재배포 금지 및 기존 권한 게이트 유지. 개발 구현과 공급자 운영 허용 여부는 별개.
 
-현재 구현 상태: 국채 정기 조회 스케줄 900초 반영, VIX TTL 10초 기존 유지. Yahoo equity HTTP transport, 즉시 갱신 운영 연결 및 원유 WS fallback은 구현/실측 검증 필요. 이 정책 자체가 실제 외부 호출 승인 또는 운영 검증을 의미하지 않는다.
+현재 구현 상태 (2026-11-28): 국채 정기 조회 스케줄 900초, VIX TTL 10초 유지. Yahoo HTTP의 승인형 transport 및 cache-first 일봉 병합, VIX 내부 즉시 갱신/전용 WS runner, 원유 독립 WS fallback 및 공급원 표시를 구현했다. Binance 원유 WS 실제 임시 PG17 저장 17건 성공. Yahoo 자동 호출에 대한 명시적 공급자 권한 및 원본 계약/지연 검증 미확보로 실제 Yahoo HTTP/WS 호출과 VALID 승격은 미실행. 운영 배포 및 조건 엔진 연결은 별도 단계다.
 
 | 지표 | 기본 공급원 | 내부 식별자 | 정확한 상품 정의 |
 |---|---|---|---|

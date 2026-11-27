@@ -4,12 +4,22 @@ import asyncio
 import importlib
 import json
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from importlib.metadata import version
 from typing import Any
 
+import httpx
 from websockets.exceptions import ConnectionClosed, ConnectionClosedOK, InvalidStatus
 
+from autoaxe.adapters.equity_http import (
+    ApprovedHTTP,
+    fetch_chart,
+    fetch_summary,
+    load_approved_http,
+)
+from autoaxe.adapters.equity_http import (
+    DailyTransportUnavailable as DailyTransportUnavailable,
+)
 from autoaxe.application.collection import FetchError
 from autoaxe.domain.volume import SYMBOLS
 
@@ -84,37 +94,54 @@ async def listen_volume(permit: Permit, on_message: Handler) -> None:
         await asyncio.wait_for(ws.close(), timeout=5)
 
 
-class DailyTransportUnavailable(RuntimeError):
-    """No verified free, authorized HTTP contract is available."""
+def require_daily_transport(contract: ApprovedHTTP | None = None) -> ApprovedHTTP:
+    approved = contract or load_approved_http()
+    if approved is None:
+        raise DailyTransportUnavailable("Yahoo daily HTTP transport not verified; disabled")
+    approved.check(datetime.now(UTC))
+    return approved
 
 
-def require_daily_transport() -> None:
-    # yfinance is unofficial; its license does not grant rights to Yahoo data.
-    # Yahoo ToS restricts automated access without express prior permission:
-    # https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html
-    # https://github.com/ranaroussi/yfinance
-    # Do not construct a client, guess an endpoint, or fall back to SDK retries.
-    raise DailyTransportUnavailable("Yahoo daily HTTP transport not verified; disabled")
-
-
-def fetch_daily(symbol: str, permit: Permit) -> list[dict[str, Any]]:
-    """Fail closed until a documented, permission-fenced interface is verified."""
+def fetch_daily(
+    symbol: str,
+    permit: Permit,
+    *,
+    start: date | None = None,
+    end: date | None = None,
+    contract: ApprovedHTTP | None = None,
+    client: httpx.Client | None = None,
+) -> list[dict[str, Any]]:
+    """One explicit bounded missing-session request under a reviewed contract."""
     if symbol not in SYMBOLS:
         raise ValueError("unregistered equity")
     permit()
-    require_daily_transport()
-    raise AssertionError("daily transport implementation missing")
+    approved = require_daily_transport(contract)
+    if start is None or end is None:
+        raise ValueError("explicit daily range required")
+    if client is not None:
+        return fetch_chart(client, approved, symbol, start, end, permit)
+    with httpx.Client(trust_env=False, follow_redirects=False) as transport:
+        return fetch_chart(transport, approved, symbol, start, end, permit)
 
 
-def fetch_fundamentals(symbol: str, permit: Permit) -> dict[str, Any]:
+def fetch_fundamentals(
+    symbol: str,
+    permit: Permit,
+    *,
+    contract: ApprovedHTTP | None = None,
+    client: httpx.Client | None = None,
+) -> dict[str, Any]:
     if symbol not in SYMBOLS:
         raise ValueError("unregistered equity")
     permit()
     if symbol == "QLD":
         # Corporate metrics do not apply to the ETF. No HTTP request needed.
         return {}
-    require_daily_transport()
-    raise AssertionError("fundamentals transport implementation missing")
+    approved = require_daily_transport(contract)
+    if client is not None:
+        return fetch_summary(client, approved, symbol, permit)
+    with httpx.Client(trust_env=False, follow_redirects=False) as transport:
+        return fetch_summary(transport, approved, symbol, permit)
 
 
 Listen = Callable[[Permit, Handler], Awaitable[None]]

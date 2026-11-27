@@ -120,10 +120,19 @@ async def reconnecting_trades(
     max_reconnects: int = 3,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     checkpoints: Mapping[str, int] | None = None,
+    series_ids: tuple[str, ...] | None = None,
 ) -> None:
     """Sequential processing bounds memory. Unfilled gaps block the affected stream."""
     tracker = GapTracker(checkpoints)
     series = ["BITCOIN_BINANCE_SPOT"] if spot else [row[0] for row in FUTURES.values()]
+    if series_ids is not None:
+        if (
+            not series_ids
+            or len(set(series_ids)) != len(series_ids)
+            or not set(series_ids) <= set(series)
+        ):
+            raise ValueError("invalid stream scope")
+        series = list(series_ids)
     for attempt in range(max_reconnects + 1):
         for sid in series:
             allowed(sid)

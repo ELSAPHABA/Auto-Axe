@@ -2536,6 +2536,20 @@
             "title": "Mode",
             "type": "string"
           },
+          "oil_selected": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Oil Selected",
+            "type": "object"
+          },
           "request_id": {
             "maxLength": 128,
             "minLength": 1,

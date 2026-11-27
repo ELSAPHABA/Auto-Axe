@@ -12,6 +12,7 @@ from psycopg.errors import InsufficientPrivilege
 from testcontainers.postgres import PostgresContainer
 
 from autoaxe.adapters.providers import binance_rest_trade
+from autoaxe.adapters.vix_ws import normalize_quote
 from autoaxe.application.collection import FetchError
 from autoaxe.application.market_worker import (
     relay_batch,
@@ -21,6 +22,7 @@ from autoaxe.application.market_worker import (
 )
 from autoaxe.application.polling import CADENCE, schedule_due, tick
 from autoaxe.application.stream_worker import run_stream
+from autoaxe.application.vix_refresh import refresh_vix
 from autoaxe.domain.market import Candidate, Quality
 from autoaxe.entrypoints.api import create_app
 from autoaxe.infrastructure.db_bootstrap import provision
@@ -296,6 +298,52 @@ def test_ledger_jobs_and_mode_ingress(monkeypatch):
             assert len(schedule_due(conn, treasury_yahoo, old_stamp + timedelta(seconds=900))) == 4
             assert schedule_due(conn, treasury_yahoo, old_stamp + timedelta(seconds=900)) == []
         ratios = sorted(sid for sid in CADENCE if sid.startswith("BINANCE_"))
+        # Immediate VIX request uses the shared durable slot, not a competing poll.
+        vix_calls = []
+
+        async def vix_fixture(permit):
+            permit()
+            received = datetime.now(UTC)
+            vix_calls.append(received)
+            yield normalize_quote(
+                {"id": "^VIX", "price": "20.1", "time": int(received.timestamp() * 1000)},
+                received,
+            )
+
+        assert "VIX" not in CADENCE
+        vix_kwargs = {"enabled": True, "evidence_ref": "synthetic cadence test"}
+        assert asyncio.run(refresh_vix(market, stream=vix_fixture, **vix_kwargs)) == "unknown"
+        assert asyncio.run(refresh_vix(market, stream=vix_fixture, **vix_kwargs)) == (
+            "reconnect_limited:unknown"
+        )
+        assert len(vix_calls) == 1
+        with psycopg.connect(market) as conn:
+            assert (
+                conn.execute(
+                    "SELECT count(*) FROM market.observations WHERE series_id='VIX_YAHOO_WS'"
+                ).fetchone()[0]
+                == 1
+            )
+            # Synthetic time travel of the reservation only, not provider timestamps.
+            conn.execute(
+                "UPDATE ops.poll_slots SET "
+                "last_enqueued_at=clock_timestamp()-interval '61 seconds' "
+                "WHERE series_id='VIX_YAHOO_WS'"
+            )
+
+        async def vix_limited(permit):
+            permit()
+            raise FetchError(429, "120")
+            yield  # pragma: no cover
+
+        assert (
+            asyncio.run(refresh_vix(market, stream=vix_limited, **vix_kwargs))
+            == "collection_failed"
+        )
+        assert asyncio.run(refresh_vix(market, stream=vix_fixture, **vix_kwargs)).startswith(
+            "cooldown:"
+        )
+        assert len(vix_calls) == 1
         assert len(ratios) == 24 and all(CADENCE[sid] == 300 for sid in ratios)
         with psycopg.connect(market) as conn:
             stamp = conn.execute("SELECT clock_timestamp()").fetchone()[0]

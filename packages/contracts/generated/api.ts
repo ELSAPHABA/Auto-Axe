@@ -1182,6 +1182,10 @@ export interface components {
              * @default market_read
              */
             mode: string;
+            /** Oil Selected */
+            oil_selected?: {
+                [key: string]: string | null;
+            };
             /** Request Id */
             request_id: string;
             /**

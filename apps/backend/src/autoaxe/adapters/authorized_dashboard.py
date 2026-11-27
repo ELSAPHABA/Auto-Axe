@@ -17,6 +17,7 @@ import psycopg
 from fastapi import APIRouter, Cookie, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from psycopg.rows import dict_row
+from pydantic import Field
 from starlette.concurrency import run_in_threadpool
 from starlette.types import Receive, Scope, Send
 
@@ -54,6 +55,7 @@ class SnapshotMeta(Contract):
     schema_version: int = 1
     mode: str = "market_read"
     versions: dict[str, int]
+    oil_selected: dict[str, str | None] = Field(default_factory=dict)
 
 
 class AuthorizedSnapshot(Contract):
@@ -113,6 +115,13 @@ def read_snapshot(
                        ORDER BY s.series_id""",
                     (as_of, as_of, private),
                 ).fetchall()
+                oil_selections = cur.execute(
+                    """SELECT DISTINCT ON(indicator_id) indicator_id,series_id
+                    FROM market.source_selections
+                    WHERE indicator_id IN ('WTI_BINANCE_PERP','BRENT_BINANCE_PERP')
+                    AND selected_at<=%s ORDER BY indicator_id,selection_id DESC""",
+                    (as_of,),
+                ).fetchall()
                 replay: tuple[tuple[str, int], ...] | None = None
                 if previous is not None:
                     wanted = {
@@ -166,6 +175,9 @@ def read_snapshot(
                 continue
             quality = row["quality"] or "no_data"
             stamp = row["source_event_at"]
+            if series_id in {"VIX", "VIX_YAHOO_WS"} and quality == "unknown" and stamp is not None:
+                if (as_of - stamp).total_seconds() > 10:
+                    quality = "stale"
             if quality == "valid" and series.ttl is not None:
                 if stamp is None or (as_of - stamp).total_seconds() > series.ttl:
                     quality = "stale"
@@ -184,6 +196,29 @@ def read_snapshot(
                 )
             )
             permissions[series_id] = row["permission_version"]
+        oil_selected: dict[str, str | None] = {}
+        by_id = {p.series_id: p for p in points}
+        for selection in oil_selections:
+            indicator = selection["indicator_id"]
+            selected = selection["series_id"]
+            primary = indicator + "_SNAPSHOT"
+            fallback = indicator.removesuffix("_BINANCE_PERP") + "_YAHOO_FUTURES_WS"
+            # Do not disclose selections for an entirely unauthorized indicator.
+            if not ({indicator, primary, fallback} & by_id.keys()):
+                continue
+            point = by_id.get(selected)
+            if selected == primary and point and point.value is not None:
+                oil_selected[indicator] = selected
+            elif (
+                selected == fallback
+                and point
+                and point.value is not None
+                and point.collector_checked_at is not None
+                and 0 <= (as_of - point.collector_checked_at).total_seconds() <= 60
+            ):
+                oil_selected[indicator] = selected
+            else:
+                oil_selected[indicator] = None
         return SnapshotState(
             AuthorizedSnapshot(
                 data=points,
@@ -191,6 +226,7 @@ def read_snapshot(
                     request_id=request_id,
                     as_of=as_of,
                     versions={p.series_id: p.version for p in points},
+                    oil_selected=oil_selected,
                 ),
             ),
             (grant.session_hash, grant.auth_version, private),
@@ -234,7 +270,10 @@ def changes(old: SnapshotState, new: SnapshotState) -> list[str]:
         )
         for sid, version in expected
     ]
-    if not events and old.snapshot.data != new.snapshot.data:
+    if not events and (
+        old.snapshot.data != new.snapshot.data
+        or old.snapshot.meta.oil_selected != new.snapshot.meta.oil_selected
+    ):
         events.append(sse_event("market.refresh", {"schema_version": 1, "mode": "market_read"}))
     return events
 

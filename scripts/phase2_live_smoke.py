@@ -17,6 +17,7 @@ from pathlib import Path
 import httpx
 import psycopg
 from autoaxe.adapters.mexc_ws import stream_tickers
+from autoaxe.adapters.oil_ws import binance_quotes
 from autoaxe.adapters.transport import ProviderTransport
 from autoaxe.application.binance_qqq_poll import poll_once as poll_qqq
 from autoaxe.application.collection import FetchError
@@ -25,6 +26,7 @@ from autoaxe.application.mexc_poll import poll_once as poll_mexc
 from autoaxe.application.mexc_ws_worker import run_session
 from autoaxe.application.official_macro import OfficialSourceError
 from autoaxe.application.official_poll import fetch_release, poll_once
+from autoaxe.application.oil_fallback import run_cycle
 from autoaxe.application.pizzint_poll import poll_once as poll_pizzint
 from autoaxe.application.polling import tick
 from autoaxe.domain.catalog import RATIOS
@@ -67,6 +69,10 @@ EVIDENCE = {
         "binance_futures",
         "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
     ),
+    "binance_oil": (
+        "binance_futures",
+        "https://developers.binance.com/docs/derivatives/usds-margined-futures/websocket-market-streams/Aggregate-Trade-Streams",
+    ),
     "binance_ratios": (
         "binance_futures",
         "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
@@ -81,6 +87,7 @@ EVIDENCE = {
     ),
 }
 MARKET_TASKS = {
+    "binance_oil": ("WTI_BINANCE_PERP_SNAPSHOT", "BRENT_BINANCE_PERP_SNAPSHOT"),
     "binance_qqq": ("NASDAQ100_BINANCE_QQQ_PERP_USDT",),
     "mexc_rest": ("NASDAQ100_MEXC_PERP_USDT",),
     "mexc_ws": ("NASDAQ100_MEXC_PERP_USDT_WS",),
@@ -105,6 +112,13 @@ def check_market(task, runtime):
     ids = MARKET_TASKS[task]
     if task == "binance_qqq":
         result = asyncio.run(poll_qqq(runtime, fetch_qqq, enabled=True))
+    elif task == "binance_oil":
+        states = asyncio.run(run_cycle(
+            runtime, enabled=True,
+            primary=lambda oil, permit: binance_quotes(oil, permit, seconds=12),
+        ))
+        emit(task, states=states)
+        result = "stored" if all(state == "primary_received" for state in states.values()) else "incomplete"
     elif task == "mexc_rest":
         result = asyncio.run(poll_mexc(runtime, fetch_mexc, enabled=True))
     elif task == "mexc_ws":

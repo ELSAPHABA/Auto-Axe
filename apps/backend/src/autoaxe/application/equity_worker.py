@@ -3,23 +3,32 @@
 import asyncio
 import time
 from collections.abc import Awaitable, Callable
-from datetime import datetime
+from dataclasses import replace
+from datetime import datetime, timedelta
 from typing import Any
 
 import psycopg
 from psycopg import Connection
 
+from autoaxe.adapters.equity_http import ApprovedHTTP, load_approved_http
 from autoaxe.adapters.equity_yahoo import (
     Listen,
     fetch_daily,
     fetch_fundamentals,
     listen_volume,
-    require_daily_transport,
     utc_now,
 )
 from autoaxe.application.collection import FetchError
 from autoaxe.application.market_worker import record_health
 from autoaxe.application.polling import record_failure
+from autoaxe.domain.equity_cache import (
+    MAX_HISTORY,
+    confirmed_cache,
+    expected_sessions,
+    feature_snapshot,
+    missing_ranges,
+)
+from autoaxe.domain.equity_calendar import load_calendar
 from autoaxe.domain.equity_samples import (
     FUNDAMENTAL_IDS,
     HISTORY_IDS,
@@ -29,15 +38,16 @@ from autoaxe.domain.equity_samples import (
     history_candidates,
     volume_candidate,
 )
-from autoaxe.domain.market import Candidate
-from autoaxe.domain.volume import SYMBOLS
+from autoaxe.domain.market import Candidate, Quality
+from autoaxe.domain.types import decimal_string
+from autoaxe.domain.volume import NEW_YORK, SYMBOLS
 from autoaxe.infrastructure.market_store import PermissionDenied, gate, ingest, verify_connection
 
 
-def _version(conn: Connection[Any], ids: tuple[str, ...]) -> int:
+def _version(conn: Connection[Any], ids: tuple[str, ...], *, fetch: bool = True) -> int:
     versions: set[int] = set()
     for sid in ids:
-        for action in ("fetch", "storage"):
+        for action in ("fetch", "storage") if fetch else ("storage",):
             row = gate(conn, sid, action)
             if row["source_id"] != "yfinance":
                 raise PermissionDenied("wrong equity source")
@@ -54,7 +64,7 @@ def _permit(conn: Connection[Any], ids: tuple[str, ...], version: int) -> None:
         "SELECT permission_version,blocked,retry_at>clock_timestamp() "
         "FROM ops.poll_circuits WHERE source_id='yfinance'"
     ).fetchone()
-    if circuit and circuit[0] == version and (circuit[1] or circuit[2]):
+    if circuit and ((circuit[0] == version and circuit[1]) or circuit[2]):
         raise PermissionDenied("Yahoo circuit open")
 
 
@@ -264,6 +274,143 @@ async def run_volume(
     return True
 
 
+def _local_bars(conn: Connection[Any], sid: str, now: datetime, version: int) -> list[Candidate]:
+    mapping = int(gate(conn, sid)["mapping_version"])
+    rows = conn.execute(
+        """SELECT DISTINCT ON(source_event_key) source_event_key,value,received_at,
+                  available_at,quality,metadata
+           FROM market.observations
+           WHERE series_id=%s AND permission_version=%s AND mapping_version=%s
+             AND available_at<=%s AND ingested_at<=%s
+           ORDER BY source_event_key DESC,revision DESC LIMIT %s""",
+        (sid, version, mapping, now, now, MAX_HISTORY + 1),
+    ).fetchall()
+    if len(rows) > MAX_HISTORY:
+        raise ValueError("equity cache exceeds bounded history")
+    return [
+        Candidate(
+            sid,
+            key,
+            decimal_string(value) if value is not None else None,
+            None,
+            received,
+            available,
+            Quality(quality),
+            metadata,
+            mapping,
+        )
+        for key, value, received, available, quality, metadata in rows
+    ]
+
+
+def _fundamental_due(conn: Connection[Any], sid: str, now: datetime, version: int) -> bool:
+    mapping = int(gate(conn, sid)["mapping_version"])
+    row = conn.execute(
+        """SELECT available_at FROM market.observations
+           WHERE series_id=%s AND permission_version=%s AND mapping_version=%s
+             AND available_at<=%s AND ingested_at<=%s
+           ORDER BY available_at DESC,revision DESC LIMIT 1""",
+        (sid, version, mapping, now, now),
+    ).fetchone()
+    return row is None or row[0] <= now - timedelta(days=1)
+
+
+def daily_symbol(
+    conn: Connection[Any],
+    symbol: str,
+    version: int,
+    contract: ApprovedHTTP | None,
+) -> bool:
+    """Plan from local ledger before reserving any HTTP; one bounded pass."""
+    sid, fid = f"{symbol}_DAILY_OHLCV", f"{symbol}_FUNDAMENTALS"
+    ids = (sid, fid)
+    now = utc_now()
+    calendar = load_calendar(as_of=now.astimezone(NEW_YORK).date())
+    local = _local_bars(conn, sid, now, version)
+    generation = (
+        contract.adjustment_generation
+        if contract
+        else (
+            max(local, key=lambda row: row.available_at).metadata.get("adjustment_generation")
+            if local
+            else None
+        )
+    )
+    cached = confirmed_cache(local, symbol, now, calendar, generation)
+    expected = expected_sessions(symbol, now, calendar, cached)
+    gaps = missing_ranges(expected, cached)
+    fundamental_due = _fundamental_due(conn, fid, now, version)
+    fresh: list[Candidate] = []
+    remote = False
+    if contract is not None and (gaps or (fundamental_due and symbol != "QLD")):
+        request_ids = tuple(
+            series
+            for series, needed in ((sid, bool(gaps)), (fid, fundamental_due and symbol != "QLD"))
+            if needed
+        )
+
+        def permit() -> None:
+            _permit(conn, request_ids, version)
+            for series in request_ids:
+                if gate(conn, series, "fetch")["evidence_ref"] != contract.evidence_ref:
+                    raise PermissionDenied("Yahoo HTTP grant evidence mismatch")
+
+        permit()
+        if _reserve(conn, request_ids, version, 86400):
+            remote = True
+            for start, end in gaps:
+                daily = fetch_daily(symbol, permit, start=start, end=end, contract=contract)
+                captured = utc_now()
+                candidates = history_candidates(symbol, daily, captured, calendar=calendar)
+                requested = {day.isoformat() for day in expected if start <= day <= end}
+                for candidate in candidates:
+                    if candidate.key not in requested:
+                        raise ValueError("Yahoo response includes unrequested session")
+                    # Incremental response features must never be published alone.
+                    fresh.append(
+                        replace(
+                            candidate,
+                            metadata={
+                                **candidate.metadata,
+                                "features": {},
+                                "capture_permission_version": version,
+                            },
+                        )
+                    )
+                cached.update(confirmed_cache(fresh, symbol, captured, calendar, generation))
+            if fundamental_due and symbol != "QLD":
+                data = fetch_fundamentals(symbol, permit, contract=contract)
+                fresh.append(fundamentals_candidate(symbol, data, utc_now()))
+    if fundamental_due and symbol == "QLD":
+        fresh.append(fundamentals_candidate(symbol, {}, utc_now()))
+    now = utc_now()
+    snapshot = feature_snapshot(expected, cached, now)
+    if snapshot is not None and (
+        snapshot.metadata != cached[max(cached)].metadata
+        or any(r.series_id == sid and r.key == snapshot.key for r in fresh)
+    ):
+        fresh = [r for r in fresh if not (r.series_id == sid and r.key == snapshot.key)]
+        fresh.append(snapshot)
+    with conn.transaction():
+        conn.execute("SELECT pg_advisory_xact_lock(hashtextextended('source:yfinance',0))")
+        if _version(conn, ids, fetch=False) != version:
+            raise PermissionDenied("equity storage grant changed")
+        if remote:
+            permit()
+        for row in fresh:
+            ingest(conn, row)
+        complete = bool(expected) and all(day in cached for day in expected)
+        record_health(
+            conn,
+            sid,
+            "unknown" if complete else "gap",
+            "cache_complete" if complete else "confirmed_daily_sessions_missing",
+        )
+        if fundamental_due and symbol != "QLD" and not any(r.series_id == fid for r in fresh):
+            record_health(conn, fid, "no_data", "fundamental_refresh_unavailable")
+    return complete
+
+
 def run_daily(
     dsn: str,
     *,
@@ -275,9 +422,8 @@ def run_daily(
     """One manual capture or 24-hour durable scheduler; no historical backdating."""
     if not enabled:
         raise PermissionDenied("Yahoo equity opt-in required")
-    # The disabled transport must not reserve a daily slot or open a database
-    # connection, including after an otherwise approved source grant.
-    require_daily_transport()
+    # Local authorized cache calculations work even without an HTTP contract.
+    contract = load_approved_http()
     ids = HISTORY_IDS + FUNDAMENTAL_IDS
     with psycopg.connect(dsn, autocommit=True, connect_timeout=5) as conn:
         verify_connection(conn, write=True)
@@ -287,28 +433,15 @@ def run_daily(
         if not locked or not locked[0]:
             return False
         try:
-            version = _version(conn, ids)
-
-            def permit() -> None:
-                _permit(conn, ids, version)
+            version = _version(conn, ids, fetch=False)
 
             while not stopped():
-                if not _reserve(conn, ids, version, 86400):
-                    if not continuous:
-                        return False
-                    wait(30)
-                    continue
+                complete = True
                 try:
                     for symbol in SYMBOLS:
                         if stopped():
                             return True
-                        daily = fetch_daily(symbol, permit)
-                        rows = history_candidates(symbol, daily, utc_now())
-                        if not rows:
-                            raise ValueError("no valid historical bars")
-                        data = fetch_fundamentals(symbol, permit)
-                        rows.append(fundamentals_candidate(symbol, data, utc_now()))
-                        _save(conn, rows, ids, version)
+                        complete = daily_symbol(conn, symbol, version, contract) and complete
                 except FetchError as exc:
                     _provider_error(conn, ids, version, exc)
                     raise
@@ -317,7 +450,7 @@ def run_daily(
                     if not continuous:
                         raise
                 if not continuous:
-                    return True
+                    return complete
                 wait(30)
         except PermissionDenied:
             _health(conn, ids, "blocked", "source_permission_required_or_changed")

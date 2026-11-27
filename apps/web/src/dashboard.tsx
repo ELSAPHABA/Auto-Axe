@@ -196,40 +196,62 @@ function DoughconCard({ row }: { row: IndicatorView }) {
 
 function IndicatorCard({ row }: { row: IndicatorView }) {
   const snapshot = useAuthorizedSnapshot();
-  const point = snapshot?.data.find(
-    (item) => item.series_id === row.indicator_id,
-  );
+  const selected = snapshot?.meta.oil_selected?.[row.indicator_id];
+  const sourceId =
+    row.indicator_id === "VIX" &&
+    snapshot?.data.some((p) => p.series_id === "VIX_YAHOO_WS")
+      ? "VIX_YAHOO_WS"
+      : selected === undefined
+        ? row.indicator_id
+        : selected;
+  const point = snapshot?.data.find((item) => item.series_id === sourceId);
+  const oilName = row.indicator_id === "WTI_BINANCE_PERP" ? "WTI" : "Brent";
+  const label = selected?.endsWith("_YAHOO_FUTURES_WS")
+    ? `${oilName} (Yahoo 선물 fallback)`
+    : selected?.endsWith("_SNAPSHOT")
+      ? `${oilName} (Binance WS)`
+      : row.label;
   if (row.indicator_id === "PENTAGON_PIZZA_PIZZINT")
     return <DoughconCard row={row} />;
   return (
-    <article className="indicator-card" aria-label={row.label}>
+    <article className="indicator-card" aria-label={label}>
       <div className="indicator-card-top">
-        <span className="indicator-source">{row.source_id}</span>
-        {point ? (
+        <span className="indicator-source">
+          {point?.source_id ?? row.source_id}
+        </span>
+        {selected === null ? (
+          <span className="data-status">unavailable</span>
+        ) : point ? (
           <span className="data-status">{point.quality}</span>
         ) : (
           <DataStatus row={row} />
         )}
       </div>
-      <h3 title={row.label}>{row.label}</h3>
+      <h3 title={label}>{label}</h3>
       <div className="indicator-value">
-        {point ? (point.value ?? "—") : (row.value ?? "—")}
+        {selected === null
+          ? "—"
+          : point
+            ? (point.value ?? "—")
+            : (row.value ?? "—")}
         <span>
-          {point?.value != null || row.value !== null
-            ? row.unit
+          {selected !== null && (point?.value != null || row.value !== null)
+            ? (point?.unit ?? row.unit)
             : "데이터 없음"}
         </span>
       </div>
       <p className="indicator-note">
         {point?.source_event_at
           ? "원본 시각 (UTC): " + point.source_event_at
-          : row.source_note || row.cadence}
+          : selected === null
+            ? "활성 원유 공급원 없음"
+            : row.source_note || row.cadence}
       </p>
       <span className="indicator-frequency">{row.cadence}</span>
       {(row.category === "market" || point) && (
         <Link
           className="indicator-detail-link"
-          to={"/market/" + encodeURIComponent(row.indicator_id)}
+          to={"/market/" + encodeURIComponent(sourceId ?? row.indicator_id)}
         >
           원본·시계열 상세
         </Link>
@@ -631,6 +653,8 @@ export function DashboardHome() {
             "BITCOIN_BINANCE_SPOT",
             "GOLD_BINANCE_PERP",
             "WTI_BINANCE_PERP",
+            "BRENT_BINANCE_PERP",
+            "VIX",
             "NASDAQ100_MEXC_PERP_USDT",
           ].map((id) => {
             const row = data.find((item) => item.indicator_id === id);

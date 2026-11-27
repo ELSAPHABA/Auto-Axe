@@ -92,7 +92,12 @@ def gate(conn: Connection[Any], series_id: str, action: str = "storage") -> dict
         raise PermissionDenied("retired PizzINT series")
     if series_id == "PENTAGON_PIZZA_PIZZINT" and action == "trading":
         raise PermissionDenied("DOUGHCON is informational only")
-    if action == "trading" and series_id == "NASDAQ100_MEXC_PERP_USDT_WS":
+    if action == "trading" and series_id in {
+        "NASDAQ100_MEXC_PERP_USDT_WS",
+        "WTI_YAHOO_FUTURES_WS",
+        "BRENT_YAHOO_FUTURES_WS",
+        "VIX_YAHOO_WS",
+    }:
         raise PermissionDenied("unverified WebSocket series is informational only")
     with conn.cursor(row_factory=dict_row) as cur:
         row = cur.execute(

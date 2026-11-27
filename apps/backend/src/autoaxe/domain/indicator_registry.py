@@ -18,6 +18,33 @@ class IndicatorDefinition:
 
 STATIC = (
     IndicatorDefinition(
+        "VIX_YAHOO_WS",
+        "VIX Yahoo 지수 quote",
+        "market",
+        "yfinance",
+        "index_point",
+        "ticker",
+        "TTL 10초 필수; 원본 실시간성 미검증",
+    ),
+    IndicatorDefinition(
+        "WTI_YAHOO_FUTURES_WS",
+        "WTI Yahoo 선물 (fallback)",
+        "market",
+        "yfinance",
+        "USD/bbl",
+        "ticker",
+        "Binance WS 실패 시만; 계약월·세션·실시간성 미검증",
+    ),
+    IndicatorDefinition(
+        "BRENT_YAHOO_FUTURES_WS",
+        "Brent Yahoo 선물 (fallback)",
+        "market",
+        "yfinance",
+        "USD/bbl",
+        "ticker",
+        "Binance WS 실패 시만; 계약월·세션·실시간성 미검증",
+    ),
+    IndicatorDefinition(
         "NASDAQ100_MEXC_PERP_USDT",
         "MEXC Nasdaq 연동 영구선물 (REST)",
         "market",

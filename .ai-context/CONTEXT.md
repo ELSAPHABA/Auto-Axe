@@ -4,6 +4,8 @@
 
 ## METADATA (메타데이터)
 
+- **최신 개발 인계 2026-11-28 session 17:** [Yahoo HTTP/VIX/원유 구현 및 실측](phases/phase-02/2026-11-28-17.md) 우선. 승인형 HTTP, cache-first OHLCV 병합, VIX 10초 TTL 즉시 갱신 runner, Binance 우선 원유 WS 및 별도 Yahoo fallback, 0020 migration/대시보드/Compose 연결. Binance 실제 임시 PG17 17건 성공. Yahoo 외부 호출은 공급자 명시적 자동 접근 권한 미확보로 미실행; 운영 배포/Phase 3 미착수.
+
 - **사용자 추가 확정:** SMA/EMA 및 OHLCV 기반 고저가는 Cache-first, 필요한 유효 로컬 확정봉/EMA 이력이 있으면 Yahoo HTTP 요청 없이 계산하고 누락 시에만 부족한 범위를 요청. 기존 DB와 병합 계산, 조정 기준/캘린더/결측 검증. 상세 [재무·기술지표 명세](../docs/indicator-collection/YFinance_Valuation_and_Moving_Averages.md). 현재 HTTP 복원과 누락 구간 계획/로컬 병합 구현은 남아 있음.
 
 - [Session 16 정책 확정 및 검증 기록](phases/phase-02/2026-11-27-16.md): 국채 900초 스케줄 적용 및 기존 300초 슬롯 호환, 관련 41개 테스트 통과. Yahoo HTTP 복원과 원유 fallback/즉시 갱신 운영 연결은 별도 구현·검증 대상.
