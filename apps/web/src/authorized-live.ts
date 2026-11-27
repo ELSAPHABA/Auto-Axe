@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAuthorizedSnapshot, hasAuthorizedSession } from "./api";
-import type { LiveStatus } from "./live";
+import { SnapshotGate, type Delta, type LiveStatus } from "./live";
 
 export function useAuthorizedSession() {
   return useQuery({
@@ -26,8 +26,7 @@ export function useAuthorizedSnapshot() {
 }
 
 // One subscription for the application shell, including route changes.
-// The server sends coalesced invalidations only. Every change/reconnect reads
-// a fresh committed REST snapshot (no fabricated sequence or price delta).
+// Replay metadata is versioned per series; REST is the sole value authority.
 export function useAuthorizedStream(): LiveStatus {
   const session = useAuthorizedSession();
   const authenticated = session.data === true && !session.isError;
@@ -51,6 +50,39 @@ export function useAuthorizedStream(): LiveStatus {
     let source: EventSource | undefined;
     let timer: number | undefined;
     let generation = 0;
+    let refreshTimer: number | undefined;
+    const coalesce = () => {
+      if (refreshTimer !== undefined) return;
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = undefined;
+        if (!disposed) refresh();
+      }, 100);
+    };
+    const synchronize = async () => {
+      const attempt = ++generation;
+      setStatus("reconnecting");
+      try {
+        await client.cancelQueries({ queryKey: ["authorized", "snapshot"] });
+        if (disposed || generation !== attempt) return;
+        const snapshot = await client.fetchQuery({
+          queryKey: ["authorized", "snapshot", "market_read"],
+          queryFn: getAuthorizedSnapshot,
+          staleTime: 0,
+        });
+        if (!disposed && generation === attempt) {
+          gate.snapshot(snapshot.meta.versions);
+          if (generation === attempt) setStatus("ready");
+          coalesce();
+        }
+      } catch {
+        if (!disposed && generation === attempt) setStatus("stale");
+      }
+    };
+    const newGate = () =>
+      new SnapshotGate(coalesce, () => {
+        void synchronize();
+      });
+    let gate = newGate();
     const connect = () => {
       if (disposed) return;
       try {
@@ -62,26 +94,25 @@ export function useAuthorizedStream(): LiveStatus {
         return; // polling fallback remains active
       }
       source.addEventListener("ready", () => {
-        const attempt = ++generation;
-        setStatus("reconnecting");
-        // Always re-read REST after readiness, even if deltas arrived already.
-        void client
-          .fetchQuery({
-            queryKey: ["authorized", "snapshot", "market_read"],
-            queryFn: getAuthorizedSnapshot,
-            staleTime: 0,
-          })
-          .then(() => {
-            if (!disposed && generation === attempt) setStatus("ready");
-          })
-          .catch(() => {
-            if (!disposed && generation === attempt) setStatus("stale");
-          });
-        refresh();
+        gate = newGate();
+        void synchronize();
       });
-      source.addEventListener("market.invalidate", () => refresh());
+      source.addEventListener("market.invalidate", (event) => {
+        try {
+          const delta = JSON.parse(
+            (event as MessageEvent<string>).data,
+          ) as Delta;
+          if (delta.event_type !== "market.observation.recorded")
+            throw new Error("invalid event");
+          gate.receive(delta);
+        } catch {
+          gate.reconnect();
+        }
+      });
+      source.addEventListener("market.refresh", coalesce);
       source.addEventListener("resync", () => {
         generation += 1;
+        gate = newGate();
         source?.close();
         setStatus("reconnecting");
         purge();
@@ -90,6 +121,7 @@ export function useAuthorizedStream(): LiveStatus {
       });
       source.onerror = () => {
         generation += 1;
+        gate = newGate();
         setStatus("reconnecting");
         purge();
         void client.invalidateQueries({ queryKey: ["auth", "session"] });
@@ -102,6 +134,7 @@ export function useAuthorizedStream(): LiveStatus {
       generation += 1;
       source?.close();
       if (timer !== undefined) window.clearTimeout(timer);
+      if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
       window.clearInterval(fallback);
     };
   }, [authenticated, client]);

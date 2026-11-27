@@ -127,6 +127,15 @@ STATIC = (
         "실효금리와 구분",
     ),
     IndicatorDefinition("BOE_BANK_RATE", "BoE Bank Rate", "rates", "boe", "percent", "decision"),
+    IndicatorDefinition(
+        "BOJ_EFFECTIVE_CALL_RATE",
+        "BOJ 무담보 익일물 실효금리",
+        "rates",
+        "boj",
+        "percent_per_annum",
+        "1d",
+        "공식 일별 평균 실효금리; 정책 목표와 별개",
+    ),
     IndicatorDefinition("ECB_DFR", "ECB 예금금리", "rates", "ecb", "percent", "decision"),
     IndicatorDefinition(
         "US_ECONOMIC_CALENDAR",
@@ -203,7 +212,7 @@ STATIC = (
         "dramexchange",
         "unverified",
         "weekly",
-        "Session Average",
+        "Session Average; 원본 단위 검수 전 수집값 반영 금지",
     ),
     IndicatorDefinition(
         "DRAM_DDR5_RDIMM_AUTO",
@@ -212,7 +221,7 @@ STATIC = (
         "dramexchange",
         "unverified",
         "weekly",
-        "Session Average",
+        "Session Average; 원본 단위 검수 전 수집값 반영 금지",
     ),
 )
 

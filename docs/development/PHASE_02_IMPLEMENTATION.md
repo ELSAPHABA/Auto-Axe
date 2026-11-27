@@ -140,6 +140,21 @@ CLI 실행은 사용자/관리자의 별도 승인과 정책 확인 후에만 �
 
 CLI는 `python -m autoaxe.entrypoints.official_poll_cli --help`, `python -m autoaxe.entrypoints.equity_cli --help`를 참고한다. 신규 Compose 파일은 기본 collector command가 도움말이며 자동으로 외부 공급자를 호출하지 않는다. source registry 권한·기존 운영 DB와 네트워크 및 실제 인증 구성이 선행되어야 한다. 인증 snapshot은 `/api/v1/dashboard/authorized/snapshot`; authorized stream은 전체 시세 이벤트 replay가 아닌 2초 DB 확인 기반 invalidation이며 클라이언트가 REST로 재조회한다. 합성 데이터를 실데이터로 표시하지 않는다. 운영 완료 판정은 보류한다.
 
+## Session 09 — 영속 수집·검수와 시계열 버전 재전달 (2026-11-27)
+
+[최신 세션 기록](../../.ai-context/phases/phase-02/2026-11-27-09.md)을 이전 표와 Session 08에 우선한다.
+
+| 항목 | 이번 구현 | 남은 게이트 |
+|---|---|---|
+| P2.2 | 2024~2026 Nasdaq/NYSE Arca 정규세션·조기종료·휴장, provider_final+close 확인; daily HTTP는 DB 예약 전 fail closed | 실제 Yahoo 수집 권한·WS·안전 HTTP·원본 finality 및 이후 연도 calendar |
+| P2.3 | BOJ FM01 STRDCLUCON 일별 실효금리 1 task, 정책 목표금리와 분리 | 실원본 응답/권한, 목표금리, MEXC Protobuf, 정량 guidance·만기 |
+| P2.5/P2.6 | 0009/0010 영속 source schedule, 독립 adapter 승인 및 hash-bound review, retry circuit, atomic promotion, opt-in worker/Compose overlay; CNN/Naver synthetic review 통합 검증 | 실제 DOM, DRAM 단위, SEIBro browser, source 승인·운영 egress |
+| P2.7/P2.8 | 최대 256 durable series-version replay, gap/overflow/resync, UI approved ratio 및 summary | 실데이터 운영 E2E, 장시간 soak/부하 및 보안 검증 |
+
+신규 generic scheduler는 명시적 source와 DB의 독립 adapter grant를 요구하고, PizzINT는 포함하지 않는다. 승인된 source만 queue에 들어가며 검수 승격 결과는 자동거래에 이용되지 않는다. 실제 production DSN/네트워크 및 인증서와 승인 절차 없이 운영 실행 금지. DOUGHCON 전용 경로 변경 없음. BOJ 모의 응답 검증은 실제 API 호출과 구별한다. 전체 Phase 2 완료 판정은 보류한다.
+
+최종 로컬 검증: HongDev 경유 locked Python backend 110 passed/16 warnings/108.84s, scraper 45 passed, frontend Vitest 7 passed/Playwright 1 passed; Ruff, strict mypy, schema, TypeScript, ESLint, Prettier, Vite build, scheduler Compose config 성공. ECharts chunk 경고 및 실제 운영 활성화 게이트는 잔존한다.
+
 ## 개발 Fixture 최종 검증 (2026-11-27, 이전 세션 이력)
 
 - Backend Ruff/mypy 42 files/schema: 통과. 전체 PostgreSQL 통합 포함 pytest **79 passed / 2 deprecation warnings / 118.90s**. 초기 병렬 테스트 중 포트 타임아웃 실패는 별도 [TS-02-05](../troubleshooting/phase-02.md)에 기록, 단독 재검증 1 passed/30.92s, 정책 완화 없음.

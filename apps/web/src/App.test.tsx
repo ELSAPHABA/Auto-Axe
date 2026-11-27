@@ -98,10 +98,25 @@ function setup(failure = false, authorized = false) {
                         collector_status: "healthy",
                         collector_checked_at: null,
                       },
+                      {
+                        series_id: "BINANCE_GLOBAL_ACCOUNTS_BTCUSDT",
+                        source_id: "binance_futures",
+                        unit: "ratio",
+                        value: "1.5",
+                        quality: "valid",
+                        version: 2,
+                        source_event_at: "2026-11-27T02:00:00Z",
+                        received_at: "2026-11-27T02:00:00Z",
+                        collector_status: "healthy",
+                        collector_checked_at: null,
+                      },
                     ],
                     meta: {
                       mode: "market_read",
-                      versions: { BITCOIN_BINANCE_SPOT: 1 },
+                      versions: {
+                        BITCOIN_BINANCE_SPOT: 1,
+                        BINANCE_GLOBAL_ACCOUNTS_BTCUSDT: 2,
+                      },
                       as_of: "2026-11-27T02:00:00Z",
                       request_id: "test",
                       schema_version: 1,
@@ -236,6 +251,12 @@ test("only authorized, permission-gated official events appear separately", asyn
   expect(screen.getByText("321.75 index")).toBeVisible();
   expect(screen.getByText("합성 검증 값")).toBeVisible();
   expect(await screen.findByText("98765", {}, { timeout: 5000 })).toBeVisible();
+  const ratios = screen.getByRole("region", { name: "롱숏 비율" });
+  const toggle = within(ratios).getByRole("checkbox") as HTMLInputElement;
+  if (!toggle.checked) fireEvent.click(toggle);
+  fireEvent.click(within(ratios).getByRole("button", { name: "전체 계정" }));
+  expect(await within(ratios).findByText("LONG 60.00%")).toBeVisible();
+  expect(within(ratios).getByText("SHORT 40.00%")).toBeVisible();
 });
 
 test("DOUGHCON only shows an authenticated stored level and API timestamp", async () => {

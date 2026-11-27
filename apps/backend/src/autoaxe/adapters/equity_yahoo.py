@@ -84,12 +84,26 @@ async def listen_volume(permit: Permit, on_message: Handler) -> None:
         await asyncio.wait_for(ws.close(), timeout=5)
 
 
+class DailyTransportUnavailable(RuntimeError):
+    """No verified free, authorized HTTP contract is available."""
+
+
+def require_daily_transport() -> None:
+    # yfinance is unofficial; its license does not grant rights to Yahoo data.
+    # Yahoo ToS restricts automated access without express prior permission:
+    # https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html
+    # https://github.com/ranaroussi/yfinance
+    # Do not construct a client, guess an endpoint, or fall back to SDK retries.
+    raise DailyTransportUnavailable("Yahoo daily HTTP transport not verified; disabled")
+
+
 def fetch_daily(symbol: str, permit: Permit) -> list[dict[str, Any]]:
-    """Fail closed until the SDK's hidden cookie and HTTP retries are fenced."""
+    """Fail closed until a documented, permission-fenced interface is verified."""
     if symbol not in SYMBOLS:
         raise ValueError("unregistered equity")
     permit()
-    raise RuntimeError("Yahoo daily HTTP transport not verified; disabled")
+    require_daily_transport()
+    raise AssertionError("daily transport implementation missing")
 
 
 def fetch_fundamentals(symbol: str, permit: Permit) -> dict[str, Any]:
@@ -99,7 +113,8 @@ def fetch_fundamentals(symbol: str, permit: Permit) -> dict[str, Any]:
     if symbol == "QLD":
         # Corporate metrics do not apply to the ETF. No HTTP request needed.
         return {}
-    raise RuntimeError("Yahoo fundamentals HTTP transport not verified; disabled")
+    require_daily_transport()
+    raise AssertionError("fundamentals transport implementation missing")
 
 
 Listen = Callable[[Permit, Handler], Awaitable[None]]

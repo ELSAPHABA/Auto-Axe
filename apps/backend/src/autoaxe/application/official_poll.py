@@ -15,6 +15,8 @@ from autoaxe.adapters.official_releases import (
     BEA_URL,
     BLS_ICS,
     BOE_URL,
+    BOJ_CODE,
+    BOJ_URL,
     CENSUS_URL,
     ECB_URL,
     FRED_URL,
@@ -50,6 +52,7 @@ TASKS = {
     "fred_upper": Task("fred", FRED_URL, JSON, 21600, "AUTOAXE_FRED_API_KEY"),
     "ecb_dfr": Task("ecb", ECB_URL, CSV, 21600),
     "boe_rate": Task("boe", BOE_URL, CSV, 21600),
+    "boj_effective": Task("boj", BOJ_URL, JSON, 86400),
     "sec_filings": Task(
         "sec_edgar", SEC_ATOM, ("application/atom+xml", "application/xml", "text/xml"), 900
     ),
@@ -105,6 +108,15 @@ def parameters(task_id: str, now: datetime, key: str | None) -> dict[str, str]:
             "owner": "exclude",
             "count": "100",
             "output": "atom",
+        }
+    if task_id == "boj_effective":
+        return {
+            "format": "json",
+            "lang": "en",
+            "db": "FM01",
+            "code": BOJ_CODE,
+            "startDate": (now - timedelta(days=30)).strftime("%Y%m"),
+            "endDate": now.strftime("%Y%m"),
         }
     return {}
 

@@ -235,6 +235,7 @@ function IndicatorCard({ row }: { row: IndicatorView }) {
 
 export function RatioPanel({ rows }: { rows: IndicatorView[] }) {
   const { showRatios, ratioKind, toggleRatios, setRatioKind } = useUi();
+  const market = useAuthorizedSnapshot();
   const ratioRows = rows.filter(
     (r) =>
       r.indicator_id.startsWith("BINANCE_") &&
@@ -274,22 +275,68 @@ export function RatioPanel({ rows }: { rows: IndicatorView[] }) {
             ))}
           </div>
           <div className="ratio-grid">
-            {ratioRows.map((row) => (
-              <div className="ratio-card" key={row.indicator_id}>
-                <div>
-                  <strong>{row.indicator_id.split("_").slice(-1)[0]}</strong>
-                  <span>확인된 비율 없음</span>
+            {ratioRows.map((row) => {
+              const point = market?.data.find(
+                (item) => item.series_id === row.indicator_id,
+              );
+              const ratio = point?.value == null ? NaN : Number(point.value);
+              const valid =
+                Number.isFinite(ratio) &&
+                ratio >= 0 &&
+                point?.quality === "valid";
+              const left = valid ? (100 * ratio) / (1 + ratio) : 0;
+              const leftLabel = ratioKind === "taker_volume" ? "BUY" : "LONG";
+              const rightLabel =
+                ratioKind === "taker_volume" ? "SELL" : "SHORT";
+              return (
+                <div className="ratio-card" key={row.indicator_id}>
+                  <div>
+                    <strong>{row.indicator_id.split("_").slice(-1)[0]}</strong>
+                    <span>{valid ? point?.value : "확인된 비율 없음"}</span>
+                  </div>
+                  <div
+                    className="ratio-track"
+                    aria-label={
+                      valid
+                        ? leftLabel + " " + left.toFixed(2) + "%"
+                        : "Long/Short 비율 데이터 없음"
+                    }
+                  >
+                    {valid && (
+                      <span
+                        style={{
+                          display: "block",
+                          width: left + "%",
+                          height: "100%",
+                          background: "var(--accent, #41c4a0)",
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div className="ratio-footer">
+                    <span>
+                      {leftLabel} {valid ? left.toFixed(2) + "%" : "—"}
+                    </span>
+                    <span>
+                      {rightLabel} {valid ? (100 - left).toFixed(2) + "%" : "—"}
+                    </span>
+                  </div>
+                  {point && (
+                    <Link
+                      to={"/market/" + encodeURIComponent(row.indicator_id)}
+                    >
+                      원본·시계열 상세
+                    </Link>
+                  )}
+                  {point && (
+                    <p className="indicator-note">
+                      {point.quality} ·{" "}
+                      {point.source_event_at ?? "원본 시각 미확인"}
+                    </p>
+                  )}
                 </div>
-                <div
-                  className="ratio-track"
-                  aria-label="Long/Short 비율 데이터 없음"
-                />
-                <div className="ratio-footer">
-                  <span>LONG —</span>
-                  <span>SHORT —</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {ratioKind === "taker_volume" && (
             <p className="subline">
@@ -322,6 +369,9 @@ function StreamBadge({ status }: { status: LiveStatus }) {
 }
 
 function SummaryStrip({ total }: { total: number }) {
+  const market = useAuthorizedSnapshot();
+  const stored =
+    market?.data.filter((point) => point.value !== null).length ?? 0;
   return (
     <div className="summary-strip">
       <div>
@@ -331,8 +381,8 @@ function SummaryStrip({ total }: { total: number }) {
       </div>
       <div>
         <span>실제 시장 시세</span>
-        <strong>—</strong>
-        <small>승인 전 비활성</small>
+        <strong>{market ? stored : "—"}</strong>
+        <small>{market ? "승인된 저장 관측값" : "승인 전 비활성"}</small>
       </div>
       <div>
         <span>자동 거래</span>
@@ -341,8 +391,10 @@ function SummaryStrip({ total }: { total: number }) {
       </div>
       <div>
         <span>시스템 모드</span>
-        <strong>FIXTURE</strong>
-        <small>합성 데이터 전용</small>
+        <strong>{market ? "MARKET READ" : "FIXTURE"}</strong>
+        <small>
+          {market ? "저장 데이터 조회 · 거래 OFF" : "합성 데이터 전용"}
+        </small>
       </div>
     </div>
   );

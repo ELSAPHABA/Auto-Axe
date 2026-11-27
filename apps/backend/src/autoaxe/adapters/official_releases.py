@@ -17,6 +17,8 @@ FRED_URL = "https://api.stlouisfed.org/fred/series/observations"
 ECB_URL = "https://data-api.ecb.europa.eu/service/data/FM/D.U2.EUR.4F.KR.DFR.LEV"
 ECB_KEY = "FM.D.U2.EUR.4F.KR.DFR.LEV"
 BOE_URL = "https://www.bankofengland.co.uk/boeapps/database/fromshowcolumns.asp"
+BOJ_URL = "https://www.stat-search.boj.or.jp/api/v1/getDataCode"
+BOJ_CODE = "STRDCLUCON"
 BLS_ICS = "https://www.bls.gov/schedule/news_release/bls.ics"
 SEC_ATOM = "https://www.sec.gov/cgi-bin/browse-edgar"
 
@@ -191,6 +193,43 @@ def parse_sec_refs(raw: bytes, now: datetime) -> list[EventRevision]:
     ]
 
 
+def parse_boj_effective(raw: bytes, now: datetime) -> list[EventRevision]:
+    """Official daily realized call rate, explicitly NOT the policy target."""
+    payload = json.loads(raw)
+    if payload["STATUS"] != 200 or payload["NEXTPOSITION"] is not None:
+        raise ValueError("BOJ failed or incomplete response")
+    if payload["PARAMETER"]["DB"] != "FM01" or len(payload["RESULTSET"]) != 1:
+        raise ValueError("BOJ database mismatch")
+    row = payload["RESULTSET"][0]
+    if (
+        row["SERIES_CODE"] != BOJ_CODE
+        or row["UNIT"].lower() != "percent per annum"
+        or row["FREQUENCY"] != "DAILY"
+    ):
+        raise ValueError("BOJ series identity mismatch")
+    dates, values = row["VALUES"]["SURVEY_DATES"], row["VALUES"]["VALUES"]
+    if not isinstance(dates, list) or not isinstance(values, list) or len(dates) > 100:
+        raise ValueError("unexpected BOJ daily observation shape")
+    events = []
+    for stamp, value in zip(dates, values, strict=True):
+        parsed = datetime.strptime(str(stamp), "%Y%m%d").date()
+        if parsed > now.date():
+            raise ValueError("future BOJ observation")
+        if value is None or value == "NA":
+            continue
+        events.append(
+            event(
+                "boj",
+                f"BOJ_EFFECTIVE_CALL_RATE:{parsed.isoformat()}",
+                value,
+                "percent_per_annum",
+                now,
+                "https://www.stat-search.boj.or.jp/ssi/mtshtml/fm01_d_1_en.html",
+            )
+        )
+    return events
+
+
 def parse_release(task: str, raw: bytes, now: datetime) -> list[EventRevision]:
     parsers: dict[str, Any] = {
         "bls_calendar": lambda: parse_official_ics(raw, now, "bls"),
@@ -201,6 +240,7 @@ def parse_release(task: str, raw: bytes, now: datetime) -> list[EventRevision]:
         "fred_upper": lambda: parse_fred(raw, now, series="DFEDTARU"),
         "ecb_dfr": lambda: parse_ecb(raw, now),
         "boe_rate": lambda: parse_boe(raw, now),
+        "boj_effective": lambda: parse_boj_effective(raw, now),
         "sec_filings": lambda: parse_sec_refs(raw, now),
     }
     rows: list[EventRevision] = parsers[task]()

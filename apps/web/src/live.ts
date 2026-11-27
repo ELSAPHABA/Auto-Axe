@@ -13,16 +13,18 @@ export class SnapshotGate {
   private buffered: Delta[] = [];
   private snapshotReady = false;
   private requireSnapshot: () => void;
+  private onGap: () => void;
 
-  constructor(requireSnapshot: () => void) {
+  constructor(requireSnapshot: () => void, onGap = requireSnapshot) {
     this.requireSnapshot = requireSnapshot;
+    this.onGap = onGap;
   }
 
   reconnect(): void {
     this.versions.clear();
     this.buffered = [];
     this.snapshotReady = false;
-    this.requireSnapshot();
+    this.onGap();
   }
 
   snapshot(versions: Record<string, number>): void {
@@ -30,23 +32,29 @@ export class SnapshotGate {
     this.snapshotReady = true;
     const pending = this.buffered;
     this.buffered = [];
-    for (const delta of pending) this.receive(delta);
+    for (const delta of pending) {
+      this.receive(delta);
+      if (!this.snapshotReady) break;
+    }
   }
 
   receive(delta: Delta): void {
+    if (
+      delta.schema_version !== 1 ||
+      typeof delta.aggregate_id !== "string" ||
+      !delta.aggregate_id ||
+      !Number.isSafeInteger(delta.aggregate_version) ||
+      delta.aggregate_version < 1
+    ) {
+      this.reconnect();
+      return;
+    }
     if (!this.snapshotReady) {
       if (this.buffered.length >= 256) {
         this.reconnect();
         return;
       }
       this.buffered.push(delta);
-      return;
-    }
-    if (
-      delta.schema_version !== 1 ||
-      !Number.isSafeInteger(delta.aggregate_version)
-    ) {
-      this.reconnect();
       return;
     }
     const current = this.versions.get(delta.aggregate_id);

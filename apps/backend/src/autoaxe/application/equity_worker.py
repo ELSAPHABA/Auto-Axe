@@ -14,6 +14,7 @@ from autoaxe.adapters.equity_yahoo import (
     fetch_daily,
     fetch_fundamentals,
     listen_volume,
+    require_daily_transport,
     utc_now,
 )
 from autoaxe.application.collection import FetchError
@@ -274,6 +275,9 @@ def run_daily(
     """One manual capture or 24-hour durable scheduler; no historical backdating."""
     if not enabled:
         raise PermissionDenied("Yahoo equity opt-in required")
+    # The disabled transport must not reserve a daily slot or open a database
+    # connection, including after an otherwise approved source grant.
+    require_daily_transport()
     ids = HISTORY_IDS + FUNDAMENTAL_IDS
     with psycopg.connect(dsn, autocommit=True, connect_timeout=5) as conn:
         verify_connection(conn, write=True)

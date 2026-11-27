@@ -16,6 +16,7 @@ DRAM = """
 def test_dram_module_section_and_timezone() -> None:
     data = parse_offline("dramexchange", DRAM)
     assert [row["value"] for row in data] == ["22.50", "12.45"]
+    assert [row["series_id"] for row in data] == ["DRAM_DDR5_RDIMM_AUTO", "DRAM_DDR5_UDIMM_AUTO"]
     assert all(row["source_event_at"] == "2026-11-23T07:00:00+00:00" for row in data)
     assert all(row["unit_verified"] is False for row in data)
     with pytest.raises(SchemaChanged):

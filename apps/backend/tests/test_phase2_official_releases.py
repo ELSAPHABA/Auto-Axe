@@ -91,3 +91,35 @@ def test_fixed_transport_and_retry():
         with pytest.raises(OfficialSourceError) as exc:
             fetch_release("ecb_dfr", client, permit, clock=lambda: NOW)
     assert exc.value.status == 429 and exc.value.retry_header == "60"
+
+
+def test_boj_effective_is_not_policy_target():
+    payload = {
+        "STATUS": 200,
+        "NEXTPOSITION": None,
+        "PARAMETER": {"DB": "FM01"},
+        "RESULTSET": [
+            {
+                "SERIES_CODE": "STRDCLUCON",
+                "UNIT": "percent per annum",
+                "FREQUENCY": "DAILY",
+                "VALUES": {"SURVEY_DATES": [20261125, 20261126], "VALUES": [0.7, None]},
+            }
+        ],
+    }
+
+    def response(request):
+        assert request.url.host == "www.stat-search.boj.or.jp"
+        assert request.url.path == "/api/v1/getDataCode"
+        assert request.url.params["code"] == "STRDCLUCON"
+        return httpx.Response(200, json=payload)
+
+    with httpx.Client(transport=httpx.MockTransport(response), trust_env=False) as client:
+        rows = fetch_release("boj_effective", client, lambda: None, clock=lambda: NOW)
+    assert len(rows) == 1
+    assert rows[0].event_key == "BOJ_EFFECTIVE_CALL_RATE:2026-11-25"
+    assert rows[0].actual == "0.7"
+    assert rows[0].released_at is None and rows[0].available_at == NOW
+    payload["NEXTPOSITION"] = 1
+    with pytest.raises(ValueError):
+        parse_release("boj_effective", json.dumps(payload).encode(), NOW)

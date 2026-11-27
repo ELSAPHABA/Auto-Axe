@@ -153,3 +153,17 @@
 - 정리 중 한 combined tool request는 safety filter에 의해 실행 전 차단. 실제 smoke worker가 계속 실행되는 것을 막기 위해 정확한 신규 컨테이너만 docker stop, 별도 읽기 전용 SQL 및 두 smoke project compose down으로 정상 종료했다. 기존 볼륨/다른 프로젝트는 유지, 새 검증 volume `autoaxe-pizzint-smoke-20261127_fixture-data`만 보존. 비밀정보 노출 없음.
 - 남은 조건: 실제 production DSN/private network/IdP 설정 없음; 배포 구성을 구현하고 smoke에서 검증했으나 현재 상시 운영 중은 아니다. 429/401/403 정책은 유지하고 새로운 provider 접근 조건을 임의로 완화하지 않는다. [Phase2 후속 로그](../../.ai-context/phases/phase-02/2026-11-27-06.md)에서 최종 검증과 Git 상태 확인.
 - 최종 검증: 구현 commit `57fc976d06ae6ea4b56f665ed703cd8ca1aa84c1`, [Actions 45944333126](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45944333126) completed/success, 4/4 jobs. 전용 worker packaging 및 미승인 source 차단 smoke 성공. 사용자 재개 요청 시 clean local/remote main 일치와 실행 중인 autoaxe 컨테이너 없음 확인. 이전 인증 오류를 재발시키지 않기 위해 GitHub connector를 통한 동일 tree 검증/non-force update를 사용했으며 소스 재호출 없음.
+
+## TS-02-26 — 스크래퍼 검수 통합 테스트의 host/DB 시간 경계
+- 증상: 새 실제 PostgreSQL17 scheduler/review 통합 테스트의 최초 실행에서 `review time in future`로 실패. Windows host UTC와 Docker DB clock이 차이날 가능성을 조사. 정확한 clock offset은 확정하지 않음.
+- 수정: 합성 fixture의 review 및 submit 시각을 양쪽 clock의 공통 cutoff에 맞춤. 운영 future-review 거부, 권한 버전, hash 검증 정책은 변경하지 않음. 검수 timestamps를 임의 허용하는 대안은 배제.
+- 재검증: 단독 신규 PostgreSQL 통합 1 passed / 50.71s, mTLS 5 passed / 7.93s, scraper 45 passed / 0.44s. 운영 환경의 시간 동기화는 별도 검증 대상.
+
+## TS-02-27 — Yahoo 일봉 확정·HTTP 접근의 사전 차단
+- 문제: 종료된 날짜만으로 원본의 확정 일봉 여부를 보장할 수 없고, SDK 내부 HTTP fallback 및 승인된 endpoint 여부가 확인되지 않음. 기존 TS-02-22와 연관.
+- 수정: 공개 2024~2026 거래소 calendar + 명시적 provider_final 조건, 범위 외 거부, 실제 HTTP 호출/DB 예약 이전 fail closed. QLD의 기업 재무비율은 null 유지. 공식 허가 및 원본 finality 증거를 임의 추론하지 않음.
+- 검증: equity 14 tests, Ruff/mypy 통과. 실제 Yahoo 요청 없음. 이후 연도 calendar 및 실물 계약 필요.
+
+## TS-02-28 — 단순 SSE invalidation에서 durable version replay로 전환
+- 이전 구현은 2초 polling 후 변경 알림만 제공하여 다수의 중간 version을 구별하지 못함. 실제 ledger range 조회와 최대 256 version, 연속성 및 overflow/reset 검사 추가. 프런트 버퍼가 gap 뒤 남은 이벤트를 무시하지 않고 계속 처리할 위험도 제거. REST snapshot 권한/quality 계약 유지.
+- BOJ 어댑터 추가 시 Ruff I001 import 순서 위반은 순서 수정으로 해결. 전체 정적 검사/회귀는 [session 09](../../.ai-context/phases/phase-02/2026-11-27-09.md) 참조. 운영 long soak와 실제 source 수집 검증은 미완료.

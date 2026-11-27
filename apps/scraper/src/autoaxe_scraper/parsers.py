@@ -11,8 +11,8 @@ from scrapling import Selector
 from autoaxe_scraper.policy import fixed_target
 
 DRAM_ITEMS = {
-    "DDR5 UDIMM 16GB 4800/5600": "DRAM_DDR5_UDIMM_16GB_SESSION_AVG",
-    "DDR5 RDIMM 32GB 4800/5600": "DRAM_DDR5_RDIMM_32GB_SESSION_AVG",
+    "DDR5 UDIMM 16GB 4800/5600": "DRAM_DDR5_UDIMM_AUTO",
+    "DDR5 RDIMM 32GB 4800/5600": "DRAM_DDR5_RDIMM_AUTO",
 }
 
 

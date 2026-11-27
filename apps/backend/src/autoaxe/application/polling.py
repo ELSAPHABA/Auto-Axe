@@ -22,7 +22,7 @@ CADENCE = {
     for s in catalog().values()
     if s.source_id != "pizzint"
     and s.symbol not in {"NVDA", "QLD"}
-    and (s.source_id in {"yfinance", "treasury", "naver"} or s.interval == "5m")
+    and (s.source_id in {"yfinance", "treasury"} or s.interval == "5m")
 }
 CADENCE["FIXTURE_PRICE"] = 5
 

@@ -6,6 +6,7 @@ import os
 import signal
 from threading import Event
 
+from autoaxe.adapters.equity_yahoo import DailyTransportUnavailable
 from autoaxe.application.equity_worker import run_daily, run_volume
 from autoaxe.infrastructure.market_store import PermissionDenied
 
@@ -42,6 +43,9 @@ def main() -> None:
                 stopped=stopped.is_set,
                 wait=stopped.wait,
             )
+    except DailyTransportUnavailable:
+        print("yahoo equity: daily HTTP transport not verified; disabled", flush=True)
+        raise SystemExit(1) from None
     except PermissionDenied:
         print("yahoo equity: source permission denied or cooldown", flush=True)
         raise SystemExit(1) from None

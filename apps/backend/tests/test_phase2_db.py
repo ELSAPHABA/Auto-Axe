@@ -561,10 +561,17 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             db_clock = conn.execute("SELECT clock_timestamp()").fetchone()
             assert db_clock is not None
             clock = min(datetime.now(UTC), db_clock[0]) - timedelta(seconds=1)
+            ingest(conn, Candidate("VIX", "intermediate-tick", "24.0", clock, clock, clock))
             ingest(conn, Candidate("VIX", "next-tick", "24.5", clock, clock, clock))
-        after_tick = read_snapshot(authenticated_sid, "test", touch=False)
-        assert after_tick.snapshot.meta.versions["VIX"] == 2
-        assert changes(initial, after_tick)[0].startswith("event: market.invalidate\n")
+        after_tick = read_snapshot(authenticated_sid, "test", touch=False, previous=initial)
+        assert after_tick.snapshot.meta.versions["VIX"] == 3
+        assert after_tick.replay == (("VIX", 2), ("VIX", 3))
+        deltas = changes(initial, after_tick)
+        assert len(deltas) == 2
+        assert all(event.startswith("event: market.invalidate\n") for event in deltas)
+        assert '"aggregate_version":2' in deltas[0]
+        assert '"aggregate_version":3' in deltas[1]
+        assert "version_gap" in changes(initial, replace(after_tick, replay=()))[0]
         pizza_route = "/api/v1/dashboard/authorized/market/" + SERIES
         assert api.get(pizza_route).status_code == 401
         pizza_read = api.get(pizza_route, cookies={"__Host-autoaxe-sid": authenticated_sid})

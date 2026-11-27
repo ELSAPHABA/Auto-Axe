@@ -33,6 +33,8 @@ class FakeBroker:
             return self.job | ({"params": {"url": "https://bad.invalid"}} if self.invalid else {})
         if path.endswith("/heartbeat"):
             return {"status": "revoked" if self.revoked else "leased"}
+        if path.endswith("/failure"):
+            return {"status": "failed"}
         return {"status": "quarantined"}
 
 
@@ -75,3 +77,36 @@ def test_worker_never_dials_provider_without_valid_lease(monkeypatch, mode):
     assert not any(path.endswith("/result") for path, _ in broker.calls)
     if mode in {"pizzint", "seibro"}:
         assert broker.calls == []
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (
+            worker.ProviderHTTPError(429, "900"),
+            {"reason": "http", "http_status": 429, "retry_header": "900"},
+        ),
+        (worker.ProviderHTTPError(403, None), {"reason": "http", "http_status": 403}),
+        (worker.SourceBlocked("untrusted response"), {"reason": "schema"}),
+        (OSError("timeout"), {"reason": "transport"}),
+    ],
+)
+def test_worker_failure_is_reported_once_without_payload(monkeypatch, error, expected):
+    def fetch(_policy, *, permit):
+        permit()
+        raise error
+
+    monkeypatch.setattr(worker, "fetch_exact_html", fetch)
+    broker = FakeBroker()
+    assert worker.run_once(broker, "cnn") == "failed"
+    assert [path.rsplit("/", 1)[1] for path, _ in broker.calls] == [
+        "claim",
+        "heartbeat",
+        "failure",
+    ]
+    assert broker.calls[-1][1] == {
+        "source_id": "cnn",
+        "job_nonce": "n" * 43,
+        "lease_token": "t" * 43,
+        **expected,
+    }

@@ -1,4 +1,4 @@
-"""Authenticated committed market snapshot and bounded SSE invalidations.
+"""Authenticated committed market snapshot and bounded durable version replay.
 
 The durable per-series version is written with the ledger/outbox transaction.
 The reader never needs relay or write permission; no global event cursor is
@@ -31,6 +31,7 @@ router = APIRouter(prefix="/api/v1/dashboard/authorized", tags=["dashboard-autho
 _connections = BoundedSemaphore(8)
 POLL_SECONDS = 2
 MAX_POLLS = 450
+MAX_REPLAY = 256
 
 
 class SnapshotPoint(Contract):
@@ -64,9 +65,16 @@ class SnapshotState:
     snapshot: AuthorizedSnapshot
     authority: tuple[str, int, bool]
     permissions: dict[str, int]
+    replay: tuple[tuple[str, int], ...] | None = None
 
 
-def read_snapshot(sid: str | None, request_id: str, *, touch: bool) -> SnapshotState:
+def read_snapshot(
+    sid: str | None,
+    request_id: str,
+    *,
+    touch: bool,
+    previous: SnapshotState | None = None,
+) -> SnapshotState:
     dsn = os.environ.get("AUTOAXE_MARKET_READ_DSN")
     if not dsn:
         raise HTTPException(503, "read-only market authority not configured")
@@ -104,6 +112,46 @@ def read_snapshot(sid: str | None, request_id: str, *, touch: bool) -> SnapshotS
                        ORDER BY s.series_id""",
                     (as_of, as_of, private),
                 ).fetchall()
+                replay: tuple[tuple[str, int], ...] | None = None
+                if previous is not None:
+                    wanted = {
+                        row["series_id"]: row["version"]
+                        for row in rows
+                        if row["series_id"] in previous.permissions
+                        and row["permission_version"] == previous.permissions[row["series_id"]]
+                        and row["series_id"] in entries
+                        and row["mapping_version"] == entries[row["series_id"]].mapping_version
+                    }
+                    baseline = previous.snapshot.meta.versions
+                    ranges = [
+                        (sid_, baseline[sid_], version)
+                        for sid_, version in wanted.items()
+                        if sid_ in baseline and version > baseline[sid_]
+                    ]
+                    if sum(end - start for _, start, end in ranges) <= MAX_REPLAY:
+                        if ranges:
+                            items = cur.execute(
+                                """SELECT o.series_id,o.series_version
+                                   FROM unnest(%s::text[],%s::bigint[],%s::bigint[])
+                                      AS bounds(sid,lo,hi)
+                                   JOIN market.observations o ON o.series_id=bounds.sid
+                                     AND o.series_version>bounds.lo AND o.series_version<=bounds.hi
+                                   JOIN catalog.series s ON s.series_id=o.series_id
+                                     AND s.mapping_version=o.mapping_version
+                                   WHERE o.available_at<=%s AND o.ingested_at<=%s
+                                   ORDER BY o.series_id,o.series_version LIMIT %s""",
+                                (
+                                    [r[0] for r in ranges],
+                                    [r[1] for r in ranges],
+                                    [r[2] for r in ranges],
+                                    as_of,
+                                    as_of,
+                                    MAX_REPLAY + 1,
+                                ),
+                            ).fetchall()
+                            replay = tuple((r["series_id"], r["series_version"]) for r in items)
+                        else:
+                            replay = ()
         points: list[SnapshotPoint] = []
         permissions: dict[str, int] = {}
         for row in rows:
@@ -146,6 +194,7 @@ def read_snapshot(sid: str | None, request_id: str, *, touch: bool) -> SnapshotS
             ),
             (grant.session_hash, grant.auth_version, private),
             permissions,
+            replay,
         )
     except (PermissionError, UnicodeError) as exc:
         raise HTTPException(401, "session invalid or insufficient scope") from exc
@@ -162,11 +211,31 @@ def sse_event(name: str, data: dict[str, object]) -> str:
 def changes(old: SnapshotState, new: SnapshotState) -> list[str]:
     if old.authority != new.authority or old.permissions != new.permissions:
         return [sse_event("resync", {"reason": "authorization_changed"})]
-    if old.snapshot.data == new.snapshot.data:
-        return []
-    # A coalesced invalidation deliberately does not pretend to be an ordered
-    # replay: the next REST read obtains the latest committed version vector.
-    return [sse_event("market.invalidate", {"schema_version": 1, "mode": "market_read"})]
+    before, after = old.snapshot.meta.versions, new.snapshot.meta.versions
+    if before.keys() != after.keys() or any(after[k] < v for k, v in before.items()):
+        return [sse_event("resync", {"reason": "version_reset"})]
+    count = sum(after[k] - v for k, v in before.items())
+    if count > MAX_REPLAY:
+        return [sse_event("resync", {"reason": "replay_overflow"})]
+    expected = tuple((k, v) for k in sorted(before) for v in range(before[k] + 1, after[k] + 1))
+    if count and new.replay != expected:
+        return [sse_event("resync", {"reason": "version_gap"})]
+    events = [
+        sse_event(
+            "market.invalidate",
+            {
+                "schema_version": 1,
+                "mode": "market_read",
+                "aggregate_id": sid,
+                "aggregate_version": version,
+                "event_type": "market.observation.recorded",
+            },
+        )
+        for sid, version in expected
+    ]
+    if not events and old.snapshot.data != new.snapshot.data:
+        events.append(sse_event("market.refresh", {"schema_version": 1, "mode": "market_read"}))
+    return events
 
 
 @router.get("/snapshot", operation_id="getAuthorizedDashboard", response_model=AuthorizedSnapshot)
@@ -188,7 +257,7 @@ async def market_stream(
         await asyncio.sleep(POLL_SECONDS)
         try:
             current = await run_in_threadpool(
-                read_snapshot, sid, request.state.request_id, touch=False
+                read_snapshot, sid, request.state.request_id, touch=False, previous=previous
             )
         except HTTPException:
             yield sse_event("resync", {"reason": "authority_unavailable"})

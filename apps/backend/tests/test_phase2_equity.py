@@ -1,12 +1,13 @@
 import asyncio
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
 
 from autoaxe.adapters import equity_yahoo
 from autoaxe.application.equity_worker import run_daily, run_volume, sample_stream
+from autoaxe.domain.equity_calendar import CALENDAR_VERSION, scheduled_close
 from autoaxe.domain.equity_samples import (
     EquitySampler,
     fundamentals_candidate,
@@ -83,6 +84,7 @@ def bar(day, close="100", **overrides):
         "low": "90",
         "close": close,
         "volume": "500",
+        "provider_final": True,
         **overrides,
     }
 
@@ -97,7 +99,9 @@ def test_history_excludes_current_day_and_never_backdates_availability():
     metadata = result[-1].metadata
     assert metadata["price_basis"] == "adjusted"
     assert metadata["historical_backfill_valid"] is False
-    assert metadata["calendar_verified"] is False
+    assert metadata["calendar_verified"] is True
+    assert metadata["calendar_version"] == CALENDAR_VERSION
+    assert metadata["provider_final"] is True
     assert metadata["features"]["SMA_5"]["value"] == "100"
     assert metadata["features"]["HIGH_5D"]["value"] == "110"
     assert metadata["features"]["LOW_5D"]["value"] == "90"
@@ -109,6 +113,39 @@ def test_history_excludes_current_day_and_never_backdates_availability():
         history_candidates("NVDA", [bar(24, volume="NaN")], NOW)
     with pytest.raises(ValueError):
         history_candidates("NVDA", [bar(24, close="111")], NOW)
+
+
+@pytest.mark.parametrize("symbol", ["NVDA", "QLD"])
+def test_official_regular_session_calendar(symbol):
+    assert scheduled_close(symbol, date(2025, 1, 9)) is None
+    assert scheduled_close(symbol, date(2026, 11, 26)) is None
+    assert scheduled_close(symbol, date(2026, 11, 28)) is None
+    assert scheduled_close(symbol, date(2026, 11, 27)) == datetime(2026, 11, 27, 18, tzinfo=UTC)
+    assert scheduled_close(symbol, date(2026, 7, 2)) == datetime(2026, 7, 2, 20, tzinfo=UTC)
+    assert scheduled_close(symbol, date(2026, 7, 3)) is None
+    assert scheduled_close(symbol, date(2024, 7, 3)) == datetime(2024, 7, 3, 17, tzinfo=UTC)
+    with pytest.raises(ValueError, match="unverified equity calendar"):
+        scheduled_close(symbol, date(2027, 1, 4))
+
+
+def test_daily_requires_finality_and_regular_close():
+    close = datetime(2026, 11, 27, 18, tzinfo=UTC)
+    assert history_candidates("NVDA", [bar(27)], close - timedelta(seconds=1)) == []
+    assert history_candidates("NVDA", [bar(27, provider_final=False)], close) == []
+    assert history_candidates("NVDA", [bar(25, provider_final=1)], close) == []
+    no_flag = bar(25)
+    del no_flag["provider_final"]
+    assert history_candidates("NVDA", [no_flag], close) == []
+    rows = history_candidates("NVDA", [bar(25), bar(27)], close + timedelta(seconds=1))
+    assert len(rows) == 2
+    assert rows[-1].metadata["scheduled_close_utc"] == "2026-11-27T18:00:00Z"
+    assert rows[-1].source_event_at is None
+    assert rows[-1].available_at == close + timedelta(seconds=1)
+    assert rows[-1].quality == Quality.UNKNOWN
+    with pytest.raises(ValueError, match="invalid or duplicate daily session"):
+        history_candidates("NVDA", [bar(26)], close)
+    with pytest.raises(ValueError, match="unverified equity calendar"):
+        history_candidates("NVDA", [], datetime(2027, 1, 4, 18, tzinfo=UTC))
 
 
 def test_fundamentals_no_future_backfill_and_etf_no_company_ratio(monkeypatch):
@@ -134,8 +171,27 @@ def test_unverified_daily_http_never_constructs_sdk(monkeypatch):
 
     monkeypatch.setattr(equity_yahoo, "_yahoo", unexpected)
     for fetch in (equity_yahoo.fetch_daily, equity_yahoo.fetch_fundamentals):
-        with pytest.raises(RuntimeError, match="transport not verified"):
-            fetch("NVDA", lambda: None)
+        calls = []
+        with pytest.raises(equity_yahoo.DailyTransportUnavailable, match="transport not verified"):
+            fetch("NVDA", lambda calls=calls: calls.append("permit"))
+        assert calls == ["permit"]
+
+        def revoked():
+            raise PermissionDenied("revoked")
+
+        with pytest.raises(PermissionDenied, match="revoked"):
+            fetch("NVDA", revoked)
+
+
+def test_disabled_daily_worker_never_connects_or_reserves(monkeypatch):
+    def unexpected(*args, **kwargs):
+        raise AssertionError("disabled daily worker must not open DB or network")
+
+    monkeypatch.setattr("autoaxe.application.equity_worker.psycopg.connect", unexpected)
+    monkeypatch.setattr(equity_yahoo, "_yahoo", unexpected)
+    for continuous in (False, True):
+        with pytest.raises(equity_yahoo.DailyTransportUnavailable):
+            run_daily("invalid-dsn", enabled=True, continuous=continuous)
 
 
 @pytest.mark.asyncio

@@ -282,6 +282,43 @@ def catalog() -> dict[str, Series]:
                 Series(bars, bars, "yfinance", symbol, kind, "USD", "USD", "1d", None),
             ]
         )
+    rows.extend(
+        [
+            Series(
+                "CNN_FEAR_GREED_CNN",
+                "CNN_FEAR_GREED_CNN",
+                "cnn",
+                "FEAR_GREED",
+                "sentiment_index",
+                "index",
+                None,
+                "snapshot",
+                None,
+            ),
+            Series(
+                "DRAM_DDR5_UDIMM_AUTO",
+                "DRAM_DDR5_UDIMM_AUTO",
+                "dramexchange",
+                "DDR5 UDIMM 16GB 4800/5600",
+                "module_spot_session_average",
+                "unverified",
+                None,
+                "weekly",
+                None,
+            ),
+            Series(
+                "DRAM_DDR5_RDIMM_AUTO",
+                "DRAM_DDR5_RDIMM_AUTO",
+                "dramexchange",
+                "DDR5 RDIMM 32GB 4800/5600",
+                "module_spot_session_average",
+                "unverified",
+                None,
+                "weekly",
+                None,
+            ),
+        ]
+    )
     rows.append(
         Series(
             "FIXTURE_PRICE",

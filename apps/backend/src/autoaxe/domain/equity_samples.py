@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Literal, TypedDict
 
+from autoaxe.domain.equity_calendar import CALENDAR_VERSION, scheduled_close
 from autoaxe.domain.indicator_math import ClosedBar, derive_features, financial_snapshot
 from autoaxe.domain.market import Candidate, Quality
 from autoaxe.domain.types import decimal_string, utc_datetime, utc_string
@@ -153,8 +154,11 @@ class DailyMetadata(TypedDict):
     price_basis: Literal["adjusted"]
     interval: Literal["1d"]
     bar_closed: Literal[True]
-    close_confirmation: Literal["prior_ny_date"]
-    calendar_verified: Literal[False]
+    close_confirmation: Literal["provider_final_and_scheduled_close"]
+    calendar_verified: Literal[True]
+    calendar_version: str
+    scheduled_close_utc: str
+    provider_final: Literal[True]
     historical_backfill_valid: Literal[False]
     features: dict[str, FeatureMetadata]
 
@@ -164,27 +168,33 @@ def history_candidates(
     rows: list[dict[str, Any]],
     now: datetime,
 ) -> list[Candidate]:
-    """Use only prior NY dates with actual valid OHLCV; current day is excluded.
+    """Require a reviewed session and explicit final-bar evidence.
 
-    No official session-calendar claim is made. All returned history becomes
-    available at capture, never retroactively on the date of the bar.
+    Fixture/approved adapters must supply provider_final=True only when
+    the documented provider contract establishes finality. Scheduled close
+    alone cannot prove finality or publication. Availability is capture time.
     """
     if symbol not in SYMBOLS or len(rows) > 600:
         raise ValueError("invalid history request")
-    today = utc_datetime(now).astimezone(NEW_YORK).date()
-    items: list[tuple[ClosedBar, dict[str, Any]]] = []
+    now = utc_datetime(now)
+    today = now.astimezone(NEW_YORK).date()
+    scheduled_close(symbol, today)  # fail closed on expired calendar
+    items: list[tuple[ClosedBar, dict[str, Any], datetime]] = []
     seen: set[str] = set()
     for row in rows:
         stamp = row["session_at"]
         if not isinstance(stamp, datetime):
             raise ValueError("invalid daily index")
         day = utc_datetime(stamp).astimezone(NEW_YORK).date()
-        if day >= today:
+        if day > today:
             continue
+        close_at = scheduled_close(symbol, day)
         session = day.isoformat()
-        if session in seen or day.weekday() >= 5:
+        if session in seen or close_at is None:
             raise ValueError("invalid or duplicate daily session")
         seen.add(session)
+        if now < close_at or row.get("provider_final") is not True:
+            continue
         values = {
             key: decimal_string(row[key]) for key in ("open", "high", "low", "close", "volume")
         }
@@ -198,11 +208,11 @@ def history_candidates(
         bar = ClosedBar(
             session, values["close"], values["high"], values["low"], now, True, "adjusted"
         )
-        items.append((bar, values))
+        items.append((bar, values, close_at))
     items.sort(key=lambda pair: pair[0].session)
     bars = [item[0] for item in items]
     result: list[Candidate] = []
-    for i, (bar, values) in enumerate(items):
+    for i, (bar, values, close_at) in enumerate(items):
         # Only the latest historical bar receives a current snapshot of
         # calculated features; avoid suggesting earlier PIT feature values.
         features = derive_features(bars, now, basis="adjusted") if i == len(items) - 1 else {}
@@ -218,8 +228,11 @@ def history_candidates(
             "price_basis": "adjusted",
             "interval": "1d",
             "bar_closed": True,
-            "close_confirmation": "prior_ny_date",
-            "calendar_verified": False,
+            "close_confirmation": "provider_final_and_scheduled_close",
+            "calendar_verified": True,
+            "calendar_version": CALENDAR_VERSION,
+            "scheduled_close_utc": utc_string(close_at),
+            "provider_final": True,
             "historical_backfill_valid": False,
             "features": {
                 name: {"value": feature.value, "quality": feature.quality, "window": feature.window}

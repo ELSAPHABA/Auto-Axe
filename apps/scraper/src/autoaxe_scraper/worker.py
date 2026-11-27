@@ -10,14 +10,15 @@ import json
 import multiprocessing
 import os
 import ssl
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import UUID
 
-from autoaxe_scraper.parsers import parse_offline
+from autoaxe_scraper.parsers import SchemaChanged, parse_offline
 from autoaxe_scraper.policy import fixed_target
-from autoaxe_scraper.transport import fetch_exact_html
+from autoaxe_scraper.transport import ProviderHTTPError, SourceBlocked, fetch_exact_html
 
 HTTP_SOURCES = frozenset({"cnn", "dramexchange", "naver"})
 BROKER_PATH = "/internal/v1/scrape/jobs"
@@ -152,8 +153,33 @@ def run_once(broker: Broker, source: str) -> str:
 
     # fetch_exact_html calls permit before and after network I/O. No redirects,
     # browser fallback, arbitrary URL, compression or provider credentials.
-    html = fetch_exact_html(fixed_target(source), permit=permit)
-    parsed = parse_offline(source, html)
+    try:
+        html = fetch_exact_html(fixed_target(source), permit=permit)
+        parsed = parse_offline(source, html)
+    except (
+        ProviderHTTPError,
+        SourceBlocked,
+        SchemaChanged,
+        OSError,
+        http.client.HTTPException,
+    ) as exc:
+        failure: dict[str, Any] = {**job.credentials(), "source_id": source}
+        if isinstance(exc, ProviderHTTPError):
+            failure.update(reason="http", http_status=exc.status)
+            if exc.retry_header:
+                # Oversized or malformed retry instructions fail closed by
+                # reporting a schema failure rather than truncating the delay.
+                if len(exc.retry_header) > 128 or not exc.retry_header.isascii():
+                    failure = {**job.credentials(), "source_id": source, "reason": "schema"}
+                else:
+                    failure["retry_header"] = exc.retry_header
+        else:
+            failure["reason"] = (
+                "schema" if isinstance(exc, (SourceBlocked, SchemaChanged)) else "transport"
+            )
+        if broker.post(path + "/failure", failure) != {"status": "failed"}:
+            raise BrokerError("failure was not recorded") from exc
+        return "failed"
     candidates = parsed if isinstance(parsed, list) else [parsed]
     permit()
     response = broker.post(
@@ -174,7 +200,10 @@ def _child(source: str) -> None:
             os.environ["AUTOAXE_SCRAPER_CERT"],
             os.environ["AUTOAXE_SCRAPER_KEY"],
         )
-        print(f"scraper: {run_once(broker, source)}", flush=True)
+        result = run_once(broker, source)
+        print(f"scraper: {result}", flush=True)
+        if result == "failed":
+            raise SystemExit(1)
     except Exception:
         # Provider pages, credentials and arbitrary exception details must not
         # leak into logs. A failed job is fenced by its existing lease expiry.
@@ -182,21 +211,31 @@ def _child(source: str) -> None:
         raise SystemExit(1) from None
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="One-shot isolated HTTP scrape worker")
-    parser.add_argument("source", choices=sorted(HTTP_SOURCES))
-    args = parser.parse_args()
+def run_bounded(source: str) -> int:
     # A child process bounds DNS, TLS, slow responses and parser CPU together;
     # socket timeouts alone would not stop a slow-drip response or DNS stall.
-    child = multiprocessing.get_context("spawn").Process(target=_child, args=(args.source,))
+    child = multiprocessing.get_context("spawn").Process(target=_child, args=(source,))
     child.start()
     child.join(JOB_BUDGET_SECONDS)
     if child.is_alive():
         child.kill()
         child.join()
         print("scraper: job budget exceeded", flush=True)
-        raise SystemExit(1)
-    raise SystemExit(child.exitcode or 0)
+        return 1
+    return child.exitcode or 0
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Isolated HTTP scrape worker")
+    parser.add_argument("source", choices=sorted(HTTP_SOURCES))
+    parser.add_argument("--daemon", action="store_true")
+    args = parser.parse_args()
+    while True:
+        status = run_bounded(args.source)
+        if not args.daemon:
+            raise SystemExit(status)
+        # Poll only the broker, never the provider without a new fenced lease.
+        time.sleep(60)
 
 
 if __name__ == "__main__":

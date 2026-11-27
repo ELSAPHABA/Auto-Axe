@@ -1,0 +1,22 @@
+# Explicit opt-in overlay: combine with scrape-broker.yaml.
+# This process only schedules DB jobs; no provider network or TLS material.
+services:
+  scrape-scheduler:
+    profiles: [scheduler]
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+      target: backend
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.scrape_scheduler_cli", "schedule", "--sources", "cnn", "dramexchange", "naver", "--daemon"]
+    environment:
+      AUTOAXE_SCRAPE_BROKER_MARKET_DSN: ${AUTOAXE_SCRAPE_BROKER_MARKET_DSN:?set broker runtime DSN}
+    networks: [market]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 32
+    mem_limit: 128m
+    cpus: 0.25
+    init: true
+    restart: unless-stopped

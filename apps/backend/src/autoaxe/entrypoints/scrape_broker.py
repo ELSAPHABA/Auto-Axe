@@ -7,7 +7,6 @@ import os
 import re
 import ssl
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
@@ -23,7 +22,9 @@ from uvicorn.protocols.http.h11_impl import H11Protocol
 from autoaxe.application.scrape_broker import (
     claim,
     complete,
+    fail,
     heartbeat,
+    validate_candidates,
 )
 from autoaxe.infrastructure.market_store import PermissionDenied
 
@@ -59,6 +60,13 @@ class ResultRequest(HeartbeatRequest):
     source_id: Literal["cnn", "pizzint", "dramexchange", "seibro", "naver"]
     adapter_version: int = Field(default=1, ge=1, le=1)
     candidates: list[dict[str, Any]] = Field(max_length=100)
+
+
+class FailureRequest(HeartbeatRequest):
+    source_id: Literal["cnn", "dramexchange", "naver"]
+    reason: Literal["http", "schema", "transport"]
+    http_status: int | None = Field(default=None, ge=100, le=599)
+    retry_header: str | None = Field(default=None, max_length=128)
 
 
 MAX_REQUEST_BYTES = 262_144
@@ -143,65 +151,6 @@ def broker_dsn() -> str:
     return dsn
 
 
-def validate_candidates(source: str, candidates: list[dict[str, Any]]) -> None:
-    """Constrain quarantined candidate schema even if a trusted worker is compromised."""
-    common = {"series_id", "value", "source_event_at", "quality"}
-    dram_items = {
-        "DRAM_DDR5_UDIMM_16GB_SESSION_AVG": "DDR5 UDIMM 16GB 4800/5600",
-        "DRAM_DDR5_RDIMM_32GB_SESSION_AVG": "DDR5 RDIMM 32GB 4800/5600",
-    }
-    expected = {
-        "cnn": {"CNN_FEAR_GREED_CNN"},
-        "naver": {"UST_2Y_NAVER"},
-        "dramexchange": set(dram_items),
-    }[source]
-    if len(candidates) != len(expected):
-        raise ValueError("candidate count mismatch")
-    seen: set[str] = set()
-    for item in candidates:
-        sid = item.get("series_id")
-        if not isinstance(sid, str) or sid not in expected or sid in seen:
-            raise ValueError("unexpected candidate series")
-        seen.add(sid)
-        raw = item.get("value")
-        if not isinstance(raw, str) or len(raw) > 64:
-            raise ValueError("invalid candidate value")
-        try:
-            value = Decimal(raw)
-        except InvalidOperation as exc:
-            raise ValueError("invalid candidate value") from exc
-        if not value.is_finite() or item.get("quality") != "manual_review_required":
-            raise ValueError("invalid candidate quality or value")
-        if source == "cnn":
-            if (
-                set(item) != common | {"category", "automated_trading_allowed"}
-                or not 0 <= value <= 100
-                or item["category"]
-                not in ("Extreme Fear", "Fear", "Neutral", "Greed", "Extreme Greed")
-                or item["automated_trading_allowed"] is not False
-                or item["source_event_at"] is not None
-            ):
-                raise ValueError("invalid CNN candidate")
-        else:
-            stamp = item.get("source_event_at")
-            if not isinstance(stamp, str) or len(stamp) > 64:
-                raise ValueError("invalid source timestamp")
-            parsed = datetime.fromisoformat(stamp)
-            if parsed.tzinfo is None:
-                raise ValueError("source timestamp must be timezone aware")
-            if source == "naver" and set(item) != common:
-                raise ValueError("invalid Naver candidate")
-            if source == "dramexchange" and (
-                set(item) != common | {"item", "unit", "unit_verified", "source_id"}
-                or item["item"] != dram_items[sid]
-                or item["unit"] is not None
-                or item["unit_verified"] is not False
-                or item["source_id"] != source
-                or value <= 0
-            ):
-                raise ValueError("invalid DRAM candidate")
-
-
 def create_broker_app() -> FastAPI:
     api = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -221,7 +170,12 @@ def create_broker_app() -> FastAPI:
             raise HTTPException(403, "source not enabled for generic HTTP worker")
         try:
             with psycopg.connect(broker_dsn(), connect_timeout=3) as conn:
-                lease = claim(conn, source=body.source_id, lease_seconds=body.lease_seconds)
+                lease = claim(
+                    conn,
+                    source=body.source_id,
+                    lease_seconds=body.lease_seconds,
+                    scheduled_only=True,
+                )
         except PermissionDenied as exc:
             raise HTTPException(403, "source permission denied") from exc
         except psycopg.Error as exc:
@@ -285,6 +239,34 @@ def create_broker_app() -> FastAPI:
             raise HTTPException(403, "scrape job identity or source permission denied") from exc
         except ValueError as exc:
             raise HTTPException(422, "invalid scrape result") from exc
+        except psycopg.Error as exc:
+            raise HTTPException(503, "broker unavailable") from exc
+        return {"status": state}
+
+    @api.post("/internal/v1/scrape/jobs/{job_id}/failure")
+    def submit_failure(
+        job_id: UUID,
+        body: FailureRequest,
+        identity: Annotated[str, Depends(service_identity)],
+    ) -> dict[str, str]:
+        if identity != "scraper-worker":
+            raise HTTPException(403, "unrecognized service principal")
+        try:
+            with psycopg.connect(broker_dsn(), connect_timeout=3) as conn:
+                state = fail(
+                    conn,
+                    str(job_id),
+                    body.source_id,
+                    body.lease_token,
+                    body.job_nonce,
+                    reason=body.reason,
+                    http_status=body.http_status,
+                    retry_header=body.retry_header,
+                )
+        except PermissionDenied as exc:
+            raise HTTPException(403, "stale or unauthorized failure report") from exc
+        except ValueError as exc:
+            raise HTTPException(422, "invalid failure report") from exc
         except psycopg.Error as exc:
             raise HTTPException(503, "broker unavailable") from exc
         return {"status": state}
