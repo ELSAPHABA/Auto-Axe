@@ -95,7 +95,7 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 | Binance Spot·TradFi Futures WS (기본 시장가격) | 거래 발생 시 이벤트 기반 | 체결시각/연결 상태/휴장·유동성 확인, 백오프·누락 보완 | 
 | Binance 선물 롱숏 4종 | 5분 이상 집계 주기 | 전체 계정·상위 계정·상위 포지션·Taker 거래량 구분 |
 | yfinance VIX | 원본 TTL 10초; 허용된 조회·즉시 refresh | Yahoo 지연·장시간 확인, TTL 미달 UNKNOWN |
-| yfinance 3M/5Y/10Y/30Y | 원본 TTL 5분, 허용된 최신봉 조회 | 원본 갱신·지연 별도 |
+| yfinance 3M/5Y/10Y/30Y | 15분 조회, 원본 TTL 5분 별도 | 원본 갱신·지연 별도 |
 | 네이버 2Y | 승인 전 자동화 비활성; 승인 후 원본 갱신·rate limit에 맞춤 | `US2YT=RR` 원본 시각·지연 |
 | Treasury 공식 국채 2년물 + 5종 교차검증 | 게시 후 일 1회 | 2Y 일별값, 공식 5종 별도 검증 |
 | Coinbase BTC/USD WS (보조) | 필요할 때 스트리밍 | USD와 USDT 혼합 금지, 누락·재연결 관리 |

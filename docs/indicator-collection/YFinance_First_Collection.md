@@ -22,13 +22,13 @@
 | 지표 | 내부 series_id | 공급자 / 역할 | 종목 | 기준 / 수집 유의 |
 |---|---|---|---|---|
 | VIX | `VIX` | **yfinance** | `^VIX` | Yahoo Cboe VIX 지수, 거래소 데이터 지연 확인 |
-| WTI 원유 | `WTI_FUTURE` | yfinance (비교) | `CL=F` | **NYMEX WTI 선물** (EIA 일별 *현물*과 다름) |
-| Brent 원유 | `BRENT_FUTURE` | yfinance (비교) | `BZ=F` | **NYMEX Brent Last Day Financial Futures** (ICE 원계약과 다름) |
+| WTI 원유 | `WTI_FUTURE` | yfinance WS (Binance WS 실패 시에만 fallback, 미검증) | `CL=F` | **NYMEX WTI 선물** (EIA 일별 *현물*과 다름) |
+| Brent 원유 | `BRENT_FUTURE` | yfinance WS (Binance WS 실패 시에만 fallback, 미검증) | `BZ=F` | **NYMEX Brent Last Day Financial Futures** (ICE 원계약과 다름) |
 | 금 선물 | `GOLD_FUTURE` | yfinance (비교) | `GC=F` | **COMEX 금 선물**, USD/troy oz, 무료·지연 가능 |
 | 비트코인 USD | `BITCOIN` | yfinance (비교) | `BTC-USD` | Yahoo 집계 시세, 거래소 공식 체결가와 별개 |
 | 금 현물가 | `XAUUSD.spot_estimate` | Gold API (현물 추정 참고) | `/price/XAU` | `GC=F` 선물로 현물가격을 덮어쓰지 않는다 |
 
-금·원유·BTC Yahoo 비교 시계열은 동일 자산의 Binance 계약/Spot 기본 시계열과 병합하지 않는다. Gold API 현물 추정 참고 및 Coinbase BTC/USD도 별개다. 미국 주식·ETF `AsyncWebSocket day_volume` 로컬 1Hz, `Ticker.info` 재무 및 OHLCV 기술지표와 `NQ=F` 지연 비교는 각각 [거래량](./YFinance_1s_Stock_Cumulative_Volume.md), [재무·기술](./YFinance_Valuation_and_Moving_Averages.md), [Nasdaq](./Nasdaq100_Futures_Data_Sources.md)에 정의한다.
+금·원유·BTC Yahoo 원본은 동일 자산의 Binance 계약/Spot 기본 시계열과 병합하지 않는다. 원유 Yahoo WS는 Binance 실패 시에만 fallback, 정상 복구 시 복귀하며 정상 중 병행 운영하지 않는다. 기존 HTTP 원유 PoC는 검증 이력으로 보존한다. Gold API 현물 추정 참고 및 Coinbase BTC/USD도 별개다. 미국 주식·ETF `AsyncWebSocket day_volume` 로컬 1Hz, `Ticker.info` 재무 및 OHLCV 기술지표와 `NQ=F` 지연 비교는 각각 [거래량](./YFinance_1s_Stock_Cumulative_Volume.md), [재무·기술](./YFinance_Valuation_and_Moving_Averages.md), [Nasdaq](./Nasdaq100_Futures_Data_Sources.md)에 정의한다.
 
 **원유 현물의 일별 확정 가격**은 EIA 무료 API `PET.RWTC.D` (WTI), `PET.RBRTE.D` (Brent)를 별도 저장할 수 있다. 선물과 spot의 시계열 키/차트 라벨을 반드시 분리한다.
 

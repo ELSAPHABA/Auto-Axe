@@ -72,7 +72,7 @@ MEXC `NAS100_USDT`는 지수 연동 영구선물이며 실시간 수신·지연�
 - Treasury [일별 공식 파 수익률](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics), [XML 제공 안내](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed): 2Y/10Y 등 단위 `percent`. [FRED DGS2/DGS10](https://fred.stlouisfed.org/series/DGS10)은 무료 개인 조회 참고만. 국채 현물 수익률과 국채 선물 가격은 전혀 다른 값.
 - VIX 및 3M/5Y/10Y/30Y yfinance 분봉은 무지연 실시간 수익률이 아님.
 
-**yfinance 검증 범위:** [YFinance_Data_Validation.md](./YFinance_Data_Validation.md)의 2026-11-22 `^VIX`, `^TNX`, `CL=F`, `BZ=F` 일봉·1분봉 실측을 참고한다. 원유·금·BTC 기본 가격은 Binance, Yahoo 가격은 별도 비교 시계열이다.
+**yfinance 검증 범위:** [YFinance_Data_Validation.md](./YFinance_Data_Validation.md)의 2026-11-22 `^VIX`, `^TNX`, `CL=F`, `BZ=F` 일봉·1분봉 실측을 참고한다. 원유·금·BTC 기본 가격은 Binance. WTI/Brent Yahoo WS는 해당 Binance WS 실패 시에만 별도 fallback으로 사용하며 실제 WS 수신은 검증 필요. 국채 3M/5Y/10Y/30Y 정기 조회는 15분, 원본 TTL 5분 별도. VIX TTL 10초 및 허용 범위 내 즉시 갱신은 필수.
 
 ## 3. 미국 주식·ETF 지표
 

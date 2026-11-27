@@ -73,7 +73,7 @@ Binance Spot BTCUSDT 및 TradFi Futures 5종은 독립 상품으로 구독한다
 
 ### 3.2 스케줄링
 
-수집 주기와 신선도 TTL을 구분한다. VIX의 TTL은 10초, yfinance 국채 3M/5Y/10Y/30Y는 5분이다. 조건 충족 시 다른 조건의 데이터 즉시 갱신 요청을 수집기에 전달하며 rate limit/권한/원본 갱신주기를 준수한다. [신선도 및 갱신 계약](../tech-stack/data-collection.md).
+수집 주기와 신선도 TTL을 구분한다. VIX의 TTL은 반드시 10초이며 허용 범위 내 즉시 갱신을 유지한다. yfinance 국채 3M/5Y/10Y/30Y 정기 조회는 15분, 원본 TTL은 기존 5분이다. 조건 충족 시 다른 조건의 데이터 즉시 갱신 요청을 수집기에 전달하며 rate limit/권한/원본 갱신주기를 준수한다. [신선도 및 갱신 계약](../tech-stack/data-collection.md).
 
 | 작업 | 권장 주기 |
 |---|---|

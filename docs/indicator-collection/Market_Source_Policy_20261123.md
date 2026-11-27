@@ -6,13 +6,23 @@
 
 ## 2. 대상별 기본 데이터 소스
 
+### 2026-11-27 사용자 확정 수집 정책 (기존과 충돌 시 우선)
+
+- VIX는 반드시 원본 이벤트 기준 TTL 10초 및 허용 범위 내 즉시 갱신. 원본 지연/미수신은 stale 또는 UNKNOWN으로 처리하고 TTL을 늘리거나 수신시각으로 대체하지 않는다. VIX는 필수 신선도 요구사항이며 공급자 제약으로 충족하지 못하면 신호 차단, 별도 검증 필요.
+- 미국 국채 3M/5Y/10Y/30Y는 yfinance 정기 조회 900초(15분). 기존 원본 TTL 300초는 조회 주기와 구분해 유지하며, 오래된 관측을 15분 동안 최신으로 간주하지 않는다. 2Y Naver 우선/Treasury 일별 임시 fallback은 그대로 유지.
+- WTI/Brent는 각각 Binance WS CLUSDT/BZUSDT를 최우선으로, 해당 스트림 실패 시에만 Yahoo WS CL=F/BZ=F fallback. Binance 정상 복구 시 우선 원본으로 복귀하고 사유·시각·원본을 기록한다. 정규 휴장과 장애를 구분한다. Yahoo USD 만기선물과 Binance USDT 연동 영구선물은 별도 series, 상품·단위·계약·지연을 표시하고 전환 경계 수익률/EDGE/rolling은 UNKNOWN 또는 재기준화. Yahoo WS 실제 심볼 수신 검증 전 fallback을 가동하지 않는다.
+- NVDA/QLD WS day_volume 로컬 1Hz 기록, 후행/예상 PER·PBR 일별, ROE 실적 발표 후, 확정 OHLCV 기반 SMA 5/20/60/120/200 및 EMA 12/26, 최근 5/10/20 실제 거래 세션 고저가를 유지한다. ETF 기업 재무비율은 결측. NQ=F 지연 1분봉 비교도 유지.
+- yfinance HTTP 구현은 기존 명세대로 복원하는 방향으로 확정한다. 최초 과거 OHLCV 일괄 확보 후 증분 수집(일봉 확정 후 거래일 1회, 정정·분할·배당 및 워밍업 보존), 캐시·single-flight·bounded request/concurrency/timeout, 429 Retry-After/backoff 및 403 중단, UI refresh와 정기 외부 호출 분리. 내부 재시도/쿠키 요청 포함 실제 호출량 제어 검증 필요. 개인·연구·교육·비영리, 제3자 재배포 금지 및 기존 권한 게이트 유지. 개발 구현과 공급자 운영 허용 여부는 별개.
+
+현재 구현 상태: 국채 정기 조회 스케줄 900초 반영, VIX TTL 10초 기존 유지. Yahoo equity HTTP transport, 즉시 갱신 운영 연결 및 원유 WS fallback은 구현/실측 검증 필요. 이 정책 자체가 실제 외부 호출 승인 또는 운영 검증을 의미하지 않는다.
+
 | 지표 | 기본 공급원 | 내부 식별자 | 정확한 상품 정의 |
 |---|---|---|---|
 | 금 가격 동향 | **Binance Futures WS** `XAUUSDT@aggTrade` | `GOLD_BINANCE_PERP` | Binance TradFi 금 연동 영구선물 **USDT 기준** |
 | 은 가격 동향 | **Binance Futures WS** `XAGUSDT@aggTrade` | `SILVER_BINANCE_PERP` | 은 연동 USDT 영구선물 |
 | 구리 가격 동향 | **Binance Futures WS** `COPPERUSDT@aggTrade` | `COPPER_BINANCE_PERP` | 구리 연동 USDT 영구선물 |
-| WTI 가격 동향 | **Binance Futures WS** `CLUSDT@aggTrade` | `WTI_BINANCE_PERP` | Binance 원유 연동 영구선물 **USDT 기준** |
-| Brent 가격 동향 | **Binance Futures WS** `BZUSDT@aggTrade` | `BRENT_BINANCE_PERP` | Binance Brent 연동 영구선물 **USDT 기준** |
+| WTI 가격 동향 | **Binance Futures WS** `CLUSDT@aggTrade`; 실패 시 Yahoo WS `CL=F` | `WTI_BINANCE_PERP`; Yahoo 별도 시계열 | Binance 원유 연동 영구선물 USDT / Yahoo USD 만기선물, fallback 미검증 |
+| Brent 가격 동향 | **Binance Futures WS** `BZUSDT@aggTrade`; 실패 시 Yahoo WS `BZ=F` | `BRENT_BINANCE_PERP`; Yahoo 별도 시계열 | Binance Brent 연동 영구선물 USDT / Yahoo USD 만기선물, fallback 미검증 |
 | 비트코인 | **Binance Spot WS** `BTCUSDT@trade` | `BITCOIN_BINANCE_SPOT` | Binance BTC/USDT 현물 **USDT 기준** |
 | 미국 개별주식 PER·PBR·ROE | **yfinance `Ticker.info` 후행/예상 PER·PBR·ROE 스냅샷** | `EQUITY_PER_TTM`, `EQUITY_PER_FORWARD`, `EQUITY_PBR`, `EQUITY_ROE` | 일별/실적 갱신시점 분리, ETF 결측 기본. [명세](./YFinance_Valuation_and_Moving_Averages.md) |
 | 이동평균선(SMA·EMA) | **yfinance OHLCV로 로컬 산출** | `SMA_N`, `EMA_N` + interval | 확정 일봉/분봉 기준, 조정종가·워밍업 및 백테스트 시점 보존. [명세](./YFinance_Valuation_and_Moving_Averages.md) |

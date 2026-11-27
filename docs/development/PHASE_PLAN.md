@@ -58,7 +58,7 @@ Exit: 기존 roadmap Phase 0 및 contracts §10의 초기 API/Graph/Event/Data/D
 | P1.2 | 시장 원장, migrations, query | immutable observations/revisions/latest, 복합 키, source_event_at/available_at/received_at/ingested_at 구분, native partitioning, provenance, typed Decimal/UTC, cursor/as_of/quality |
 | P1.3 | Durable job/outbox/inbox | SKIP LOCKED claim/lease/token/heartbeat/retry/dedupe, at-least-once, version/gap, mode ingress, DB transaction rollback/crash, no global sequence ordering assumption |
 | P1.4 | Binance | Spot BTCUSDT trade + XAUUSDT/XAGUSDT/COPPERUSDT/CLUSDT/BZUSDT futures aggTrade, REST recovery, reconnect/ping/gap; futures market path wss://fstream.binance.com/market/stream?streams=...; 6 futures symbols × 4 ratio kinds = 24 series, 5m aggregates/300s poll, BTC price Spot vs futures ratio |
-| P1.5 | VIX/국채 | ^VIX TTL 10초, ^IRX/^FVX/^TNX/^TYX TTL 5분; UST_2Y_NAVER 최우선 승인형, 실패/실행 불가 때만 UST_2Y_TREASURY BC_2YEAR 임시 일별 fallback, 복귀, provenance, 전환 간 변화량 금지; Treasury XML 5개 만기 검증 |
+| P1.5 | VIX/국채 | ^VIX TTL 10초 필수·허용 범위 내 즉시 갱신, ^IRX/^FVX/^TNX/^TYX 정기 조회 15분·원본 TTL 5분; UST_2Y_NAVER 최우선 승인형, 실패/실행 불가 때만 UST_2Y_TREASURY BC_2YEAR 임시 일별 fallback, 복귀, provenance, 전환 간 변화량 금지; Treasury XML 5개 만기 검증 |
 | P1.6 | 수동 입력/CLI migration | 기존 manual_record.py·realtime_collector.py 기능 parity, URL/단위/관측·입력시각/입력자/검수, 권한 우회 금지; 기존 PoC 보존. 조회 API /api/v1/market, /indicators; 읽기 MCP 기반 가능 |
 | P1.7 | 복구·품질 | duplicate/late/revision/no_data/no_update/stale/disconnected, 429 Retry-After/5xx backoff/403 차단, bounded backpressure, provider contract fixture, fake WS, Testcontainers 및 replay |
 

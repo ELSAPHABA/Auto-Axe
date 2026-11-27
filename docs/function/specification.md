@@ -33,10 +33,11 @@ NH나무 OpenAPI 기반 알고리즘·패턴 매매 퀀트 시스템에 필요�
 | FR-107 | Nasdaq 100 연동 가격 | MEXC NAS100_USDT 후보 | WS, 실측 필요 |
 | FR-108 | Binance 롱숏·Taker 비율 | Futures 공개 REST | 5분 이상 집계 |
 | FR-109 | VIX | yfinance ^VIX | 기본 TTL 10초, 허용 범위 즉시 갱신; 무지연 보장 없음 |
-| FR-110 | 미국 국채 3M/5Y/10Y/30Y | yfinance ^IRX/^FVX/^TNX/^TYX | 1~5분 조회 |
+| FR-110 | 미국 국채 3M/5Y/10Y/30Y | yfinance ^IRX/^FVX/^TNX/^TYX | 15분 조회; 원본 TTL 5분 별도 |
 | FR-111 | 미국 국채 2Y | 네이버 US2YT=RR 최우선; 스크래핑 실패/권한상 실행 불가 시에만 Treasury BC_2YEAR 임시 fallback | 원본별 시계열·신선도 분리, 네이버 정상 복구 시 복귀 |
 
 - FR-102~106은 USDT 결제 연동 영구선물이다. 금 현물 Gold API, 원유 EIA 일별 현물, Coinbase BTC/USD는 별도 참고 시계열이다. 두바이유 제외.
+- FR-105/106은 Binance WS 최우선, 해당 피드 실패 시에만 Yahoo WS CL=F/BZ=F fallback, 정상 복구 시 즉시 복귀. 계약·통화·시각 별도; 원본 전환 경계 혼합 계산 금지. Yahoo WS 실제 지원/권한 검증 전에는 결측 표시.
 - FR-107은 실제 CME NQ 선물이 아니다. Binance QQQUSDT는 ETF 연동 참고, yfinance NQ=F는 실제 CME 선물의 지연 비교 자료다. MEXC Protobuf 전환 및 실측 검증 필요.
 - FR-108은 BTCUSDT와 5개 원자재 선물 각각 전체 계정, 상위 계정, 상위 포지션, Taker 매수·매도 거래량 비율을 수집해 24개 시계열을 구성한다. Taker 비율을 포지션 비율로 표시하지 않는다.
 - FR-109~111은 무지연 보장 없음. Treasury 공식 5종 및 Cboe 일별 VIX는 별도 교차검증 자료다.

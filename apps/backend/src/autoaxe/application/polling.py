@@ -25,6 +25,8 @@ CADENCE = {
     and (s.source_id in {"yfinance", "treasury"} or s.interval == "5m")
 }
 CADENCE["FIXTURE_PRICE"] = 5
+YAHOO_TREASURY_SERIES = frozenset({"UST_3M", "UST_5Y", "UST_10Y", "UST_30Y"})
+CADENCE.update(dict.fromkeys(YAHOO_TREASURY_SERIES, 900))
 
 
 def _open(conn: Connection[Any], sid: str, now: datetime) -> bool:
@@ -59,7 +61,12 @@ def schedule_due(conn: Connection[Any], series: Iterable[str], now: datetime) ->
         old = conn.execute(
             "SELECT last_slot,last_enqueued_at FROM ops.poll_slots WHERE series_id=%s", (sid,)
         ).fetchone()
-        if old and (slot <= old[0] or now < old[1] + timedelta(seconds=CADENCE[sid])):
+        # Old 300s Treasury slot numbers are incomparable with new 900s slots.
+        # Keep the actual last enqueue time as the migration-safe cadence fence.
+        if old and (
+            (sid not in YAHOO_TREASURY_SERIES and slot <= old[0])
+            or now < old[1] + timedelta(seconds=CADENCE[sid])
+        ):
             continue
         owner = "poll:" + catalog()[sid].source_id
         active = conn.execute(
@@ -69,7 +76,8 @@ def schedule_due(conn: Connection[Any], series: Iterable[str], now: datetime) ->
         ).fetchone()
         if active:
             continue
-        ids.append(submit_collection(conn, sid, owner, f"{sid}:{slot}"))
+        key = f"{sid}:900s:{slot}" if sid in YAHOO_TREASURY_SERIES else f"{sid}:{slot}"
+        ids.append(submit_collection(conn, sid, owner, key))
         conn.execute(
             """INSERT INTO ops.poll_slots VALUES (%s,%s,%s) ON CONFLICT(series_id)
             DO UPDATE SET last_slot=EXCLUDED.last_slot,

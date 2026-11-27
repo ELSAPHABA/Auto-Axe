@@ -274,6 +274,27 @@ def test_ledger_jobs_and_mode_ingress(monkeypatch):
             )
 
         # Durable scheduling: all 24 ratios, no permission -> no jobs.
+        treasury_yahoo = ("UST_3M", "UST_5Y", "UST_10Y", "UST_30Y")
+        assert all(CADENCE[sid] == 900 for sid in treasury_yahoo)
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "yfinance",
+                approved=True,
+                evidence="synthetic cadence test",
+                fetch=True,
+                storage=True,
+            )
+        with psycopg.connect(market) as conn:
+            old_stamp = conn.execute("SELECT clock_timestamp()").fetchone()[0]
+            for sid in treasury_yahoo:
+                conn.execute(
+                    "INSERT INTO ops.poll_slots VALUES (%s,%s,%s)",
+                    (sid, int(old_stamp.timestamp()) // 300, old_stamp),
+                )
+            assert schedule_due(conn, treasury_yahoo, old_stamp + timedelta(seconds=899)) == []
+            assert len(schedule_due(conn, treasury_yahoo, old_stamp + timedelta(seconds=900))) == 4
+            assert schedule_due(conn, treasury_yahoo, old_stamp + timedelta(seconds=900)) == []
         ratios = sorted(sid for sid in CADENCE if sid.startswith("BINANCE_"))
         assert len(ratios) == 24 and all(CADENCE[sid] == 300 for sid in ratios)
         with psycopg.connect(market) as conn:

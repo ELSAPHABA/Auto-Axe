@@ -4,6 +4,10 @@
 
 ## METADATA (메타데이터)
 
+- [Session 16 정책 확정 및 검증 기록](phases/phase-02/2026-11-27-16.md): 국채 900초 스케줄 적용 및 기존 300초 슬롯 호환, 관련 41개 테스트 통과. Yahoo HTTP 복원과 원유 fallback/즉시 갱신 운영 연결은 별도 구현·검증 대상.
+
+- **최신 사용자 정책 2026-11-27:** [시장 수집 정책 확정](../docs/indicator-collection/Market_Source_Policy_20261123.md#2026-11-27-사용자-확정-수집-정책-기존과-충돌-시-우선). VIX TTL 10초 필수/허용 즉시 갱신, Yahoo 국채 4종 900초 조회(기존 TTL 300초 별도), 5/10/20 거래일 고저가, WTI/Brent Binance WS 최우선/Yahoo WS 실패 시만 fallback, 나머지 기존 유지 및 HTTP 복원 방향. 사용자 Windows 시간 동기화 완료 보고(재측정 미실행). API 키 발급 사용자 문서 [가이드](../docs/user-guide/PROVIDER_SETUP.md). 아직 Yahoo 실제 HTTP/WS, fallback 및 즉시 갱신 운영 연결 검증 미완료.
+
 - **최신 개발 인계 2026-11-27 session 15:** [2단계 실제 공급자 검증](phases/phase-02/2026-11-27-15.md) 우선. PizzINT/Treasury/BOJ 문서 및 9개 공식 task 실제 임시 PG17 저장, Binance ratio/QQQ·MEXC REST/Protobuf 실제 파싱, BLS 결측·BoE CSV·BOJ null·상품 enum 수정. Binance WS는 미래 timestamp(PC 시계 동기화 점검 필요), 키/SEC 연락처/약관 미확인 공급원 및 운영 검증 남음. Phase 3 미착수.
 
 - **최신 개발 인계 2026-11-27 session 14:** [규칙 기반 분기 만기 일정](phases/phase-02/2026-11-27-14.md) 우선. 사용자 승인으로 기본은 미국 주식시장 검수 캘린더 기반 휴장일 보정 예상 만기/DTE, 서버 ET 기준 다음 만기 자동 선택. 실제 상품별 확정 및 triple/quad 판정은 기존 공식 근거와 구분. [Session 13](phases/phase-02/2026-11-27-13.md)의 나머지 구현 유지. 2단계 실제 수집/3단계 운영 검증 별도, Phase 3 미착수.
