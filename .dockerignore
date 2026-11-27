@@ -13,6 +13,13 @@
 !apps/executor/uv.lock
 !apps/executor/src/
 !apps/executor/src/**
+!apps/scraper/
+!apps/scraper/pyproject.toml
+!apps/scraper/uv.lock
+!apps/scraper/src/
+!apps/scraper/src/**
+!apps/scraper/tests/
+!apps/scraper/tests/**
 !apps/web/
 !apps/web/package.json
 !apps/web/tsconfig.json

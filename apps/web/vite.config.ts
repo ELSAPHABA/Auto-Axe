@@ -8,5 +8,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: { host: "127.0.0.1", proxy: { "/api": target } },
   preview: { host: "127.0.0.1", proxy: { "/api": target } },
-  test: { environment: "jsdom", include: ["src/**/*.test.tsx"] },
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.test.tsx", "src/**/*.test.ts"],
+  },
 });

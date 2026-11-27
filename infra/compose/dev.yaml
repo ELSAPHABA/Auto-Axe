@@ -89,6 +89,20 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     restart: "no"
+  scraper-fixture:
+    profiles: [scraper-fixture]
+    build:
+      context: ../..
+      dockerfile: apps/scraper/Dockerfile
+    network_mode: none
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 64
+    mem_limit: 384m
+    cpus: 0.5
+    restart: "no"
   fixture-collector:
     profiles: [fixture-collect]
     build:

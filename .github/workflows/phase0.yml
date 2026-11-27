@@ -27,6 +27,11 @@ jobs:
       - run: uv sync --project apps/executor --locked
       - run: uv run --project apps/executor --locked pytest apps/executor/tests
       - run: uv run --project apps/executor --locked python -m autoaxe_executor
+      - run: uv sync --project apps/scraper --locked
+      - run: uv run --project apps/scraper --locked ruff check apps/scraper
+      - run: uv run --project apps/scraper --locked ruff format --check apps/scraper
+      - run: uv run --project apps/scraper --locked mypy apps/scraper/src
+      - run: uv run --project apps/scraper --locked pytest apps/scraper/tests -q
       - name: Pinned NHPLUG stdio smoke (no broker requests)
         run: |
           git init .phase0-cache/nhplug-mcp
@@ -63,6 +68,7 @@ jobs:
       - run: |
           curl --fail "http://127.0.0.1:18174/api/v1/market/observations?series_id=FIXTURE_PRICE" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["data"] and r["data"][0]["value"]=="123.45"'
       - run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml --profile executor-smoke run --rm executor
+      - run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml --profile scraper-fixture run --rm --build scraper-fixture
       - if: always()
         run: docker compose --env-file .env.phase0 -f infra/compose/dev.yaml down -v
   secret-scan:

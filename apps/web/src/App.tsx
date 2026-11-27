@@ -1,65 +1,139 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link, Route, Routes } from "react-router";
-import { getHealth } from "./api";
+import { Link, NavLink, Route, Routes } from "react-router";
+import { DashboardHome, IndicatorsPage, MarketDetailPage } from "./dashboard";
 
-export function FixtureHome() {
-  const health = useQuery({
-    queryKey: ["fixture", "health"],
-    queryFn: getHealth,
-    retry: false,
-  });
+const NAV = [
+  { to: "/", label: "시장 대시보드", icon: "◫" },
+  { to: "/indicators", label: "전체 지표", icon: "▥" },
+  { to: "/groups", label: "주식 그룹", icon: "◈" },
+  { to: "/workflows", label: "워크플로", icon: "⌘" },
+  { to: "/strategies/friday-close", label: "금요일 전략", icon: "◷" },
+  { to: "/settings", label: "설정", icon: "⚙" },
+];
+
+function Placeholder({ name }: { name: string }) {
   return (
-    <main className="mx-auto max-w-3xl px-5 py-12">
-      <p className="text-sm text-slate-400">AUTO-AXE / PHASE 0</p>
-      <h1 className="my-4 text-3xl font-semibold">개발 환경</h1>
-      <p>합성 데이터 전용. 실제 시장 데이터와 주문 기능은 비활성 상태입니다.</p>
-      <section
-        className="mt-6 rounded-lg border border-slate-700 bg-slate-900 p-5"
-        aria-label="시스템 상태"
-      >
-        <h2 className="text-lg font-medium">API 상태</h2>
-        <p role="status" className="mt-3">
-          {health.isPending
-            ? "확인 중"
-            : health.isError
-              ? "연결 불가"
-              : health.data.data.environment === "fixture" &&
-                  !health.data.data.live_enabled
-                ? "개발 API 연결됨 (합성 데이터)"
-                : "알 수 없는 환경"}
-        </p>
-        <p className="mt-2 text-sm text-slate-400">LIVE: OFF · 외부 MCP: OFF</p>
-      </section>
-      <Link className="mt-4 inline-block underline" to="/about">
-        개발 범위
-      </Link>
-    </main>
+    <div className="dashboard-view">
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">PLANNED / FUTURE PHASE</p>
+          <h1>{name}</h1>
+          <p>해당 기능은 현재 개발 단계에서 활성화되지 않았습니다.</p>
+        </div>
+      </div>
+      <div className="panel panel-empty">
+        주문과 자동매매는 비활성 상태입니다. 실제 금융 데이터를 표시하지
+        않습니다.
+      </div>
+    </div>
+  );
+}
+
+function Shell() {
+  return (
+    <div className="app-shell">
+      <aside className="sidebar" aria-label="주요 메뉴">
+        <Link className="brand" to="/">
+          <span className="brand-symbol">A</span>
+          <span>
+            AUTO<span className="brand-accent">AXE</span>
+            <small>MARKET INTELLIGENCE</small>
+          </span>
+        </Link>
+        <p className="nav-heading">WORKSPACE</p>
+        <nav className="side-nav">
+          {NAV.map(({ to, label, icon }) => (
+            <NavLink
+              key={to}
+              end={to === "/"}
+              to={to}
+              className={({ isActive }) =>
+                "nav-link " + (isActive ? "nav-active" : "")
+              }
+            >
+              <span className="nav-icon" aria-hidden="true">
+                {icon}
+              </span>
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <span className="footer-label">DEVELOPMENT ENVIRONMENT</span>
+          <strong>
+            <span className="status-dot" /> Fixture Only
+          </strong>
+          <p>외부 MCP: OFF · LIVE: OFF</p>
+          <Link to="/about">개발 범위 확인</Link>
+        </div>
+      </aside>
+      <div className="app-body">
+        <header className="topbar">
+          <span>시장 데이터 관제 / Phase 2</span>
+          <div>
+            <span className="topbar-pill">DEMO / SYNTHETIC</span>
+            <span className="topbar-avatar" aria-label="개발 환경">
+              DEV
+            </span>
+          </div>
+        </header>
+        <main id="main-content">
+          <Routes>
+            <Route path="/" element={<DashboardHome />} />
+            <Route path="/indicators" element={<IndicatorsPage />} />
+            <Route
+              path="/market/:instrumentId"
+              element={<MarketDetailPage />}
+            />
+            <Route path="/groups" element={<Placeholder name="주식 그룹" />} />
+            <Route
+              path="/workflows"
+              element={<Placeholder name="Workflow" />}
+            />
+            <Route
+              path="/strategies/friday-close"
+              element={<Placeholder name="금요일 종가 전략" />}
+            />
+            <Route
+              path="/settings"
+              element={<Placeholder name="설정 및 권한" />}
+            />
+            <Route
+              path="/about"
+              element={
+                <div className="dashboard-view">
+                  <div className="page-heading">
+                    <div>
+                      <p className="eyebrow">ABOUT / DEVELOPMENT</p>
+                      <h1>Phase 2 개발 기반</h1>
+                      <p>실제 시장 공급자와 주문 기능은 차단되어 있습니다.</p>
+                    </div>
+                  </div>
+                  <div className="panel">
+                    현재 화면은 합성 데이터 및 소스 등록 상태만 제공합니다.
+                    공급자 이용권·본인 인증·실거래 연결은 추가 검증 대상입니다.
+                  </div>
+                </div>
+              }
+            />
+            <Route
+              path="*"
+              element={
+                <div className="dashboard-view">
+                  <h1>페이지 없음</h1>
+                  <Link to="/">대시보드로 이동</Link>
+                </div>
+              }
+            />
+          </Routes>
+        </main>
+        <footer className="site-footer">
+          Auto-Axe · 연구/개발 환경 · 데이터 이용 권한 확인 전 자동 수집 없음
+        </footer>
+      </div>
+    </div>
   );
 }
 
 export function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<FixtureHome />} />
-      <Route
-        path="/about"
-        element={
-          <main className="p-8">
-            <h1>Phase 0 개발 기반</h1>
-            <p>운영 대시보드는 Phase 2에서 구현합니다.</p>
-            <Link to="/">돌아가기</Link>
-          </main>
-        }
-      />
-      <Route
-        path="*"
-        element={
-          <main className="p-8">
-            <h1>페이지 없음</h1>
-            <Link to="/">돌아가기</Link>
-          </main>
-        }
-      />
-    </Routes>
-  );
+  return <Shell />;
 }

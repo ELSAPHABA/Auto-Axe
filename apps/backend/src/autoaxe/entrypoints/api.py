@@ -24,9 +24,11 @@ from autoaxe.adapters.contracts import (
     QuotePage,
     QuoteResponse,
 )
+from autoaxe.adapters.dashboard_api import router as dashboard_router
 from autoaxe.adapters.market_api import router as market_router
 from autoaxe.application.fixtures import get_quote
 from autoaxe.domain.canonical import canonical_sha256
+from autoaxe.entrypoints.auth import router as auth_router
 from autoaxe.infrastructure.config import Settings
 
 ERRORS: dict[int | str, dict[str, Any]] = {
@@ -160,6 +162,8 @@ def create_app() -> FastAPI:
             return result
 
     api.include_router(market_router)
+    api.include_router(dashboard_router)
+    api.include_router(auth_router)
     return api
 
 

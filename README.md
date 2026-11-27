@@ -10,11 +10,12 @@ NH나무 OpenAPI 알고리즘 &amp; 패턴 매매 퀀트 시스템
 - [현재 작업 상태 및 새 세션 인계](.ai-context/CONTEXT.md)
 - [Phase 0 개발 환경 및 검증](docs/development/PHASE_00_ENVIRONMENT.md)
 - [Phase 1 데이터 수집·저장 구현](docs/development/PHASE_01_IMPLEMENTATION.md)
+- [Phase 2 지표·격리 스크래퍼·대시보드 구현](docs/development/PHASE_02_IMPLEMENTATION.md)
 - [개발 트러블슈팅](docs/troubleshooting/README.md)
 
-## 개발 환경 (Phase 1)
+## 개발 환경 (Phase 2)
 
-현재는 시장 데이터 카탈로그·영속 저장·수집 작업 및 이벤트 기반을 합성 fixture로 검증한 개발 환경이며 실제 공급자 수집·주문·외부 MCP는 비활성화되어 있습니다.
+현재는 시장 데이터 카탈로그·영속 저장·수집 작업·지표 계산·격리 스크래퍼 파서·대시보드 계약을 합성 fixture로 검증하는 개발 환경입니다. 실제 공급자의 사용·저장·재배포 권한 및 DOM은 검증되지 않았으며 해당 웹사이트 수집, 주문 및 외부 MCP는 비활성화되어 있습니다. 격리된 scraper worker의 샌드박스 테스트는 `docker compose --env-file .env.phase0 -f infra/compose/dev.yaml --profile scraper-fixture run --rm --build scraper-fixture`로 실행합니다.
 Python 3.12, uv 0.13.10, Node.js 24.21.0, pnpm 12.9.1, Docker Compose를 사용합니다.
 
 ```sh

@@ -4,6 +4,57 @@
  */
 
 export interface paths {
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["revokeWebSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current Session */
+        get: operations["currentWebSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/indicators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Dashboard Indicators */
+        get: operations["listDashboardIndicators"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fixtures/change": {
         parameters: {
             query?: never;
@@ -133,6 +184,53 @@ export interface components {
             data: components["schemas"]["SeriesDTO"][];
             meta: components["schemas"]["MarketMeta"];
         };
+        /** DashboardMeta */
+        DashboardMeta: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Environment
+             * @default fixture
+             * @constant
+             */
+            environment: "fixture";
+            /**
+             * External Mcp Enabled
+             * @default false
+             * @constant
+             */
+            external_mcp_enabled: false;
+            /**
+             * Live Enabled
+             * @default false
+             * @constant
+             */
+            live_enabled: false;
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Request Id */
+            request_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Version
+             * @default 0
+             */
+            version: number;
+        };
+        /** DashboardPage */
+        DashboardPage: {
+            /** Data */
+            data: components["schemas"]["IndicatorView"][];
+            meta: components["schemas"]["DashboardMeta"];
+        };
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -233,6 +331,41 @@ export interface components {
         HealthResponse: {
             data: components["schemas"]["Health"];
             meta: components["schemas"]["Meta"];
+        };
+        /** IndicatorView */
+        IndicatorView: {
+            /** Available At */
+            available_at: string | null;
+            /** Cadence */
+            cadence: string;
+            /** Category */
+            category: string;
+            /** Indicator Id */
+            indicator_id: string;
+            /** Label */
+            label: string;
+            /** Observed At */
+            observed_at: string | null;
+            /**
+             * Permission
+             * @enum {string}
+             */
+            permission: "fixture_only" | "unverified";
+            /**
+             * Quality
+             * @enum {string}
+             */
+            quality: "synthetic_fixture" | "permission_required";
+            /** Source Event At */
+            source_event_at: string | null;
+            /** Source Id */
+            source_id: string;
+            /** Source Note */
+            source_note: string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: string | null;
         };
         /** MarketMeta */
         MarketMeta: {
@@ -424,6 +557,106 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    revokeWebSession: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                "__Host-autoaxe-sid"?: string | null;
+                "__Host-autoaxe-csrf"?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    currentWebSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                "__Host-autoaxe-sid"?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listDashboardIndicators: {
+        parameters: {
+            query?: {
+                category?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     changeFixture: {
         parameters: {
             query?: never;
