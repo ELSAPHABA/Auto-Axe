@@ -55,6 +55,8 @@
 
 - **최신 PizzINT 사용자 정정(2026-11-27):** 사용자는 처음 “PizzINT에서 공개 API로 제공되는 것은 뭔가요? 저는 구글 지도 데이터 그런건 필요 없고 사진의 DOUGHCON 데이터만 있으면 돼요.”라고 설명했고, API 확인 후 “네, PizzINT에서는 **DOUGHCON** 데이터만 가져오고, 구글 지도 데이터 등 나머지 수집 관련 내용은 전부 제거해 주세요.”라고 명시했다. 기존 PizzINT의 종합 지수/매장/활동 상태/수동/HTML 수집 계획은 **폐기**. 유일한 지표 `PENTAGON_PIZZA_PIZZINT`의 공개 API `GET https://www.pizzint.watch/api/dashboard-data` 필드 `defcon_level`(정수 1~5)만 보관, `success`·시간대 포함 `timestamp`는 검증용, 전체 JSON의 나머지 값은 메모리에서 폐기. 기존 `PENTAGON_PIZZA` 수동 시리즈는 코드/활성 카탈로그에서 제거, 과거 DB 기록은 삭제하지 않음. 새 `fetch_pizzint_doughcon` 실제 단발 호출 성공, 운영 worker/scheduler 미배포, 자동 주문 신호 금지 유지. 최신 [Phase 2 기록](phases/phase-02/2026-11-27-05.md), [수집 정책](../docs/indicator-collection/Free_Data_Collection.md) §5.3 우선.
 
+- **PizzINT 범위 변경 검증 완료(2026-11-27):** 구현 commit `c2d90cccbd32765a7a2f111eca4618f64ab30082`, tree `5e3b0582c3cef99c7d793600d23534e0e69b5b11`, [Actions 45942185124](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45942185124) completed/success, 4/4 jobs. Scraper 29 tests, 이전 전체 backend 88 tests 및 마지막 ledger 보강 후 대상 테스트 8 tests, Ruff/mypy/schema/Gitleaks 성공. 재개 시 local/remote main 일치 및 clean 확인. 직접 git push는 비대화형 인증 실패로 GitHub connector의 동일 tree 검증·non-force update로 해결(TS-02-19). [Phase 2 종료 기록](phases/phase-02/2026-11-27-05.md) 참고. DOUGHCON 범위 변경 완료와 운영 스케줄러·mTLS·원장 연동 미완료는 구분한다. 10분은 권장 조회 주기이며 현재 자동 실행 주기가 아니다.
+
 ## ARCHITECTURE / DECISIONS (아키텍처 및 의사결정)
 
 기존 문서가 source of truth. 아래는 탐색용 계약 요약이고 세부는 반드시 연결 원문을 읽는다.

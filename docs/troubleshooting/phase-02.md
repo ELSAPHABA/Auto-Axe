@@ -124,3 +124,9 @@
 - 조사: 공개 GET /api/dashboard-data의 실제 HTTP 200 JSON에서 defcon_level(정수 1~5) 직접 제공 확인. DOUGHCON 산출 또는 다른 데이터 수집은 불필요. 실제 호출 두 번에서 응답 timestamp가 이전보다 이른 값으로도 반환되므로 신규 관측/갱신 보장으로 해석하지 않는다.
 - 수정: 고정 공개 API 전용 fetch_pizzint_doughcon으로 교체. 단계/응답시각/최소 검증 정보만 반환; 다른 필드는 폐기. HTML parser/수동 시리즈 제거, broker 후보 allowlist와 ledger 값/metadata 검증, 자동 주문 금지. 실패 시 대체값 생성 없음. 활성 문서에서 구 수집 방식을 제거하고 역사적 기록은 보존.
 - 재검증: scraper pytest 29 passed, strict mypy/Ruff 성공, 전용 어댑터 실제 공개 API 단발 조회 DOUGHCON 5 성공. 운영 스케줄/worker/mTLS는 기존 미배포. 자세한 backend/원격 검증 상태는 [최신 인계](../../.ai-context/phases/phase-02/2026-11-27-05.md) 참조.
+
+## TS-02-19 — DOUGHCON 변경 커밋 원격 push 인증 실패 및 동일 tree 복구
+- 환경/증상: Windows PowerShell에서 local commit `ffbd04a8fb97f05502eec2f929b7e65fc0ed4815` 생성·staged Gitleaks 성공 후, `GIT_TERMINAL_PROMPT=0` 및 `git -c credential.interactive=never push origin main` 실행이 exit 128로 실패. 오류는 "Cannot prompt because user interactivity has been disabled", "unable to get password from user".
+- 원인: 비대화형 git push에서 필요한 인증 정보를 얻지 못함. 서버 브랜치 충돌·소스 코드 오류로 인한 실패는 아님. 인증 만료 등 세부 원인은 확인하지 않았으므로 단정하지 않는다.
+- 해결: 인증된 GitHub connector로 기존 parent `7146970946b4058c09b2c9b662b17fb21d63bd94`의 tree를 바탕으로 변경 29개 파일을 생성. 전체 tree SHA `5e3b0582c3cef99c7d793600d23534e0e69b5b11`가 로컬 구현과 일치한 뒤 원격 commit `c2d90cccbd32765a7a2f111eca4618f64ab30082` 생성 및 expected parent 기반 non-force ref update. 이후 `git fetch origin main` 및 clean/tree 검증, CAS local update-ref로 정렬. 자격증명 저장/출력, 강제 push, 기존 데이터 삭제 없음.
+- 재검증: 재개 시 local HEAD=origin/main, clean 상태 확인. [GitHub Actions 45942185124](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/45942185124) completed/success, 4/4 jobs. 인증 문제는 GitHub connector 경로로 해결했으며 로컬 git credential 자체를 수리한 것은 아니다. 동일 문제 재발 시 검증된 방식만 사용하고 원격 변경과 충돌하면 중단·재확인한다.
