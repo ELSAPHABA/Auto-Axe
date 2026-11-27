@@ -1,8 +1,8 @@
 """Read-only, permission-filtered market observations for authenticated BFF use.
 
-This is separate from the public Phase 1 fixture API: runtime permissions,
-source provenance and current redistribution rights are re-evaluated on every
-request. No external series is exposed because it happens to be stored.
+This is separate from the public Phase 1 fixture API. Approved source storage
+and current rights are checked for every request. Single-user private viewing
+is not a grant to distribute data to third parties.
 """
 
 from datetime import datetime
@@ -22,6 +22,7 @@ def authorized_observations(
     series_id: str,
     cutoff: datetime,
     limit: int = 200,
+    private_use: bool = False,
 ) -> list[dict[str, Any]]:
     verify_connection(conn, write=False)
     utc_datetime(cutoff)
@@ -46,11 +47,11 @@ def authorized_observations(
         or row[3] is not True
         or row[4] is not True
         or row[5] is not True
-        or row[6] is not True
+        or (row[6] is not True and not private_use)
         or row[7] is None
         or not row[8]
     ):
-        raise PermissionDenied("market redistribution not approved")
+        raise PermissionDenied("source not approved for this audience")
     with conn.cursor(row_factory=dict_row) as cur:
         return cur.execute(
             """WITH visible AS (

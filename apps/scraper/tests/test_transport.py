@@ -6,6 +6,7 @@ from autoaxe_scraper.policy import SOURCES, SourcePolicy
 from autoaxe_scraper.transport import (
     SourceBlocked,
     fetch_exact_html,
+    fetch_exact_json,
     public_addresses,
 )
 
@@ -47,12 +48,18 @@ def test_pizzint_api_only_terms_and_browser_sources_never_fetch():
 class FakeResponse:
     status = 200
 
-    def __init__(self, data: bytes, encoding: str = "identity"):
+    def __init__(
+        self,
+        data: bytes,
+        encoding: str = "identity",
+        content_type: str = "text/html; charset=utf-8",
+    ):
         self.data = data
         self.encoding = encoding
+        self.content_type = content_type
 
     def getheader(self, name: str, default: str | None = None) -> str | None:
-        headers = {"content-type": "text/html; charset=utf-8", "content-encoding": self.encoding}
+        headers = {"content-type": self.content_type, "content-encoding": self.encoding}
         return headers.get(name, default)
 
     def read(self, amt: int = -1) -> bytes:
@@ -125,3 +132,41 @@ def test_bounded_body_redirect_compression_and_lease_revocation():
             resolve=lambda *_a, **_kw: address("8.8.8.8"),
             dial=lambda host, ip: FakeConnection(FakeResponse(b"<p>x</p>")),
         )
+
+
+def test_pizzint_uses_documented_public_json_api_only():
+    assert SOURCES["pizzint"].url == "https://www.pizzint.watch/api/dashboard-data"
+    payload = b'{"overall_index":34,"timestamp":"2026-11-27T00:00:00Z"}'
+    conn = FakeConnection(FakeResponse(payload, content_type="application/json"))
+    result = fetch_exact_json(
+        SOURCES["pizzint"],
+        permit=lambda: None,
+        resolve=lambda *_a, **_kw: address("8.8.8.8"),
+        dial=lambda host, ip: conn,
+    )
+    assert result["overall_index"] == 34
+    assert conn.requests[0][0:2] == ("GET", "/api/dashboard-data")
+    assert conn.requests[0][2]["Accept"] == "application/json"
+    assert conn.closed
+
+
+@pytest.mark.parametrize(
+    "body, content_type, status",
+    [
+        (b"<html/>", "text/html", 200),
+        (b'{"a":NaN}', "application/json", 200),
+        (b'{"a":1}', "application/json", 302),
+        (b"[" + b"0," * 131072 + b"0]", "application/json", 200),
+        (b"null", "application/json", 200),
+    ],
+)
+def test_pizzint_invalid_json_never_falls_back_to_html(body, content_type, status):
+    conn = FakeConnection(FakeResponse(body, content_type=content_type), status)
+    with pytest.raises(SourceBlocked):
+        fetch_exact_json(
+            SOURCES["pizzint"],
+            permit=lambda: None,
+            resolve=lambda *_a, **_kw: address("8.8.8.8"),
+            dial=lambda host, ip: conn,
+        )
+    assert conn.closed

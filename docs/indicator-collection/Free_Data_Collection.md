@@ -177,7 +177,7 @@ SEIBro의 국가·조회기간별 해외주식 TOP50 매수·매도·순매수 �
 |---|---|---|---|---|
 | 펜타곤 피자지수 | 공개 JSON **/api/dashboard-data** 확인 (robots/Terms 권한 확인 필요) | 기본 제외 | [PizzINT](https://www.pizzint.watch/) 상태·관찰시각·분류를 수동 기록 | 실험적 `MANUAL`; 시장 신호로 자동 주문 금지 |
 
-**지정 수집 대상:** [PizzINT](https://www.pizzint.watch/), `source_url=https://www.pizzint.watch/`. `pentagon.pizza`는 수집 대상이 아니다. 수집 순서: PizzINT 측에 공개 JSON API의 자동 호출 `GET https://www.pizzint.watch/api/dashboard-data` → API 사용 불가능할 때는 HTML. 2026-11-22 직접 요청에서 이 API는 HTTP 200 JSON (`overall_index`, `defcon_level`, `active_spikes`, `timestamp`, `data[].current_popularity`, `data[].is_spike`, `data[].recorded_at`)을 반환했으며 일부 식당 값이 `null`.
+**지정 수집 대상:** [PizzINT](https://www.pizzint.watch/), `source_url=https://www.pizzint.watch/`. `pentagon.pizza`는 수집 대상이 아니다. 유일한 자동 수집 경로는 PizzINT가 허용하는 공개 JSON API `GET https://www.pizzint.watch/api/dashboard-data`이다. **API 사용 불가 시 HTML 스크래핑으로 대체하지 않는다.** 2026-11-22 직접 요청에서 이 API는 HTTP 200 JSON (`overall_index`, `defcon_level`, `active_spikes`, `timestamp`, `data[].current_popularity`, `data[].is_spike`, `data[].recorded_at`)을 반환했으며 일부 식당 값이 `null`. [2026-06-25 약관](https://www.pizzint.watch/terms)은 개인/교육 목적과 합리적인 공개 API 호출은 허용하되 API 외 스크래핑은 금지한다.
 
 `activity_label`, `activity_score_if_public`, `observed_at`, `source_url`, `manual_note`만 기록하고 **객관적 예측력/자동매매 신호로 확정하지 않는다**.
 

@@ -221,10 +221,7 @@ export interface components {
             as_of: string;
             /** Currency */
             currency: string | null;
-            /**
-             * Permission
-             * @default approved_with_redistribution
-             */
+            /** Permission */
             permission: string;
             /** Request Id */
             request_id: string;

@@ -40,10 +40,9 @@ def parameters(source: str, values: dict[str, str]) -> dict[str, str]:
 def permission(conn: Connection[Any], source: str) -> int:
     if source not in SOURCES or source not in SOURCE_URLS:
         raise PermissionDenied("unregistered source")
-    if source == "pizzint":
-        # 2026-06-25 terms permit public APIs, but disallow scraping the page.
-        # The official API contract has not yet been verified or registered.
-        raise PermissionDenied("PizzINT API-only terms: homepage scraping prohibited")
+    # PizzINT public API is an allowable source under its published terms.
+    # Do not infer homepage HTML scraping permission from this broker approval.
+    # The API-only source adapter pins /api/dashboard-data, not the homepage.
     row = conn.execute(
         """SELECT permission_status,enabled,allow_fetch,allow_storage,free_only,
         verified_at,evidence_ref,permission_version

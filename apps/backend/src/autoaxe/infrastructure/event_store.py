@@ -119,6 +119,7 @@ def query_events(
     cutoff: datetime,
     source_id: str | None = None,
     limit: int = 100,
+    private_use: bool = False,
 ) -> list[EventRevision]:
     """Latest revision visible at cutoff, not the latest revision known today."""
     verify_connection(conn, write=False)
@@ -138,14 +139,15 @@ def query_events(
       JOIN catalog.source_registry r ON r.source_id=e.source_id
       WHERE e.available_at<=%s
         AND r.permission_status='approved' AND r.enabled
-        AND r.free_only AND r.allow_storage AND r.allow_redistribution
+        AND r.free_only AND r.allow_storage
+        AND (r.allow_redistribution OR %s::boolean)
         AND r.verified_at IS NOT NULL AND r.evidence_ref IS NOT NULL
         AND (%s::text IS NULL OR e.source_id=%s)
       ORDER BY e.source_id,e.event_uid,e.revision DESC
     ) current_rows ORDER BY available_at DESC,source_id,event_uid LIMIT %s
     """
     with conn.cursor(row_factory=dict_row) as cur:
-        rows = cur.execute(sql, (cutoff, source_id, source_id, limit)).fetchall()
+        rows = cur.execute(sql, (cutoff, private_use, source_id, source_id, limit)).fetchall()
     return [
         EventRevision(
             row["event_uid"],

@@ -41,9 +41,11 @@ class SourcePolicy:
 
 SOURCES = {
     "cnn": SourcePolicy("cnn", "https://edition.cnn.com/markets/fear-and-greed"),
-    # Terms (2026-06-25): API access may be used, HTML scraping outside the
-    # published APIs is prohibited. No verified API endpoint contract yet.
-    "pizzint": SourcePolicy("pizzint", "https://www.pizzint.watch/", api_only=True),
+    # Public /api/dashboard-data JSON was verified in the 2026-11-22
+    # acquisition research; terms allow reasonable API requests, not page scraping.
+    "pizzint": SourcePolicy(
+        "pizzint", "https://www.pizzint.watch/api/dashboard-data", api_only=True
+    ),
     "dramexchange": SourcePolicy("dramexchange", "https://www.dramexchange.com/"),
     "seibro": SourcePolicy(
         "seibro",

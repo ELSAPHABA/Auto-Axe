@@ -103,3 +103,11 @@
 - 대응: application 코드 및 Docker 이미지 digest pin과 보안 검사 비활성화를 변경하지 않음. 별도 재실행/새 CI 검증에서 결과를 확인할 예정. 코드 정적 검사 성공만으로 실패한 compose CI를 통과로 바꿔 주장하지 않음.
 - 상태: 후속 workflow의 실제 완료/재검증 결과는 최신 Phase2 session log를 참조.
 - **재검증 완료:** GitHub workflow run 45929321203, 최초 시도 run_attempt=1은 Docker Hub 다운로드 연결 재설정으로 failure. 코드·이미지 pin·권한 정책 변경 없이 GitHub Actions의 rerun-failed-jobs만 수행했고 run_attempt=2는 **2026-11-27T02:39:47Z completed/success**, fixture-compose 포함 4개 jobs success. 근본 CDN 장애는 외부 원인 가설이며 소스 코드 장애는 관측되지 않음. 최초 failure 기록 보존.
+
+## TS-02-16 — 개인·교육·비영리 사용 목적에 대한 재배포 권한 과잉 적용 및 PizzINT API 과잉 차단
+- 사용자 정정: “이 프로젝트는 개인용 & 교육용이고, 영리 & 서비스 목적이 아니기 때문에 사이트들의 데이터 이용 조건에 위배되지 않습니다.” 개인적 교육용 조회·보관을 제3자 상업적 공개 서비스/재배포로 분류하지 말 것.
+- 원인: 이전에는 비공개 사용자 세션으로 조회하는 `query_events`와 `authorized_observations`에서도 `allow_redistribution=true`를 항상 요구하여 개인적 열람이 과도하게 차단됨. PizzINT는 2026-11-22 연구 문서에서 `/api/dashboard-data` HTTP 200 JSON 계약을 확인했는데, 후속 코드에서 API-only 웹페이지 전체를 broker에서 무조건 차단한 과잉 제한도 존재.
+- 근거: [BLS 개발자 약관](https://www.bls.gov/developers/termsOfService.htm) 데이터의 2차 이용·인용 요건, [DRAMeXchange 약관](https://www.dramexchange.com/About/TermsOfUse) 개인·비상업적 이용과 제3자 배포 제한, [PizzINT 약관](https://www.pizzint.watch/terms) 개인·교육 목적 및 합리적 API 호출 허용/공식 API 외 스크래핑 금지. 모든 공급자의 모든 자동수집이 비영리만으로 허용된다는 주장과 구별.
+- 수정: `AUTOAXE_PRIVATE_EDUCATIONAL_MODE=true`와 `AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF`를 모두 설정하고 현재 세션의 OIDC 소유자와 정확히 일치할 때만 개인적인 열람과 제3자 재배포를 구분. Source registry의 개별 승인·fetch/storage·증거·버전, 세션 인증 및 기본 비활성 상태 그대로 유지. PizzINT 수집 주소는 등록된 `https://www.pizzint.watch/api/dashboard-data` API로 고정하고 DNS/TLS 공개 호스트/JSON 유형/용량 검증 helper 추가; 브로커는 관리자 API용 승인 시에만 큐를 허용하며 홈페이지 HTML 폴백 금지.
+- 배제: 공개 서비스·다수 사용자·제3자 재배포의 일반 허가, 유료 자료·인증 회피, CAPTCHA/프록시 우회, HTTP 실패 시 HTML 스크래핑, 실제 자동매매 활성화는 이번 변경에 포함되지 않음.
+- 검증: Mock JSON/403/302/과대응답 및 private-vs-redistribution/auth/permission-revoke DB 통합 테스트로 재검증. 실제 운영 사이트의 스케줄러·Keycloak/mTLS 배포/실데이터 축적을 수행했다는 뜻은 아님. 최신 실행 증거와 Git SHA는 최신 Phase2 후속 로그 참조.

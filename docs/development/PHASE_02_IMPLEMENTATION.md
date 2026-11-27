@@ -93,9 +93,9 @@ docker compose --env-file .env.phase0 -f infra/compose/dev.yaml down
 | P2.1 BFF/인가 | 기존 session·scope 검증을 이용한 별도 공식 이벤트/시장 시계열 읽기 API, DB app-runtime과 market-read를 분리하여 서버가 허가를 확인 | Keycloak·Caddy HTTPS 및 실제 계정/인증서/mTLS 서비스 환경 |
 | P2.2 주식/ETF | 승인된 market ledger에서 원본 시각별 historical series만 BFF 제공, UI에서 인증된 값만 시각화 | Yahoo AsyncWebSocket 실제 NVDA/QLD day_volume 연결, 시장 캘린더·SMA/EMA 라이브 계산과 1Hz sampler 지속 실행 |
 | P2.3 공식 경제 | BLS Public Data API v1 bounded POST real transport 기능, CPI/NFP/실업률 식별자 allowlist, 분리된 25건/UTC day quota, 출처 허가 및 one-shot opt-in, 실제 HTTP는 수행 안 함 | 명시적 관리자 source 권한 확인, 실제 이용권/호출 검증, BEA/Census/중앙은행 Fed/BOJ/BoE/ECB 지표별 공식 API 연결, MEXC Protobuf |
-| P2.4 일정/공시 | 수정 이력의 실제 PostgreSQL append/revision, source/event lock, available_at PIT, current redistribution gate, 원본시각 구분 | SEC 8-K/IR Exhibit 99.1 전문 구조적 가이던스, OCC/CME/Cboe/Binance Options 실만기 세션 |
+| P2.4 일정/공시 | 수정 이력의 PostgreSQL append/revision, source/event lock, available_at PIT, 개인 조회와 재배포 권한 분리, 원본시각 구분 | SEC 8-K/IR Exhibit 99.1 전문 구조적 가이던스, OCC/CME/Cboe/Binance Options 실만기 세션 |
 | P2.5 격리 수집 | PinnedHTTPS 수동 공개 IP/TLS SNI 검증, DNS 사설·혼합 리졸브 거부, redirect·oversize·압축 차단, permission pre/post | 실제 worker mTLS identity/lease network broker 연결, 컨테이너 egress 정책·브라우저 subresource enforcement |
-| P2.6 심리/산업 | PizzINT API-only 약관을 반영해 HTML 수집을 broker/policy 이중 차단 | PizzINT 공식 API endpoint 계약, CNN/DRAM/SEIBro/Naver 원본 권한·robots·DOM/실측 셀렉터 |
+| P2.6 심리/산업 | PizzINT 공개 JSON API `/api/dashboard-data` 고정 TLS reader 및 허가형 broker 큐, HTML 폴백 차단 | 실제 PizzINT 응답의 운영 스키마·폴링 간격 검증, CNN/DRAM/SEIBro/Naver 약관·robots·DOM/실측 셀렉터, worker mTLS 배포 |
 | P2.7 UI | 권한형 공식 이벤트 table(revision/actual/출처) 및 authorized source history/quality 차트 추가, 기존 합성 차트 분리 | 실제 봉·거래량·SMA/EMA/고저가 차트, 실소스별 polling/market session |
 | P2.8 실시간 | 기존 fixture SSE gate 유지, 인증된 history는 REST no-store로 별도 조회 | durable SSE DB event producer, session/revoke stream, gap/backpressure/reconnect 운영 검증 |
 
@@ -107,9 +107,11 @@ docker compose --env-file .env.phase0 -f infra/compose/dev.yaml down
 uv run --project apps/backend --locked python -m autoaxe.entrypoints.official_cli --execute-approved --series CUUR0000SA0
 ```
 
-CLI 실행은 사용자/관리자의 별도 승인과 정책 확인 후에만 가능하다. 해당 명령은 이번 세션에서 네트워크로 실행하지 않았으며 mock contract만 검증했다. `--execute-approved`가 없거나 server DB 권한이 없으면 실제 네트워크 호출 전에 거부한다. 백엔드 `GET /api/v1/dashboard/official-events`는 세션/indicators:read + current provider redistribution을 동시에 통과해야 JSON을 응답한다. 인증 전에는 미제공, 승인했더라도 재배포 불허라면 빈 결과가 정상이다. `GET /api/v1/dashboard/authorized/market/{series_id}` 또한 동일 세션과 시장 DB 공급자 재배포 허가를 매 요청 검사한다.
+CLI 실행은 사용자/관리자의 별도 승인과 정책 확인 후에만 가능하다. 해당 명령은 이전 세션에서 네트워크로 실행하지 않았으며 mock contract만 검증했다. `--execute-approved`가 없거나 server DB 권한이 없으면 실제 네트워크 호출 전에 거부한다. 백엔드 `GET /api/v1/dashboard/official-events`와 `GET /api/v1/dashboard/authorized/market/{series_id}`는 현재 공급자 승인과 세션/indicators:read를 검사한다. 기본값은 제3자 재배포 권한까지 확인하며, **개인·교육용 비공개 인스턴스**에서 `AUTOAXE_PRIVATE_EDUCATIONAL_MODE=true`와 `AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF`(정확한 OIDC 소유자 식별자)를 모두 지정한 경우에만 허용된 개인 저장 데이터를 그 소유자에게 조회할 수 있다. 외부 배포/서비스로 바꾸면 플래그를 끄고 재배포 허가를 확인해야 한다.
 
 ### 남은 활성화 게이트
+
+프로젝트는 사용자 지시에 따라 **개인용·교육용·비영리이며 공개 서비스 목적이 아님**. 개인 열람/분석과 제3자에게 재배포하는 행위는 다른 권한이다. [개인·교육 목적 이용 정책](../indicator-collection/PERSONAL_EDUCATIONAL_USE.md)을 우선 적용한다. 비영리성만으로 공급자가 금지한 HTML 스크래핑·자동화/이용량 제한이 해제되지는 않는다.
 
 실제 데이터 접근권한·사용약관/robots 확인 및 법적 저장·재배포 허가, Keycloak realm/HTTPS/mTLS 구성, 공식 원본 응답 및 시간 정의 검증, Docker egress private DNS·redirect/브라우저 리소스 방어, source-specific real DOM golden fixture, 지표 실시간 SSE producer를 먼저 확정해야 한다. **이 게이트 없이 현재 구현을 실데이터 수집 운영 완성으로 표시하지 않는다.** Phase 2의 개발 범위도 각 미구현 항목을 추후 계속 추적하며 Phase3 권한 승인은 별개다.
 

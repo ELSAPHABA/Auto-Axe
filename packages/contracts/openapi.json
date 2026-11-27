@@ -22,7 +22,6 @@
             "title": "Currency"
           },
           "permission": {
-            "default": "approved_with_redistribution",
             "title": "Permission",
             "type": "string"
           },
@@ -55,7 +54,8 @@
           "source_id",
           "unit",
           "currency",
-          "as_of"
+          "as_of",
+          "permission"
         ],
         "title": "AuthorizedMeta",
         "type": "object"

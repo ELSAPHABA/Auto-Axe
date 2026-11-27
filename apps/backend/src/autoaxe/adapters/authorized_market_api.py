@@ -8,6 +8,7 @@ from fastapi import APIRouter, Cookie, HTTPException, Query, Request
 
 from autoaxe.adapters.contracts import Contract, Identifier, UtcTime
 from autoaxe.domain.catalog import catalog
+from autoaxe.domain.private_use import private_educational_read_enabled
 from autoaxe.entrypoints.auth import SESSION_COOKIE
 from autoaxe.entrypoints.auth import _dsn as identity_dsn
 from autoaxe.infrastructure.authorized_market import authorized_observations
@@ -34,7 +35,7 @@ class AuthorizedMeta(Contract):
     unit: str
     currency: str | None
     as_of: UtcTime
-    permission: str = "approved_with_redistribution"
+    permission: str
 
 
 class AuthorizedSeriesPage(Contract):
@@ -62,18 +63,25 @@ def list_authorized_market_observations(
         raise HTTPException(503, "read-only market authority not configured")
     try:
         with psycopg.connect(identity_dsn(), connect_timeout=3) as app:
-            authorize(app, session_id, required_scope="indicators:read")
+            grant = authorize(app, session_id, required_scope="indicators:read")
+        private_use = private_educational_read_enabled(grant.subject_ref)
         with psycopg.connect(dsn, connect_timeout=3) as market:
             clock = market.execute("SELECT clock_timestamp()").fetchone()
             assert clock is not None
             cutoff = as_of or clock[0]
             if cutoff > clock[0]:
                 raise HTTPException(400, "future snapshot cutoff")
-            rows = authorized_observations(market, series_id=series_id, cutoff=cutoff, limit=limit)
+            rows = authorized_observations(
+                market,
+                series_id=series_id,
+                cutoff=cutoff,
+                limit=limit,
+                private_use=private_use,
+            )
     except PermissionError as exc:
         raise HTTPException(401, "session invalid or insufficient scope") from exc
     except PermissionDenied as exc:
-        raise HTTPException(403, "source redistribution not authorized") from exc
+        raise HTTPException(403, "source not approved for this audience") from exc
     except psycopg.Error as exc:
         raise HTTPException(503, "read-only market authority unavailable") from exc
     return AuthorizedSeriesPage(
@@ -96,5 +104,8 @@ def list_authorized_market_observations(
             unit=entry.unit,
             currency=entry.currency,
             as_of=cutoff,
+            permission=(
+                "approved_personal_education" if private_use else "approved_with_redistribution"
+            ),
         ),
     )

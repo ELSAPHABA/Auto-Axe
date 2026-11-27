@@ -324,7 +324,7 @@ function OfficialEventsPanel() {
       <p className="eyebrow">OFFICIAL RELEASES / POINT-IN-TIME</p>
       <h2>경제지표 발표·수정 이력</h2>
       <p className="subline">
-        이용 권한·계정 권한·재배포 허가를 모두 통과한 공식 관측값만 표시합니다.
+        이용 목적에 맞는 공식 데이터 보관·열람 권한과 계정 인증을 확인합니다.
         발표 시각이 확인되지 않으면 임의로 채우지 않습니다.
       </p>
       {session.data !== true ? (

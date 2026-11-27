@@ -47,4 +47,6 @@
 - [Phase 2 지표·스크래퍼·대시보드 구현](./development/PHASE_02_IMPLEMENTATION.md)
 - [Phase 2 세션 진행 및 인계](../.ai-context/phases/phase-02/2026-11-27-01.md)
 - [Phase 2 미완료 보강 세션 및 후속 인계](../.ai-context/phases/phase-02/2026-11-27-02.md)
+- [Phase 2 개인·교육·비영리 목적 정정 및 권한 분리](../.ai-context/phases/phase-02/2026-11-27-03.md)
+- [개인·교육·비영리 데이터 사용 정책](./indicator-collection/PERSONAL_EDUCATIONAL_USE.md)
 - [개발 트러블슈팅 인덱스](./troubleshooting/README.md) — Phase별 재현·조사·원인·해결·검증

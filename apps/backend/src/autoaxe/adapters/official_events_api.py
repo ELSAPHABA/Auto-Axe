@@ -7,6 +7,7 @@ import psycopg
 from fastapi import APIRouter, Cookie, HTTPException, Query, Request
 
 from autoaxe.adapters.contracts import Contract, Identifier, UtcTime
+from autoaxe.domain.private_use import private_educational_read_enabled
 from autoaxe.entrypoints.auth import SESSION_COOKIE
 from autoaxe.entrypoints.auth import _dsn as identity_dsn
 from autoaxe.infrastructure.event_store import query_events
@@ -60,14 +61,20 @@ def list_authorized_official_events(
         raise HTTPException(503, "market read authority not configured")
     try:
         with psycopg.connect(identity_dsn(), connect_timeout=3) as app:
-            authorize(app, session_id, required_scope="indicators:read")
+            grant = authorize(app, session_id, required_scope="indicators:read")
         with psycopg.connect(read_dsn, connect_timeout=3) as market:
             clock = market.execute("SELECT clock_timestamp()").fetchone()
             assert clock is not None
             cutoff = as_of or clock[0]
             if cutoff > clock[0]:
                 raise HTTPException(400, "future cutoff")
-            events = query_events(market, cutoff=cutoff, source_id=source_id, limit=limit)
+            events = query_events(
+                market,
+                cutoff=cutoff,
+                source_id=source_id,
+                limit=limit,
+                private_use=private_educational_read_enabled(grant.subject_ref),
+            )
     except PermissionError as exc:
         raise HTTPException(401, "session invalid or insufficient scope") from exc
     except PermissionDenied as exc:

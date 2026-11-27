@@ -177,6 +177,28 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             with pytest.raises(InsufficientPrivilege):
                 conn.execute("SELECT * FROM ops.scrape_jobs")
 
+        # PizzINT explicitly allows reasonable public API access. An approved
+        # API-only job may be queued, but default unverified source still denies it.
+        with psycopg.connect(market) as conn:
+            with pytest.raises(PermissionDenied):
+                submit(conn, "pizzint", {}, "api-only-denied", deadline)
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "pizzint",
+                approved=True,
+                evidence="fixture approved public API only (not homepage HTML)",
+                fetch=True,
+                storage=True,
+                redistribution=False,
+            )
+        with psycopg.connect(market) as conn:
+            new_deadline = conn.execute("SELECT clock_timestamp()+interval '3 minutes'").fetchone()[
+                0
+            ]
+            api_job = submit(conn, "pizzint", {}, "api-only-allowed", new_deadline)
+            assert api_job
+
         # Authorized event persistence must not imply public redistribution rights.
         event = EventRevision(
             "US_CPI:2026-10",
@@ -218,6 +240,10 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
                 reserve_bls_v1(conn)
         with psycopg.connect(market_read) as conn:
             assert query_events(conn, cutoff=datetime.now(UTC)) == []
+            # Personal storage/read is not distribution to a third party.
+            assert (
+                query_events(conn, cutoff=datetime.now(UTC), private_use=True)[0].actual == "321.5"
+            )
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(
                 conn,
@@ -249,6 +275,42 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         )
         assert permitted.status_code == 200
         assert permitted.json()["data"][0]["actual"] == "321.5"
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "bls",
+                approved=True,
+                evidence="personal education without third-party redistribution fixture",
+                fetch=True,
+                storage=True,
+                redistribution=False,
+            )
+        blocked = api.get(
+            "/api/v1/dashboard/official-events",
+            cookies={"__Host-autoaxe-sid": authenticated_sid},
+        )
+        assert blocked.status_code == 200 and blocked.json()["data"] == []
+        monkeypatch.setenv("AUTOAXE_PRIVATE_EDUCATIONAL_MODE", "true")
+        # A flag alone is not enough: the caller must be the configured owner.
+        monkeypatch.setenv(
+            "AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF",
+            "https://idp.example/realms/a|someone-else",
+        )
+        still_blocked = api.get(
+            "/api/v1/dashboard/official-events",
+            cookies={"__Host-autoaxe-sid": authenticated_sid},
+        )
+        assert still_blocked.status_code == 200 and still_blocked.json()["data"] == []
+        monkeypatch.setenv(
+            "AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF",
+            "https://idp.example/realms/a|fixture-1",
+        )
+        personal = api.get(
+            "/api/v1/dashboard/official-events",
+            cookies={"__Host-autoaxe-sid": authenticated_sid},
+        )
+        assert personal.status_code == 200 and personal.json()["data"][0]["actual"] == "321.5"
+        monkeypatch.delenv("AUTOAXE_PRIVATE_EDUCATIONAL_MODE")
         later = datetime.now(UTC) + timedelta(seconds=2)
         corrected = replace(event, actual="321.75", first_seen_at=later, available_at=later)
         with psycopg.connect(market) as conn:
@@ -257,8 +319,11 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             revision, inserted = persist_event(conn, corrected)
             assert inserted and revision.revision == 2
         with psycopg.connect(market_read) as conn:
-            assert query_events(conn, cutoff=cutoff)[0].actual == "321.5"
-            assert query_events(conn, cutoff=later + timedelta(seconds=1))[0].actual == "321.75"
+            assert query_events(conn, cutoff=cutoff, private_use=True)[0].actual == "321.5"
+            assert (
+                query_events(conn, cutoff=later + timedelta(seconds=1), private_use=True)[0].actual
+                == "321.75"
+            )
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(
                 conn,
@@ -306,6 +371,19 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             )
         route = "/api/v1/dashboard/authorized/market/VIX"
         assert api.get(route).status_code == 401
+        assert api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code == 403
+        monkeypatch.setenv("AUTOAXE_PRIVATE_EDUCATIONAL_MODE", "true")
+        monkeypatch.setenv(
+            "AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF",
+            "https://idp.example/realms/a|fixture-1",
+        )
+        personal_market = api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid})
+        assert personal_market.status_code == 200
+        assert personal_market.json()["data"][0]["value"] == "23.45"
+        assert personal_market.json()["meta"]["permission"] == "approved_personal_education"
+        # Personal viewing cannot enable a public endpoint or allow anonymous access.
+        assert api.get(route).status_code == 401
+        monkeypatch.delenv("AUTOAXE_PRIVATE_EDUCATIONAL_MODE")
         assert api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code == 403
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(
