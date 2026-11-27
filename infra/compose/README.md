@@ -92,6 +92,8 @@ automatic financial values. Use the approved official service or a trusted
 runtime environment with `AUTOAXE_SEC_CONTACT` configured for SEC; do not put
 administrator DSNs in containers. With source grants and explicit opt-in:
 
+For free API key registration and environment setup, see the [user guide](../../docs/user-guide/PROVIDER_SETUP.md).
+
 ```sh
 python -m autoaxe.entrypoints.document_fetch_cli --execute-approved discover-boj 2026
 python -m autoaxe.entrypoints.document_fetch_cli --execute-approved discover-sec <CIK>
