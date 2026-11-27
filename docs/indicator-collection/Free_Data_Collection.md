@@ -167,9 +167,9 @@ SEIBro의 국가·조회기간별 해외주식 TOP50 매수·매도·순매수 �
 
 | 지표 | 우선 수집 출처·방법 | 대안 및 보조 경로 | 수동·결측 처리 | 빈도 및 주의사항 |
 |---|---|---|---|---|
-| 미국 주식 CNN 공포·탐욕 | **공식 무료 API 미확인**; CNN 비문서화 JSON은 권한 확인 전 운영 제외 | CNN 원본 화면 자동 추출도 사용권 미확인 → 기본 비활성 | CNN [Fear & Greed](https://edition.cnn.com/markets/fear-and-greed) 화면의 `score/category/as_of` 기록 | 수동 스냅샷. CNN 수치가 실시간 틱인지 미보장 |
+| 미국 주식 CNN 공포·탐욕 | 지정 비문서화 JSON endpoint (승인형) | HTML 자동 수집 제거 | 허용 수동 기록 또는 결측 | 기존 승인 주기 유지, 원본 시각 보존, 실시간성 미보장 |
 
-**지정 수집 대상:** [CNN International Fear & Greed](https://edition.cnn.com/markets/fear-and-greed), `source_url=https://edition.cnn.com/markets/fear-and-greed`. HTML 페이지의 `span.market-data-poller[data-data-url]`는 비공식 `https://production.dataviz.cnn.io/index/fearandgreed/graphdata`를 가리키는 것이 확인.
+**지정 수집 대상(2026-11-28 사용자 확정):** `GET https://production.dataviz.cnn.io/index/fearandgreed/graphdata` JSON만 자동 수집 대상으로 한다. `fear_and_greed.score/rating/timestamp`만 보존하고 그래프 이력·하위 지표는 폐기한다. HTML fallback 없음. 비문서화 endpoint의 공개 응답 기록은 확인했으나 자동 접근·저장 권한 및 실제 worker 응답은 미검증; 기존 HTML 권한은 승계하지 않는다. 네이버 US2YT=RR 정기 조회는 900초 이상(기본 900초), 기존 Treasury 일별 fallback 유지.
 
 ### 5.3 PizzINT DOUGHCON
 

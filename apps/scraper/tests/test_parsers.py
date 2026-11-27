@@ -26,10 +26,8 @@ def test_dram_module_section_and_timezone() -> None:
 
 
 def test_sentiment_is_never_an_automatic_trade_signal() -> None:
-    cnn = parse_offline(
-        "cnn", '<div data-source="cnn-fear-greed" data-score="65" data-category="Greed"></div>'
-    )
-    assert cnn["value"] == "65" and cnn["automated_trading_allowed"] is False
+    with pytest.raises(SchemaChanged, match="API-only"):
+        parse_offline("cnn", '<div data-source="cnn-fear-greed" data-score="65"></div>')
     with pytest.raises(SchemaChanged, match="API-only"):
         parse_offline("pizzint", "<div>DOUGHCON 5</div>")
     with pytest.raises(SchemaChanged):

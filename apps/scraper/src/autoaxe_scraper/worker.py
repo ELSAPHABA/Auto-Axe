@@ -20,7 +20,12 @@ from uuid import UUID
 from autoaxe_scraper.parsers import SchemaChanged
 from autoaxe_scraper.policy import fixed_target
 from autoaxe_scraper.reviewed_dom import DOMContract, load_contract, parse_reviewed
-from autoaxe_scraper.transport import ProviderHTTPError, SourceBlocked, fetch_exact_html
+from autoaxe_scraper.transport import (
+    ProviderHTTPError,
+    SourceBlocked,
+    fetch_cnn_fear_greed,
+    fetch_exact_html,
+)
 
 HTTP_SOURCES = frozenset({"cnn", "dramexchange", "naver"})
 BROKER_PATH = "/internal/v1/scrape/jobs"
@@ -156,7 +161,9 @@ def run_once(
     """Claim one exact source; all failures abandon the lease without ingest."""
     if source not in HTTP_SOURCES:
         raise BrokerError("source unavailable to generic HTTP worker")
-    if (contract is None) == (fixture_parser is None):
+    if source == "cnn" and contract is not None:
+        raise BrokerError("CNN is JSON-only")
+    if source != "cnn" and (contract is None) == (fixture_parser is None):
         raise BrokerError("reviewed DOM contract required; fixtures must be injected explicitly")
     if contract is not None:
         contract.check(source)
@@ -179,12 +186,15 @@ def run_once(
     # fetch_exact_html calls permit before and after network I/O. No redirects,
     # browser fallback, arbitrary URL, compression or provider credentials.
     try:
-        html = fetch_exact_html(fixed_target(source), permit=permit)
-        if contract is not None:
-            parsed = parse_reviewed(contract, html)
+        if source == "cnn" and fixture_parser is None:
+            parsed = fetch_cnn_fear_greed(permit=permit)
         else:
-            assert fixture_parser is not None
-            parsed = fixture_parser(source, html)
+            html = fetch_exact_html(fixed_target(source), permit=permit)
+            if contract is not None:
+                parsed = parse_reviewed(contract, html)
+            else:
+                assert fixture_parser is not None
+                parsed = fixture_parser(source, html)
     except (
         ProviderHTTPError,
         SourceBlocked,
@@ -222,7 +232,7 @@ def run_once(
 
 def _child(source: str) -> None:
     try:
-        contract = load_contract(source)
+        contract = None if source == "cnn" else load_contract(source)
         broker = TLSBroker(
             os.environ["AUTOAXE_SCRAPE_BROKER_HOST"],
             int(os.environ.get("AUTOAXE_SCRAPE_BROKER_PORT", "8443")),

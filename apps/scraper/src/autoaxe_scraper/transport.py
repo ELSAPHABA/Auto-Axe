@@ -11,6 +11,7 @@ import socket
 import ssl
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any, Protocol
 from urllib.parse import urlsplit
 
@@ -95,7 +96,13 @@ def _fetch_exact(
     if (
         url.scheme != "https"
         or not url.hostname
-        or (media == "json" and not url.path.startswith("/api/"))
+        or (
+            media == "json"
+            and (
+                policy.source_id not in {"cnn", "pizzint"}
+                or policy != fixed_target(policy.source_id)
+            )
+        )
     ):
         raise SourceBlocked("fixed HTTPS policy required")
     permit()
@@ -196,3 +203,62 @@ def fetch_pizzint_doughcon(
         }
     except (ValueError, UnicodeError, OverflowError) as exc:
         raise SourceBlocked("invalid DOUGHCON API document") from exc
+
+
+def parse_cnn_json(body: bytes) -> dict[str, Any]:
+    """Retain only current CNN score, rating and the original timestamp."""
+
+    def unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate JSON field")
+            result[key] = value
+        return result
+
+    try:
+        root = json.loads(
+            body,
+            parse_float=Decimal,
+            object_pairs_hook=unique,
+            parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite JSON")),
+        )
+        quote = root["fear_and_greed"]
+        score, rating, raw_stamp = quote["score"], quote["rating"], quote["timestamp"]
+        if type(score) not in (int, Decimal) or not 0 <= score <= 100:
+            raise ValueError("invalid CNN score")
+        if not isinstance(rating, str) or rating.title() not in (
+            "Extreme Fear",
+            "Fear",
+            "Neutral",
+            "Greed",
+            "Extreme Greed",
+        ):
+            raise ValueError("invalid CNN rating")
+        if not isinstance(raw_stamp, str):
+            raise ValueError("missing CNN timestamp")
+        stamp = datetime.fromisoformat(raw_stamp)
+        if stamp.utcoffset() is None or stamp > datetime.now(UTC):
+            raise ValueError("invalid CNN timestamp")
+        return {
+            "series_id": "CNN_FEAR_GREED_CNN",
+            "value": str(score) if type(score) is int else format(score, "f"),
+            "category": rating.title(),
+            "source_event_at": stamp.astimezone(UTC).isoformat(),
+            "quality": "manual_review_required",
+            "automated_trading_allowed": False,
+        }
+    except (ValueError, TypeError, KeyError, OverflowError, ArithmeticError) as exc:
+        raise SourceBlocked("invalid CNN JSON document") from exc
+
+
+def fetch_cnn_fear_greed(
+    *,
+    permit: Callable[[], None],
+    resolve: Callable[..., Sequence[tuple[Any, ...]]] = socket.getaddrinfo,
+    dial: Callable[[str, str], http.client.HTTPSConnection] = PinnedHTTPS,
+) -> dict[str, Any]:
+    body = _fetch_exact(
+        fixed_target("cnn"), permit=permit, resolve=resolve, dial=dial, media="json"
+    )
+    return parse_cnn_json(body)

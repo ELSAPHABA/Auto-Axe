@@ -4,6 +4,8 @@
 
 ## METADATA (메타데이터)
 
+- **사용자 확정 2026-11-28 session 19:** [CNN JSON 전용/Naver 15분](phases/phase-02/2026-11-28-19.md). CNN graphdata만 자동 대상, HTML 제거, 원본 score/rating/timestamp만, Naver 900초 조회(기존 TTL/Treasury fallback 유지). 0021 migration 및 합성 DB 테스트 통과. 실제 공급자 운영 허용/실측 미확인.
+
 - **최신 개발 인계 2026-11-28 session 18:** [CNN/Naver/DRAM/SEIBro](phases/phase-02/2026-11-28-18.md). 기존 수집기 유지 및 reviewed DOM manifest, 운영/fixture 분리, 수치/시각 검증, grant 갱신 시 Retry-After 보존. 공식 무료 국제거래외화증권예탁결제정보 API는 TOP50 동등성 미확인. 네 공급원 실제 자동 수집 미검증, no prod deploy. 세부 잔여 조건은 로그 참조.
 
 - **최신 개발 인계 2026-11-28 session 17:** [Yahoo HTTP/VIX/원유 구현 및 실측](phases/phase-02/2026-11-28-17.md) 우선. 승인형 HTTP, cache-first OHLCV 병합, VIX 10초 TTL 즉시 갱신 runner, Binance 우선 원유 WS 및 별도 Yahoo fallback, 0020 migration/대시보드/Compose 연결. Binance 실제 임시 PG17 17건 성공. Yahoo 외부 호출은 공급자 명시적 자동 접근 권한 미확보로 미실행; 운영 배포/Phase 3 미착수.

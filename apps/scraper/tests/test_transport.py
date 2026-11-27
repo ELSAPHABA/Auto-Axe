@@ -5,6 +5,7 @@ import pytest
 from autoaxe_scraper.policy import SOURCES, SourcePolicy
 from autoaxe_scraper.transport import (
     SourceBlocked,
+    fetch_cnn_fear_greed,
     fetch_exact_html,
     fetch_pizzint_doughcon,
     public_addresses,
@@ -22,7 +23,7 @@ def test_any_private_dns_answer_blocks_every_outbound_call():
 
     with pytest.raises(SourceBlocked):
         fetch_exact_html(
-            SOURCES["cnn"],
+            SOURCES["naver"],
             permit=lambda: None,
             resolve=lambda *_a, **_kw: address("127.0.0.1"),
             dial=NeverConnect,
@@ -157,7 +158,7 @@ def test_ambiguous_or_incomplete_provider_response_rejected(extra_headers):
     conn = FakeConnection(FramingResponse(b"<p>x</p>"))
     with pytest.raises(SourceBlocked):
         fetch_exact_html(
-            SOURCES["cnn"],
+            SOURCES["naver"],
             permit=lambda: None,
             resolve=lambda *_a, **_kw: address("8.8.8.8"),
             dial=lambda host, ip: conn,
@@ -188,6 +189,57 @@ def test_pizzint_uses_documented_public_json_api_only():
     assert conn.requests[0][0:2] == ("GET", "/api/dashboard-data")
     assert conn.requests[0][2]["Accept"] == "application/json"
     assert conn.closed
+
+
+def test_cnn_uses_only_fixed_json_and_retains_original_timestamp():
+    payload = (
+        b'{"fear_and_greed":{"score":42.125,"rating":"fear",'
+        b'"timestamp":"2026-11-23T07:00:00Z"},"history":[{"discard":true}]}'
+    )
+    conn = FakeConnection(FakeResponse(payload, content_type="application/json"))
+    result = fetch_cnn_fear_greed(
+        permit=lambda: None,
+        resolve=lambda *_a, **_kw: address("8.8.8.8"),
+        dial=lambda host, ip: conn,
+    )
+    assert result == {
+        "series_id": "CNN_FEAR_GREED_CNN",
+        "value": "42.125",
+        "category": "Fear",
+        "source_event_at": "2026-11-23T07:00:00+00:00",
+        "quality": "manual_review_required",
+        "automated_trading_allowed": False,
+    }
+    assert conn.requests[0][0:2] == ("GET", "/index/fearandgreed/graphdata")
+    assert len(conn.requests) == 1 and conn.closed
+
+
+@pytest.mark.parametrize(
+    "body,status",
+    [
+        (b"{}", 403),
+        (b"{}", 429),
+        (b"{}", 302),
+        (b"{}", 200),
+        (
+            b'{"fear_and_greed":{"score":true,"rating":"fear","timestamp":"2026-11-23T07:00:00Z"}}',
+            200,
+        ),
+        (
+            b'{"fear_and_greed":{"score":50,"rating":"fear","timestamp":"2099-01-01T00:00:00Z"}}',
+            200,
+        ),
+    ],
+)
+def test_cnn_rejects_failure_without_retry(body, status):
+    conn = FakeConnection(FakeResponse(body, content_type="application/json"), status)
+    with pytest.raises(SourceBlocked):
+        fetch_cnn_fear_greed(
+            permit=lambda: None,
+            resolve=lambda *_a, **_kw: address("8.8.8.8"),
+            dial=lambda host, ip: conn,
+        )
+    assert len(conn.requests) == 1 and conn.closed
 
 
 @pytest.mark.parametrize(

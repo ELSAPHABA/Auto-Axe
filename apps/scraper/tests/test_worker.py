@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 
 from autoaxe_scraper import worker
-from autoaxe_scraper.parsers import parse_offline
+from autoaxe_scraper.transport import parse_cnn_json
 
 
 class FakeBroker:
@@ -40,15 +40,16 @@ class FakeBroker:
 
 
 def test_worker_checks_lease_and_quarantines_exact_candidate(monkeypatch):
-    def fetch(policy, *, permit):
-        assert policy.source_id == "cnn"
+    def fetch(*, permit):
         permit()
         permit()
-        return '<div data-source="cnn-fear-greed" data-score="32" data-category="Fear"/>'
+        return parse_cnn_json(
+            b'{"fear_and_greed":{"score":32,"rating":"fear","timestamp":"2026-11-23T07:00:00Z"}}'
+        )
 
-    monkeypatch.setattr(worker, "fetch_exact_html", fetch)
+    monkeypatch.setattr(worker, "fetch_cnn_fear_greed", fetch)
     broker = FakeBroker()
-    assert worker.run_once(broker, "cnn", fixture_parser=parse_offline) == "quarantined"
+    assert worker.run_once(broker, "cnn") == "quarantined"
     assert [path.rsplit("/", 1)[1] for path, _ in broker.calls] == [
         "claim",
         "heartbeat",
@@ -63,18 +64,18 @@ def test_worker_checks_lease_and_quarantines_exact_candidate(monkeypatch):
 
 @pytest.mark.parametrize("mode", ["idle", "invalid", "revoked", "pizzint", "seibro"])
 def test_worker_never_dials_provider_without_valid_lease(monkeypatch, mode):
-    def guarded_fetch(_policy, *, permit):
+    def guarded_fetch(*, permit):
         permit()
         raise AssertionError("provider must not be contacted")
 
-    monkeypatch.setattr(worker, "fetch_exact_html", guarded_fetch)
+    monkeypatch.setattr(worker, "fetch_cnn_fear_greed", guarded_fetch)
     broker = FakeBroker(**{mode: True}) if mode in {"idle", "invalid", "revoked"} else FakeBroker()
     source = mode if mode in {"pizzint", "seibro"} else "cnn"
     if mode == "idle":
-        assert worker.run_once(broker, source, fixture_parser=parse_offline) == "idle"
+        assert worker.run_once(broker, source) == "idle"
     else:
         with pytest.raises(worker.BrokerError):
-            worker.run_once(broker, source, fixture_parser=parse_offline)
+            worker.run_once(broker, source)
     assert not any(path.endswith("/result") for path, _ in broker.calls)
     if mode in {"pizzint", "seibro"}:
         assert broker.calls == []
@@ -93,13 +94,13 @@ def test_worker_never_dials_provider_without_valid_lease(monkeypatch, mode):
     ],
 )
 def test_worker_failure_is_reported_once_without_payload(monkeypatch, error, expected):
-    def fetch(_policy, *, permit):
+    def fetch(*, permit):
         permit()
         raise error
 
-    monkeypatch.setattr(worker, "fetch_exact_html", fetch)
+    monkeypatch.setattr(worker, "fetch_cnn_fear_greed", fetch)
     broker = FakeBroker()
-    assert worker.run_once(broker, "cnn", fixture_parser=parse_offline) == "failed"
+    assert worker.run_once(broker, "cnn") == "failed"
     assert [path.rsplit("/", 1)[1] for path, _ in broker.calls] == [
         "claim",
         "heartbeat",

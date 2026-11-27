@@ -45,7 +45,7 @@ SOURCE_URLS = {
     "sec_edgar": "https://www.sec.gov/edgar/search/",
     "occ": "https://www.optionseducation.org/referencelibrary/expiration-calendar",
     "cme": "https://www.cmegroup.com/tools-information/calendars/expiration-calendar.html",
-    "cnn": "https://edition.cnn.com/markets/fear-and-greed",
+    "cnn": "https://production.dataviz.cnn.io/index/fearandgreed/graphdata",
     "pizzint": "https://www.pizzint.watch/terms",
     "dramexchange": "https://www.dramexchange.com/",
     "seibro": "https://seibro.or.kr/websquare/control.jsp",

@@ -204,7 +204,7 @@ when the needed confirmed observations already exist.
 
 ## Reviewed generic HTML contract (Session 18)
 
-CNN/Naver/DRAM generic worker now requires a read-only JSON DOM manifest and
+Naver/DRAM generic worker requires a read-only JSON DOM manifest and
 its exact SHA256 via `AUTOAXE_SCRAPE_DOM_CONTRACT` (container path) and
 `AUTOAXE_SCRAPE_DOM_CONTRACT_SHA256`, passed explicitly using `docker compose
 run -v ...:ro -e ...`. No manifest is supplied for these providers because the
@@ -212,7 +212,7 @@ actual HTML selector and automated collection rights have not been verified.
 Manifest keys: `version` (1), `source_id`, exact registered `source_url`,
 `permission_version` (must match broker lease), `expires_at` (offset-aware ISO),
 `evidence_ref` (reviewed source/DOM evidence), and `selectors` (CSS strings).
-CNN keys: root/score/category; Naver: root/symbol/yield/timestamp;
+Naver: root/symbol/yield/timestamp;
 DRAM: root/title/table/timestamp. Selectors must resolve exactly one node;
 all extracted data must come from reviewed static HTML text, not guessed
 fixture attributes. Naver timestamp must explicitly include timezone offset;
@@ -221,3 +221,11 @@ Dynamic pages need a separate independently approved rendering contract.
 The operator must independently pin and record the manifest hash in the
 adapter-grant evidence; source permissions and adapter-grant review remain
 separate from the worker-side manifest validation. No automatic granting.
+
+Session 19: CNN is JSON-only at the fixed graphdata endpoint, with no DOM
+manifest or HTML fallback. Migration 0021_cnn_json_naver invalidates the
+previous CNN HTML grants, and extends outstanding Naver schedules to at least
+900 seconds. CNN still requires independent source and adapter grants, and
+the worker only quarantines score/rating/original timestamp. No live provider
+activation or provider permission is implied. Naver grant intervals shorter
+than 900 seconds are clamped to 900; longer approved intervals are respected.

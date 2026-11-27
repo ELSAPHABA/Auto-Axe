@@ -20,21 +20,13 @@ def test_no_contract_does_not_claim():
             pytest.fail("broker contacted without reviewed contract")
 
     with pytest.raises(BrokerError, match="reviewed DOM"):
-        run_once(NoBroker(), "cnn")
+        run_once(NoBroker(), "naver")
 
 
-def test_cnn_reviewed_text_not_synthetic_attributes():
+def test_cnn_html_contract_is_retired():
     c = contract("cnn", {"root": "#widget", "score": ".score", "category": ".category"})
-    html = '<div id="widget"><span class="score">42.5</span><p class="category">Fear</p></div>'
-    data = parse_reviewed(c, html)
-    assert data["value"] == "42.5" and data["source_event_at"] is None
-    assert data["automated_trading_allowed"] is False
-    with pytest.raises(SchemaChanged):
-        parse_reviewed(c, html.replace("42.5", "101"))
-    with pytest.raises(SchemaChanged):
-        parse_reviewed(c, html + html)
-    with pytest.raises(SchemaChanged):
-        c.check("cnn", 2)
+    with pytest.raises(BrokerError, match="JSON-only"):
+        run_once(None, "cnn", contract=c)
 
 
 def test_naver_exact_identity_and_explicit_time():
@@ -73,12 +65,12 @@ def test_manifest_hash_url_expiry_and_scope(tmp_path, monkeypatch):
     path = tmp_path / "contract.json"
     doc = {
         "version": 1,
-        "source_id": "cnn",
-        "source_url": fixed_target("cnn").url,
+        "source_id": "naver",
+        "source_url": fixed_target("naver").url,
         "permission_version": 7,
         "expires_at": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
         "evidence_ref": "synthetic fixture only",
-        "selectors": {"root": "#a", "score": ".b", "category": ".c"},
+        "selectors": {"root": "#a", "symbol": ".b", "yield": ".c", "timestamp": "time"},
     }
 
     def write():
@@ -88,11 +80,11 @@ def test_manifest_hash_url_expiry_and_scope(tmp_path, monkeypatch):
         monkeypatch.setenv("AUTOAXE_SCRAPE_DOM_CONTRACT_SHA256", hashlib.sha256(raw).hexdigest())
 
     write()
-    assert load_contract("cnn").permission_version == 7
+    assert load_contract("naver").permission_version == 7
     path.write_bytes(b"{}")
     with pytest.raises(SchemaChanged):
-        load_contract("cnn")
+        load_contract("naver")
     doc["source_url"] = "https://example.com/"
     write()
     with pytest.raises(SchemaChanged):
-        load_contract("cnn")
+        load_contract("naver")

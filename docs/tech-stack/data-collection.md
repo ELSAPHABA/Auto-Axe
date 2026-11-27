@@ -36,7 +36,7 @@ SEIBro는 해외주식 TOP50 결제금액(매수/매도/순매수 USD)이며 전
 
 ScrapeRequest는 사용자 URL 대신 source_id, approved adapter version, 조회 기간/국가 등 정해진 enum/범위만 받는다. job broker를 통해 isolated scraper-worker가 받아 외부 도메인만 접근하고, 크기 제한된 typed ObservationCandidate와 source metadata를 검증 서비스에 반환한다. scraper에는 DB 직접 접근·NH credential·Docker socket·임의 파일 접근·내부망 접근 권한이 없다. 승인 취소는 새 작업 및 결과 반영을 차단한다. redirect, subresource, WebSocket, 다운로드, IPv4/IPv6 및 DNS 재해석을 포함한 egress 보안은 [전체 보안 설계](./security.md) §5를 따른다.
 
-대상별 계획: CNN/DRAM은 정적 파싱 우선, SEIBro WebSquare는 정상 렌더링 가능성 검증. 합성 fixture로 parser/DOM 변경/오인식/권한 취소/redirect/SSRF 및 브라우저 격리 테스트 후에만 활성화한다. PizzINT는 Scrapling HTML 수집 대상에서 제외하고 공개 JSON API 전용 DOUGHCON 어댑터를 사용한다.
+대상별 계획: CNN은 사용자 지정 graphdata JSON 전용(비문서화, 승인 필요), DRAM/Naver는 검수된 정적 DOM 우선, SEIBro WebSquare는 정상 렌더링 가능성 검증. 합성 fixture로 parser/DOM 변경/오인식/권한 취소/redirect/SSRF 및 브라우저 격리 테스트 후에만 활성화한다. PizzINT는 Scrapling HTML 수집 대상에서 제외하고 공개 JSON API 전용 DOUGHCON 어댑터를 사용한다.
 
 ## 2. 파이프라인
 
@@ -55,7 +55,7 @@ indicator_id는 논리 지표, series_id는 원본 제공자·상품·단위·�
 | VIX yfinance ^VIX | **10초**, 원본 이벤트 시각 기준 |
 | yfinance 국채 3M/5Y/10Y/30Y | 원본 TTL 5분; 정기 조회 15분 |
 | Binance 롱숏 4종 | 10분, 원본 최소 5분 집계 |
-| 네이버 2Y | 5분을 초기 기본으로 적용, 원본 시각·지연 검증 |
+| 네이버 2Y | 정기 조회 15분(900초), 원본 TTL 및 원본 시각·지연은 별도 기존 계약 유지 |
 | Treasury 공식 일별 수익률 | 다음 공식 발표 예정 시각 기준 |
 | 기업 재무지표 | 최근 유효 공시 및 정정 여부 |
 | 경제지표 | 공식 발표 일정·revision 기준 |

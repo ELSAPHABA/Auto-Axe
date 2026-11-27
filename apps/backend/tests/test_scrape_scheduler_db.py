@@ -153,6 +153,13 @@ def test_generic_scheduler_and_review_fences(monkeypatch):
         assert first.permission_version == version
         assert tick("naver") == "not_due"
         with psycopg.connect(market) as conn:
+            assert (
+                conn.execute(
+                    "SELECT schedule_interval_seconds FROM ops.scrape_jobs WHERE id=%s",
+                    (first.job_id,),
+                ).fetchone()[0]
+                == 900
+            )
             assert claim(conn, source="naver", scheduled_only=True) is None
             assert heartbeat(conn, first.job_id, first.lease_token, first.nonce)
             with pytest.raises(PermissionDenied):
@@ -276,7 +283,7 @@ def test_generic_scheduler_and_review_fences(monkeypatch):
                 {
                     "series_id": "CNN_FEAR_GREED_CNN",
                     "value": "65",
-                    "source_event_at": None,
+                    "source_event_at": stamp,
                     "quality": "manual_review_required",
                     "category": "Greed",
                     "automated_trading_allowed": False,
@@ -289,7 +296,7 @@ def test_generic_scheduler_and_review_fences(monkeypatch):
             assert conn.execute(
                 "SELECT source_event_at,quality FROM market.observations "
                 "WHERE series_id='CNN_FEAR_GREED_CNN'"
-            ).fetchone() == (None, "manual_checked")
+            ).fetchone() == (datetime.fromisoformat(stamp), "manual_checked")
         reset_due("cnn")
         assert tick("cnn") == "scheduled"
         expired = lease("cnn")

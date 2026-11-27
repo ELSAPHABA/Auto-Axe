@@ -40,7 +40,11 @@ class SourcePolicy:
 
 
 SOURCES = {
-    "cnn": SourcePolicy("cnn", "https://edition.cnn.com/markets/fear-and-greed"),
+    "cnn": SourcePolicy(
+        "cnn",
+        "https://production.dataviz.cnn.io/index/fearandgreed/graphdata",
+        api_only=True,
+    ),
     # Public /api/dashboard-data JSON was verified in the 2026-11-22
     # acquisition research; terms allow reasonable API requests, not page scraping.
     "pizzint": SourcePolicy(

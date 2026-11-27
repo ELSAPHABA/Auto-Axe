@@ -16,7 +16,6 @@ from autoaxe_scraper.parsers import DRAM_ITEMS, SchemaChanged, decimal, text
 from autoaxe_scraper.policy import fixed_target
 
 FIELDS = {
-    "cnn": {"root", "score", "category"},
     "naver": {"root", "symbol", "yield", "timestamp"},
     "dramexchange": {"root", "title", "table", "timestamp"},
 }
@@ -127,25 +126,6 @@ def parse_reviewed(contract: DOMContract, html: str) -> Any:
     def get(key: str) -> str:
         return text(one(root, selectors[key]))
 
-    if contract.source_id == "cnn":
-        score = decimal(get("score"))
-        category = get("category").title()
-        if not 0 <= Decimal(score) <= 100 or category not in (
-            "Extreme Fear",
-            "Fear",
-            "Neutral",
-            "Greed",
-            "Extreme Greed",
-        ):
-            raise SchemaChanged("invalid CNN score/category")
-        return {
-            "series_id": "CNN_FEAR_GREED_CNN",
-            "value": score,
-            "category": category,
-            "source_event_at": None,
-            "quality": "manual_review_required",
-            "automated_trading_allowed": False,
-        }
     if contract.source_id == "naver":
         if get("symbol") != "US2YT=RR":
             raise SchemaChanged("Naver symbol mismatch")

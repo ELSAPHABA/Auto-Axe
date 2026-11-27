@@ -72,7 +72,7 @@ def adapter_grant(conn: Connection[Any], source: str, version: int) -> int:
     # A renewed approval is not a license to shorten an outstanding Retry-After.
     if circuit and ((circuit[0] == version and circuit[1]) or circuit[2]):
         raise PermissionDenied("source circuit open")
-    return int(row[0])
+    return max(int(row[0]), 900) if source == "naver" else int(row[0])
 
 
 def reap(conn: Connection[Any], source: str) -> int:
@@ -464,9 +464,14 @@ def validate_candidates(source: str, candidates: list[dict[str, Any]]) -> None:
                 or item["category"]
                 not in ("Extreme Fear", "Fear", "Neutral", "Greed", "Extreme Greed")
                 or item["automated_trading_allowed"] is not False
-                or item["source_event_at"] is not None
             ):
                 raise ValueError("invalid CNN candidate")
+            stamp = item["source_event_at"]
+            if not isinstance(stamp, str) or len(stamp) > 64:
+                raise ValueError("CNN source timestamp required")
+            parsed = datetime.fromisoformat(stamp)
+            if parsed.utcoffset() is None or parsed > datetime.now(UTC):
+                raise ValueError("invalid CNN source timestamp")
         else:
             stamp = item.get("source_event_at")
             if not isinstance(stamp, str) or len(stamp) > 64:
