@@ -107,7 +107,7 @@ docker compose --env-file .env.phase0 -f infra/compose/dev.yaml down
 uv run --project apps/backend --locked python -m autoaxe.entrypoints.official_cli --execute-approved --series CUUR0000SA0
 ```
 
-CLI 실행은 사용자/관리자의 별도 승인과 정책 확인 후에만 가능하다. 해당 명령은 이전 세션에서 네트워크로 실행하지 않았으며 mock contract만 검증했다. `--execute-approved`가 없거나 server DB 권한이 없으면 실제 네트워크 호출 전에 거부한다. 백엔드 `GET /api/v1/dashboard/official-events`와 `GET /api/v1/dashboard/authorized/market/{series_id}`는 현재 공급자 승인과 세션/indicators:read를 검사한다. 기본값은 제3자 재배포 권한까지 확인하며, **개인·교육용 비공개 인스턴스**에서 `AUTOAXE_PRIVATE_EDUCATIONAL_MODE=true`와 `AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF`(정확한 OIDC 소유자 식별자)를 모두 지정한 경우에만 허용된 개인 저장 데이터를 그 소유자에게 조회할 수 있다. 외부 배포/서비스로 바꾸면 플래그를 끄고 재배포 허가를 확인해야 한다.
+CLI 실행은 사용자/관리자의 별도 승인과 정책 확인 후에만 가능하다. 해당 명령은 이전 세션에서 네트워크로 실행하지 않았으며 mock contract만 검증했다. `--execute-approved`가 없거나 server DB 권한이 없으면 실제 네트워크 호출 전에 거부한다. 백엔드 `GET /api/v1/dashboard/official-events`와 `GET /api/v1/dashboard/authorized/market/{series_id}`는 현재 공급자 승인과 세션/indicators:read를 검사한다. Auto-Axe는 개인·비영리 목적이 기본인 프로젝트이며 별도 모드가 없다. 서버 설정 `AUTOAXE_OWNER_SUBJECT_REF`가 로그인한 소유자와 일치하면 이미 승인된 저장 자료를 개인적으로 조회할 수 있다. 일치하지 않거나 미설정 시 제3자 재배포 권한이 필요하다. 이 식별자는 UI 옵션이 아니며 실제 소스의 수집·보관 승인 절차를 대체하지 않는다.
 
 ### 남은 활성화 게이트
 

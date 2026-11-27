@@ -78,6 +78,9 @@ test("Phase 2 dashboard remains clearly synthetic, mobile and accessible", async
     }),
   );
   await page.goto("/");
+  await expect(page.locator("footer.site-footer")).toHaveText(
+    "영리적 목적의 사용을 금지합니다",
+  );
   await expect(
     page.getByRole("heading", { name: "시장 대시보드" }),
   ).toBeVisible();

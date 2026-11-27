@@ -8,7 +8,7 @@ from fastapi import APIRouter, Cookie, HTTPException, Query, Request
 
 from autoaxe.adapters.contracts import Contract, Identifier, UtcTime
 from autoaxe.domain.catalog import catalog
-from autoaxe.domain.private_use import private_educational_read_enabled
+from autoaxe.domain.owner_access import is_configured_owner
 from autoaxe.entrypoints.auth import SESSION_COOKIE
 from autoaxe.entrypoints.auth import _dsn as identity_dsn
 from autoaxe.infrastructure.authorized_market import authorized_observations
@@ -64,7 +64,7 @@ def list_authorized_market_observations(
     try:
         with psycopg.connect(identity_dsn(), connect_timeout=3) as app:
             grant = authorize(app, session_id, required_scope="indicators:read")
-        private_use = private_educational_read_enabled(grant.subject_ref)
+        private_use = is_configured_owner(grant.subject_ref)
         with psycopg.connect(dsn, connect_timeout=3) as market:
             clock = market.execute("SELECT clock_timestamp()").fetchone()
             assert clock is not None

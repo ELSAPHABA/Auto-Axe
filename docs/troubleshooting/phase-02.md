@@ -111,3 +111,11 @@
 - 수정: `AUTOAXE_PRIVATE_EDUCATIONAL_MODE=true`와 `AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF`를 모두 설정하고 현재 세션의 OIDC 소유자와 정확히 일치할 때만 개인적인 열람과 제3자 재배포를 구분. Source registry의 개별 승인·fetch/storage·증거·버전, 세션 인증 및 기본 비활성 상태 그대로 유지. PizzINT 수집 주소는 등록된 `https://www.pizzint.watch/api/dashboard-data` API로 고정하고 DNS/TLS 공개 호스트/JSON 유형/용량 검증 helper 추가; 브로커는 관리자 API용 승인 시에만 큐를 허용하며 홈페이지 HTML 폴백 금지.
 - 배제: 공개 서비스·다수 사용자·제3자 재배포의 일반 허가, 유료 자료·인증 회피, CAPTCHA/프록시 우회, HTTP 실패 시 HTML 스크래핑, 실제 자동매매 활성화는 이번 변경에 포함되지 않음.
 - 검증: Mock JSON/403/302/과대응답 및 private-vs-redistribution/auth/permission-revoke DB 통합 테스트로 재검증. 실제 운영 사이트의 스케줄러·Keycloak/mTLS 배포/실데이터 축적을 수행했다는 뜻은 아님. 최신 실행 증거와 Git SHA는 최신 Phase2 후속 로그 참조.
+
+## TS-02-17 — 사용자 고정 이용 목적을 불필요한 선택형 ‘개인·교육용 모드’로 구성
+- 사용자 원문(2026-11-27): “개인·교육용 모드는 또 뭔소린가요... 개인·교육용 모드 표시 그런거는 보기 거추장스러우니 제거하고 \"영리적 목적의 사용을 금지합니다\" 한 문장 정도로 최하단에 작게 표시하는 수준으로 대체해 주세요.”
+- 문제: 개인·교육·비영리 목적은 서비스 자체의 영구적 전제인데 기존 구현에서 `AUTOAXE_PRIVATE_EDUCATIONAL_MODE=true`와 `AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF`라는 두 개의 별도 설정으로 설명하여 사용자에게 불필요한 UX/기능 전환처럼 전달됨. 실제 웹 UI에 해당 토글은 존재하지 않았지만 공통 푸터도 장황한 개발 환경 설명이었음.
+- 변경: 모든 라우트의 `App.tsx` 공통 최하단 `footer.site-footer`를 정확히 **“영리적 목적의 사용을 금지합니다”** 한 문장만 표시하도록 교체. `style.css`에서 10px·중앙 정렬·중립색, 장식용 테두리 제거. ‘모드’ 스위치·뱃지·별도 고지 섹션은 만들지 않음.
+- 서버 설정 단순화: 두 변수 선택형 모드를 폐기. 단일 서버 환경변수 `AUTOAXE_OWNER_SUBJECT_REF`와 현재 인증 OIDC subject 정확한 일치로 개인 소유자 조회를 식별. 공급자별 승인·저장 권한과 세션/스코프, 제3자 재배포 분리, 익명 조회 차단은 그대로 유지. 신규 환경변수가 미설정이면 기존의 재배포 허가 검사로 안전하게 폴백. `private_use.py`를 `owner_access.py`로 교체.
+- 실패 및 조치: 초기 strict mypy는 Optional subject/owner를 `hmac.compare_digest`에 그대로 전달하여 `AnyStr type-var` 오류 발생. 명시적 None/빈 문자열 가드 후 비교하도록 수정, 재검증.
+- 검증/잔여: React 단위+Playwright에서 최하단 문구 존재/불필요한 기존 푸터 부재, backend PostgreSQL 인증·권한·허가 조회, Ruff/mypy/CI 검증. 전체 결과는 최신 `.ai-context/phases/phase-02/2026-11-27-04.md`에 기재. 환경 설정은 사용자에게 UI 모드로 노출하지 않으며 실공급자 호출/실거래 배포는 별도 차단 상태.

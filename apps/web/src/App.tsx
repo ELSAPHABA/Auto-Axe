@@ -126,9 +126,7 @@ function Shell() {
             />
           </Routes>
         </main>
-        <footer className="site-footer">
-          Auto-Axe · 연구/개발 환경 · 데이터 이용 권한 확인 전 자동 수집 없음
-        </footer>
+        <footer className="site-footer">영리적 목적의 사용을 금지합니다</footer>
       </div>
     </div>
   );

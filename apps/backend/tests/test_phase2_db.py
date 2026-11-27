@@ -32,6 +32,7 @@ IMAGE = "postgres:17@sha256:87c8b42f423b45d5247e6aa8fdb2e7762fec164c68a50fe3eb07
 @pytest.mark.integration
 def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
     monkeypatch.setenv("AUTOAXE_DISPOSABLE_DB", "true")
+    monkeypatch.delenv("AUTOAXE_OWNER_SUBJECT_REF", raising=False)
     secret = secrets.token_urlsafe(24)
     with PostgresContainer(
         IMAGE, username="fixture_admin", password=secret, dbname="postgres"
@@ -290,10 +291,9 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             cookies={"__Host-autoaxe-sid": authenticated_sid},
         )
         assert blocked.status_code == 200 and blocked.json()["data"] == []
-        monkeypatch.setenv("AUTOAXE_PRIVATE_EDUCATIONAL_MODE", "true")
-        # A flag alone is not enough: the caller must be the configured owner.
+        # Owner-only access is a project invariant, not an optional UI mode.
         monkeypatch.setenv(
-            "AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF",
+            "AUTOAXE_OWNER_SUBJECT_REF",
             "https://idp.example/realms/a|someone-else",
         )
         still_blocked = api.get(
@@ -302,7 +302,7 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         )
         assert still_blocked.status_code == 200 and still_blocked.json()["data"] == []
         monkeypatch.setenv(
-            "AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF",
+            "AUTOAXE_OWNER_SUBJECT_REF",
             "https://idp.example/realms/a|fixture-1",
         )
         personal = api.get(
@@ -310,7 +310,7 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             cookies={"__Host-autoaxe-sid": authenticated_sid},
         )
         assert personal.status_code == 200 and personal.json()["data"][0]["actual"] == "321.5"
-        monkeypatch.delenv("AUTOAXE_PRIVATE_EDUCATIONAL_MODE")
+        monkeypatch.delenv("AUTOAXE_OWNER_SUBJECT_REF")
         later = datetime.now(UTC) + timedelta(seconds=2)
         corrected = replace(event, actual="321.75", first_seen_at=later, available_at=later)
         with psycopg.connect(market) as conn:
@@ -372,9 +372,8 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         route = "/api/v1/dashboard/authorized/market/VIX"
         assert api.get(route).status_code == 401
         assert api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code == 403
-        monkeypatch.setenv("AUTOAXE_PRIVATE_EDUCATIONAL_MODE", "true")
         monkeypatch.setenv(
-            "AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF",
+            "AUTOAXE_OWNER_SUBJECT_REF",
             "https://idp.example/realms/a|fixture-1",
         )
         personal_market = api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid})
@@ -383,7 +382,7 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         assert personal_market.json()["meta"]["permission"] == "approved_personal_education"
         # Personal viewing cannot enable a public endpoint or allow anonymous access.
         assert api.get(route).status_code == 401
-        monkeypatch.delenv("AUTOAXE_PRIVATE_EDUCATIONAL_MODE")
+        monkeypatch.delenv("AUTOAXE_OWNER_SUBJECT_REF")
         assert api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid}).status_code == 403
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(

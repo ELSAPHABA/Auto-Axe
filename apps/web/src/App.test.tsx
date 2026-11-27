@@ -145,6 +145,10 @@ afterEach(() => {
 
 test("Phase 2 home marks synthetic and missing sources accurately", async () => {
   setup();
+  expect(screen.getByText("영리적 목적의 사용을 금지합니다")).toBeVisible();
+  expect(
+    screen.queryByText(/개인.교육용 모드|연구\/개발 환경 · 데이터 이용 권한/),
+  ).not.toBeInTheDocument();
   expect(
     await screen.findByRole("heading", { name: "시장 대시보드" }),
   ).toBeVisible();

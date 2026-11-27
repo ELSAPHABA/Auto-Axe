@@ -13,8 +13,8 @@
 | 개인 열람 | 관련 사이트가 개인/교육적 열람을 허용하면 가능. 제3자 재배포 권한과 별개 |
 | 개인 로컬 보관·분석 | 해당 출처의 이용 조건에서 보관/분석 허용 여부를 확인하고 source_registry에서 fetch/storage 별도 승인 |
 | 자동 API 수집 | 제공된 공용 API가 있고 방식·호출량이 허용될 때만 사용. 사용자 수집 목적이 비영리여도 차단/robots/세션 제한을 우회하지 않음 |
-| 개인용 인증 화면 | AUTOAXE_PRIVATE_EDUCATIONAL_MODE=true **및** 단일 소유자의 OIDC subject 일치 설정 시 source_registry의 fetch/storage 승인·증거와 세션 인증 후 자료 조회. 제3자 재배포 비허용만으로 차단하지 않음 |
-| 외부 공개·재배포 | 명시적 allow_redistribution=true 없이 금지. 개인용 모드가 이를 대체하지 않음 |
+| 개인용 인증 화면 | 별도 선택 모드 없음. 지정한 단일 소유자의 OIDC subject와 현재 로그인 계정이 일치하고 source_registry의 fetch/storage가 승인된 경우 개인 조회 허용 |
+| 외부 공개·재배포 | 명시적 allow_redistribution=true 없이 금지. 개인 열람과 공개 재배포는 구분 |
 | 브로커 주문·자동매매 | 개인/교육용이라는 이유만으로 활성화되지 않으며 기존 위험관리·LIVE 차단 유지 |
 
 ## 확인된 제공자별 구분
@@ -28,9 +28,9 @@
 
 ## 코드 적용 및 범위
 
-- DEFAULT: AUTOAXE_PRIVATE_EDUCATIONAL_MODE 미설정/false면 기존 인가형 BFF 조회는 allow_redistribution까지 요구한다.
-- OPT-IN: AUTOAXE_PRIVATE_EDUCATIONAL_MODE=true와 AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF=실제 OIDC subject_ref를 모두 지정한 경우에만 **정확히 그 소유자의 인증된 세션**에서 승인된 source의 allow_storage+evidence 기준으로 열람한다. 모드 플래그만 켜거나 다른 계정으로 접속하면 재배포 권한 우회가 발생하지 않는다. 비인가 공급자의 수집, 저장, 외부 공개 API, 제3자 배포 권한은 새로 생기지 않는다.
-- 이 플래그는 단일 사용자·외부 미공개 인스턴스에서만 사용한다. 여러 사용자가 접근하는 공개 서비스로 변경되면 비활성화하고 각 공급자의 재배포 허가를 다시 확인한다.
+- Auto-Axe는 개인·교육·비영리 목적이 고정된 프로젝트다. 사용자가 별도 모드를 선택할 필요가 없으며 화면에 모드 표시를 넣지 않는다. 공통 최하단에 작은 글씨로 **“영리적 목적의 사용을 금지합니다”** 한 문장만 표시한다.
+- 서버의 `AUTOAXE_OWNER_SUBJECT_REF`는 개인 조회를 허용할 단일 OIDC `subject_ref`를 가리키는 인가 설정이다(사용자용 모드 아님). 일치하는 소유자 로그인/스코프와 공급자별 `allow_storage`·승인 근거를 모두 확인한다. 소유자가 아니거나 미설정이면 기존 `allow_redistribution` 확인을 유지한다.
+- 이전 `AUTOAXE_PRIVATE_EDUCATIONAL_MODE`와 `AUTOAXE_PRIVATE_EDUCATIONAL_OWNER_SUBJECT_REF` 두 변수는 폐기되었다. 개인 조회 여부를 공급자 수집·저장 권한이나 공개 배포 허가로 오인하지 않는다. 여러 사용자 공개 서비스로 목적이 변경되면 별도 설계·재배포 권한 검증이 필요하다.
 - `catalog.source_registry`는 외부 제공자별 승인/버전/증거가 기본 unverified이고, 이번 사용자 설명이 특정 공급자의 약관을 자동으로 approved로 변경하지 않는다.
 - PizzINT의 브로커 큐는 source_registry에서 **API에 한정해** 승인된 경우에만 허용하며, JSON 조회 helper는 고정 호스트·URL·TLS/DNS·응답 크기/타입을 검사한다. 실제 운영 worker·mTLS 배포는 별도 작업이고 이 변경으로 스케줄러를 켜지 않는다.
 

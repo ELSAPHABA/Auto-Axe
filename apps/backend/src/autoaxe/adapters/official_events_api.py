@@ -7,7 +7,7 @@ import psycopg
 from fastapi import APIRouter, Cookie, HTTPException, Query, Request
 
 from autoaxe.adapters.contracts import Contract, Identifier, UtcTime
-from autoaxe.domain.private_use import private_educational_read_enabled
+from autoaxe.domain.owner_access import is_configured_owner
 from autoaxe.entrypoints.auth import SESSION_COOKIE
 from autoaxe.entrypoints.auth import _dsn as identity_dsn
 from autoaxe.infrastructure.event_store import query_events
@@ -73,7 +73,7 @@ def list_authorized_official_events(
                 cutoff=cutoff,
                 source_id=source_id,
                 limit=limit,
-                private_use=private_educational_read_enabled(grant.subject_ref),
+                private_use=is_configured_owner(grant.subject_ref),
             )
     except PermissionError as exc:
         raise HTTPException(401, "session invalid or insufficient scope") from exc
