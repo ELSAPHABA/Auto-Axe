@@ -505,7 +505,8 @@ function OfficialEventsPanel() {
                 <th scope="col">Actual</th>
                 <th scope="col">Forecast</th>
                 <th scope="col">Revision</th>
-                <th scope="col">예정 (UTC)</th>
+                <th scope="col">예정 (UTC / 원본 날짜)</th>
+                <th scope="col">동일 기간 일정 근거</th>
                 <th scope="col">실제 발표 (UTC)</th>
                 <th scope="col">최초 관측 (UTC)</th>
                 <th scope="col">원본</th>
@@ -522,13 +523,40 @@ function OfficialEventsPanel() {
                     event.revision
                   }
                 >
-                  <td>{event.event_key}</td>
+                  <td>{event.calendar?.title ?? event.event_key}</td>
                   <td>
                     {event.actual ?? "—"} {event.unit}
                   </td>
                   <td>{event.forecast ?? "—"}</td>
                   <td>{event.revision}</td>
-                  <td>{event.scheduled_at ?? "—"}</td>
+                  <td>
+                    {event.scheduled_at ??
+                      (event.calendar?.date_only
+                        ? event.calendar.date_only + " (시간 미확인)"
+                        : "—")}
+                  </td>
+                  <td>
+                    {event.period_match ? (
+                      <>
+                        <a
+                          href={event.period_match.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {event.period_match.scheduled_at ??
+                            event.period_match.date_only ??
+                            "공식 일정"}
+                        </a>
+                        <div>동일 기간 참조 · 실제 발표 시각 아님</div>
+                      </>
+                    ) : event.link_status === "ambiguous" ? (
+                      "복수 후보 — 미확정"
+                    ) : event.link_status === "context_incomplete" ? (
+                      "일정 근거 불완전"
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td>{event.released_at ?? "—"}</td>
                   <td>{event.first_seen_at}</td>
                   <td>

@@ -2,12 +2,12 @@
 
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, Literal
 from xml.etree import ElementTree
 
 from icalendar import Calendar
 
-from autoaxe.domain.calendars import EventRevision
+from autoaxe.domain.calendars import CalendarEvidence, EventRevision
 from autoaxe.domain.types import decimal_string, utc_datetime
 
 BLS_IDS = {
@@ -82,12 +82,31 @@ def parse_official_ics(raw: bytes, received: datetime, source: str) -> list[Even
         if not uid or len(uid) > 256:
             raise ValueError("calendar UID missing")
         dtstart = event.decoded("DTSTART")
+        date_only = None
         if isinstance(dtstart, date) and not isinstance(dtstart, datetime):
             scheduled = None  # Date-only event is not a midnight release time.
+            date_only = dtstart
         elif isinstance(dtstart, datetime):
             scheduled = utc_datetime(dtstart)
         else:
             raise ValueError("unexpected calendar DTSTART")
+        title: str | None = str(event.get("SUMMARY", ""))
+        if not title or len(title) > 512 or not title.isprintable():
+            title = None
+        status_raw = str(event.get("STATUS", "")).upper()
+        status: Literal["confirmed", "unspecified", "tentative", "cancelled", "unsupported"]
+        if status_raw == "CANCELLED" or str(calendar.get("METHOD", "")).upper() == "CANCEL":
+            status = "cancelled"
+        elif any(key in event for key in ("RRULE", "RDATE", "EXDATE", "RECURRENCE-ID")):
+            status = "unsupported"
+        elif status_raw == "CONFIRMED":
+            status = "confirmed"
+        elif status_raw == "TENTATIVE":
+            status = "tentative"
+        elif not status_raw:
+            status = "unspecified"
+        else:
+            status = "unsupported"
         results.append(
             EventRevision(
                 uid,
@@ -106,6 +125,7 @@ def parse_official_ics(raw: bytes, received: datetime, source: str) -> list[Even
                     "bea": "https://www.bea.gov/news/schedule",
                     "fed": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
                 }[source],
+                CalendarEvidence(title, date_only, status),
             )
         )
     if not results or len(results) > 2000:

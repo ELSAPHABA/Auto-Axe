@@ -1,5 +1,6 @@
 """PostgreSQL 17 real role isolation, session revocation, scrape lease and quarantine."""
 
+import asyncio
 import secrets
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -12,7 +13,11 @@ from psycopg.errors import InsufficientPrivilege
 from testcontainers.postgres import PostgresContainer
 
 from autoaxe.adapters.authorized_dashboard import changes, read_snapshot
+from autoaxe.adapters.mexc_rest import SERIES_ID as MEXC_SERIES
 from autoaxe.application.collection import FetchError
+from autoaxe.application.document_fetch import capture_once
+from autoaxe.application.mexc_poll import poll_once as poll_mexc
+from autoaxe.application.official_macro import OfficialSourceError
 from autoaxe.application.pizzint_poll import SERIES, poll_once
 from autoaxe.application.scrape_broker import (
     claim,
@@ -20,9 +25,9 @@ from autoaxe.application.scrape_broker import (
     heartbeat,
     submit,
 )
-from autoaxe.domain.calendars import EventRevision
+from autoaxe.domain.calendars import CalendarEvidence, EventRevision
 from autoaxe.domain.canonical import canonical_sha256
-from autoaxe.domain.market import Candidate
+from autoaxe.domain.market import Candidate, Quality
 from autoaxe.domain.reviewed_documents import extract_boj_policy, extract_guidance
 from autoaxe.entrypoints.api import create_app
 from autoaxe.infrastructure.db_bootstrap import provision
@@ -494,6 +499,36 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
                 query_events(conn, cutoff=later + timedelta(seconds=1), private_use=True)[0].actual
                 == "321.75"
             )
+        schedule_seen = datetime.now(UTC) - timedelta(days=3)
+        schedule = EventRevision(
+            "fixture-cpi-calendar",
+            "bls",
+            schedule_seen + timedelta(days=1),
+            None,
+            schedule_seen,
+            schedule_seen,
+            None,
+            None,
+            None,
+            "event",
+            1,
+            "https://www.bls.gov/schedule/",
+            CalendarEvidence("Consumer Price Index for October 2026", None, "confirmed"),
+        )
+        with psycopg.connect(market) as conn:
+            persist_event(conn, schedule)
+        monkeypatch.setenv("AUTOAXE_OWNER_SUBJECT_REF", "https://idp.example/realms/a|fixture-1")
+        linked = api.get(
+            "/api/v1/dashboard/official-events",
+            cookies={"__Host-autoaxe-sid": authenticated_sid},
+            params={"source_id": "bls"},
+        )
+        assert linked.status_code == 200
+        linked_actual = next(r for r in linked.json()["data"] if r["event_key"] == "US_CPI:2026-10")
+        assert linked_actual["link_status"] == "period_match"
+        assert linked_actual["period_match"]["event_key"] == "fixture-cpi-calendar"
+        assert linked_actual["scheduled_at"] is None and linked_actual["released_at"] is None
+        monkeypatch.delenv("AUTOAXE_OWNER_SUBJECT_REF")
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(
                 conn,
@@ -611,7 +646,7 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             )
         allowed = api.get(route, cookies={"__Host-autoaxe-sid": authenticated_sid})
         assert allowed.status_code == 200
-        assert allowed.json()["data"][0]["value"] == "24.5"
+        assert [point["value"] for point in allowed.json()["data"][:2]] == ["24.5", "24"]
         assert allowed.json()["meta"]["source_id"] == "yfinance"
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(
@@ -656,6 +691,29 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
             "0001045810-24-000113",
             captured,
         )
+        calls = []
+
+        def captured_document(permit):
+            permit()
+            calls.append("capture")
+            return company
+
+        assert capture_once(market, "sec_edgar", captured_document) == company
+        with pytest.raises(PermissionDenied, match="not due"):
+            capture_once(market, "sec_edgar", captured_document)
+        assert calls == ["capture"]
+        with psycopg.connect(market_read) as conn:
+            cutoff = conn.execute("SELECT clock_timestamp()").fetchone()[0]
+            assert query_guidance(conn, cutoff=cutoff, private_use=True) == []
+
+        def denied_document(permit):
+            permit()
+            raise OfficialSourceError("synthetic access denial", status=403)
+
+        with pytest.raises(OfficialSourceError):
+            capture_once(market, "boj", denied_document)
+        with pytest.raises(PermissionDenied, match="circuit open"):
+            capture_once(market, "boj", captured_document)
         with psycopg.connect(market) as conn:
             with pytest.raises(InsufficientPrivilege):
                 record_review(
@@ -738,6 +796,71 @@ def test_sessions_scraper_permissions_and_quarantine(monkeypatch):
         with psycopg.connect(market) as conn:
             with pytest.raises(PermissionDenied):
                 promote_review(conn, company_review)
+
+        # MEXC remains a separate, opt-in REST snapshot with UNKNOWN quality.
+        async def no_mexc(_permit):
+            raise AssertionError("must not request MEXC")
+
+        assert asyncio.run(poll_mexc(market, no_mexc, enabled=True)) == "permission_required"
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "mexc",
+                approved=True,
+                evidence="synthetic MEXC grant",
+                fetch=True,
+                storage=True,
+                redistribution=False,
+            )
+        mexc_now = datetime.now(UTC) - timedelta(seconds=5)
+        item = Candidate(
+            MEXC_SERIES,
+            str(int(mexc_now.timestamp() * 1000)),
+            "28000.1",
+            mexc_now,
+            mexc_now,
+            mexc_now,
+            Quality.UNKNOWN,
+            {
+                "symbol": "NAS100_USDT",
+                "instrument_type": "index_linked_perpetual",
+                "quote_currency": "USDT",
+                "settlement_currency": "USDT",
+                "contract_id": 123,
+                "contract_size": "0.01",
+                "price_unit": "0.1",
+                "provenance": "mexc_futures_rest_candidate",
+                "session_verified": False,
+                "live_verified": False,
+            },
+        )
+
+        async def fetch_mexc(permit):
+            permit()
+            assert await poll_mexc(market, no_mexc, enabled=True) == "busy"
+            permit()
+            return item
+
+        assert asyncio.run(poll_mexc(market, fetch_mexc, enabled=True)) == "stored"
+        assert asyncio.run(poll_mexc(market, no_mexc, enabled=True)) == "not_due"
+        with psycopg.connect(market) as conn:
+            conn.execute(
+                "UPDATE ops.poll_slots SET last_enqueued_at=clock_timestamp() "
+                "- interval '301 seconds' WHERE series_id=%s",
+                (MEXC_SERIES,),
+            )
+        assert asyncio.run(poll_mexc(market, fetch_mexc, enabled=True)) == "no_update"
+        with psycopg.connect(market_read) as conn:
+            assert conn.execute(
+                "SELECT quality,count(*) FROM market.observations WHERE series_id=%s "
+                "GROUP BY quality",
+                (MEXC_SERIES,),
+            ).fetchall() == [("unknown", 1)]
+        mexc_snapshot = read_snapshot(authenticated_sid, "test", touch=False).snapshot
+        assert mexc_snapshot.meta.versions[MEXC_SERIES] == 1
+        assert (
+            next(p for p in mexc_snapshot.data if p.series_id == MEXC_SERIES).quality == "unknown"
+        )
         with psycopg.connect(app_runtime) as conn:
             revoke(conn, authenticated_sid)
         assert (

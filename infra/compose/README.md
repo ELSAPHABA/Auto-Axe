@@ -67,3 +67,39 @@ worker). Do not run any other PizzINT polling process against the same service.
 5. Stop only this worker: `docker compose -f infra/compose/pizzint.yaml down`.
    It does not delete the external database or network. The fixture stack is
    still offline for external collection, and is not the production deployment.
+
+## Phase 2 approved MEXC REST and official document capture
+
+Use the existing migrated market DB (head `0014_mexc` or later), admin-reviewed
+source grants and restricted egress/private market networks. The
+`phase2-collectors.yaml` approved profile defaults each service to help output;
+it does not grant rights, enable trading or expose a provider endpoint to the web.
+MEXC uses a dedicated 300-second reservation; do not add it to the generic
+poller. The stored price is a NAS100_USDT perpetual REST observation with UNKNOWN
+quality, not a verified live CME quote.
+
+After source rights, private network and runtime DB configuration are verified,
+the operator can run the one-shot or explicit daemon command (use `--daemon`
+only for an approved ongoing service):
+
+```sh
+docker compose -f infra/compose/phase2-collectors.yaml --profile approved config --quiet
+docker compose -f infra/compose/phase2-collectors.yaml --profile approved run --rm mexc /app/.venv/bin/python -m autoaxe.entrypoints.mexc_cli --allow-mexc
+```
+
+The BOJ/SEC document CLI produces unapproved candidate JSON or references, not
+automatic financial values. Use the approved official service or a trusted
+runtime environment with `AUTOAXE_SEC_CONTACT` configured for SEC; do not put
+administrator DSNs in containers. With source grants and explicit opt-in:
+
+```sh
+python -m autoaxe.entrypoints.document_fetch_cli --execute-approved discover-boj 2026
+python -m autoaxe.entrypoints.document_fetch_cli --execute-approved discover-sec <CIK>
+python -m autoaxe.entrypoints.document_fetch_cli --execute-approved fetch-sec <CIK> <accession>
+```
+
+Subcommands share a source reservation (BOJ 3600s, SEC 900s); do not retry to
+bypass it. BOJ fetch-boj accepts only official HTML statement URLs, not PDF.
+SEC fair-access applies to the total traffic of all SEC clients in deployment.
+Inspect and independently approve candidates using `document_review_cli` before
+promotion. See the latest Phase 2 session log for constraints and verification.

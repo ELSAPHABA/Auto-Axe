@@ -4,6 +4,8 @@
 
 ## METADATA (메타데이터)
 
+- **최신 개발 인계 2026-11-27 session 11:** [상세 구현·검증·잔여 조건](phases/phase-02/2026-11-27-11.md) 우선. MEXC 영속 300초 REST collector/0014, SEC·BOJ 승인형 원문 one-shot capture, 경제 일정/actual same-period PIT 참조 및 UI. 운영 실측과 일부 기능 미완료, DOUGHCON 전용 300초 유지, Phase 3~8 미착수.
+
 - **최신 개발 인계 2026-11-27 session 10:** [상세 구현·검증·잔여 조건](phases/phase-02/2026-11-27-10.md) 우선. BOJ 정책금리·SEC 가이던스 독립 검수, OCC/CME 만기 근거·PIT, SEIBro typed TOP50 검수/인증 조회, MEXC standalone REST 어댑터, 0011~0013 migration 및 3개 UI 패널. 실제 자동 수집/운영 미완료, DOUGHCON 300초 유지, Phase 3~8 미착수.
 
 - **최신 개발 인계 2026-11-27 session 09:** [상세 구현·검증·잔여 조건](phases/phase-02/2026-11-27-09.md) 우선. 영속 스크래퍼 scheduler·독립 검수/원장 승격, BOJ 일별 실효금리, 2024~2026 거래소 세션, DB series_version bounded SSE replay·비율 UI 추가. 실제 source/운영 및 일부 기능 미완료. HongDev 경유 locked Python 유지, DOUGHCON 300초 전용 경로 유지, Phase 3~8 미착수.

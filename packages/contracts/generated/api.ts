@@ -837,6 +837,18 @@ export interface components {
             data: components["schemas"]["ObservationDTO"][];
             meta: components["schemas"]["MarketMeta"];
         };
+        /** OfficialCalendarView */
+        OfficialCalendarView: {
+            /** Date Only */
+            date_only: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "confirmed" | "unspecified" | "tentative" | "cancelled" | "unsupported";
+            /** Title */
+            title: string | null;
+        };
         /** OfficialEventView */
         OfficialEventView: {
             /** Actual */
@@ -846,6 +858,7 @@ export interface components {
              * Format: date-time
              */
             available_at: string;
+            calendar?: components["schemas"]["OfficialCalendarView"] | null;
             /** Event Key */
             event_key: string;
             /**
@@ -855,8 +868,19 @@ export interface components {
             first_seen_at: string;
             /** Forecast */
             forecast: string | null;
+            /**
+             * Link Status
+             * @default not_applicable
+             * @enum {string}
+             */
+            link_status: "period_match" | "unmatched" | "ambiguous" | "not_applicable" | "context_incomplete";
+            /** Metric Id */
+            metric_id?: string | null;
+            period_match?: components["schemas"]["OfficialPeriodMatch"] | null;
             /** Previous */
             previous: string | null;
+            /** Reference Period */
+            reference_period?: string | null;
             /** Released At */
             released_at: string | null;
             /** Revision */
@@ -875,6 +899,29 @@ export interface components {
             /** Data */
             data: components["schemas"]["OfficialEventView"][];
             meta: components["schemas"]["EventMeta"];
+        };
+        /**
+         * OfficialPeriodMatch
+         * @description A same-source, same-period reference, not a verified release vintage.
+         */
+        OfficialPeriodMatch: {
+            /**
+             * Available At
+             * Format: date-time
+             */
+            available_at: string;
+            /** Date Only */
+            date_only: string | null;
+            /** Event Key */
+            event_key: string;
+            /** Revision */
+            revision: number;
+            /** Scheduled At */
+            scheduled_at: string | null;
+            /** Source Url */
+            source_url: string;
+            /** Title */
+            title: string | null;
         };
         /**
          * Quality

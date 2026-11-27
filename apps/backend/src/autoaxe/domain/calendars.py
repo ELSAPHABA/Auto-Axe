@@ -49,6 +49,27 @@ def witching_flags(typ: Witching) -> dict[str, bool | None]:
 
 
 @dataclass(frozen=True)
+class CalendarEvidence:
+    """Literal calendar metadata; a date-only entry is never a release timestamp."""
+
+    title: str | None
+    date_only: date | None
+    status: Literal["confirmed", "unspecified", "tentative", "cancelled", "unsupported"]
+
+    def __post_init__(self) -> None:
+        if self.title is not None and (
+            not isinstance(self.title, str)
+            or not 1 <= len(self.title) <= 512
+            or not self.title.isprintable()
+        ):
+            raise ValueError("invalid calendar title")
+        if self.date_only is not None and type(self.date_only) is not date:
+            raise ValueError("invalid calendar date")
+        if self.status not in ("confirmed", "unspecified", "tentative", "cancelled", "unsupported"):
+            raise ValueError("invalid calendar status")
+
+
+@dataclass(frozen=True)
 class EventRevision:
     event_key: str
     source_id: str
@@ -62,6 +83,7 @@ class EventRevision:
     unit: str
     revision: int
     source_url: str
+    calendar: CalendarEvidence | None = None
 
     def __post_init__(self) -> None:
         for stamp in (self.first_seen_at, self.available_at, self.scheduled_at, self.released_at):
@@ -71,6 +93,13 @@ class EventRevision:
             raise ValueError("availability before first observation")
         if self.revision <= 0 or not self.event_key or not self.source_url.startswith("https://"):
             raise ValueError("invalid event evidence")
+        if self.calendar is not None and (
+            self.unit != "event"
+            or self.actual is not None
+            or self.released_at is not None
+            or (self.calendar.date_only is not None and self.scheduled_at is not None)
+        ):
+            raise ValueError("calendar evidence must describe a schedule only")
         for value in (self.actual, self.forecast, self.previous):
             if value is not None:
                 decimal_string(value)

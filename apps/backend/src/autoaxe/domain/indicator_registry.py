@@ -19,12 +19,12 @@ class IndicatorDefinition:
 STATIC = (
     IndicatorDefinition(
         "NASDAQ100_MEXC_PERP_USDT",
-        "Nasdaq 연동 영구선물",
+        "MEXC Nasdaq 연동 영구선물 (REST)",
         "market",
         "mexc",
         "USDT/contract",
-        "stream",
-        "CME NQ와 다름; Protobuf 실측 전 비활성",
+        "5m",
+        "CME NQ와 다름; 5분 REST 조회, 거래세션·실시간성 미검증; WS 비활성",
     ),
     IndicatorDefinition(
         "NASDAQ100_BINANCE_QQQ_PERP_USDT",

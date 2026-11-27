@@ -85,6 +85,17 @@ for _sid in MANUAL:
 def catalog() -> dict[str, Series]:
     rows = [
         Series(
+            "NASDAQ100_MEXC_PERP_USDT",
+            "NASDAQ100_MEXC_PERP_USDT",
+            "mexc",
+            "NAS100_USDT",
+            "index_linked_perpetual",
+            "USDT/contract",
+            "USDT",
+            "snapshot",
+            None,
+        ),
+        Series(
             "BITCOIN_BINANCE_SPOT",
             "BITCOIN_BINANCE_SPOT",
             "binance_spot",
@@ -94,7 +105,7 @@ def catalog() -> dict[str, Series]:
             "USDT",
             "trade",
             10,
-        )
+        ),
     ]
     for sym, (sid, commodity, unit) in FUTURES.items():
         rows.append(

@@ -170,6 +170,21 @@ CLI는 `python -m autoaxe.entrypoints.official_poll_cli --help`, `python -m auto
 
 검증: backend 최초 177 passed/2 failed, 최신 실패 관련 22 tests passed(두 실패 모두 재검증 통과). 최신 전체 suite 단일 실행은 남음. Scraper 53 passed, Vitest 8 passed, Playwright 1 passed, Ruff/mypy/schema/TS/lint/build 성공. 상세 [session 10](../../.ai-context/phases/phase-02/2026-11-27-10.md), [TS-02-31](../troubleshooting/phase-02.md#ts-02-31--첫-전체-백엔드-실행의-두-통합-테스트-실패) 참조.
 
+## Session 11 — MEXC 영속 수집 및 공식 문서·경제 일정 (2026-11-27)
+
+[최신 세션 기록](../../.ai-context/phases/phase-02/2026-11-27-11.md)이 이전 표에 우선한다.
+
+| 항목 | 신규 구현 | 남은 게이트 |
+|---|---|---|
+| P2.3 | MEXC 0014 catalog, 300초 영속 REST collector, opt-in Compose, UNKNOWN | 실제 schema/session/latency/권리 및 Protobuf WS |
+| P2.3/P2.4 | SEC submissions/8-K/EX-99.1, BOJ statement discovery/HTML one-shot 승인형 fetch, 독립 review 유지 | PDF, issuer별 범용 parser, 실제 source 및 상시 원문 스케줄 |
+| P2.3/P2.4 | ICS evidence 보존 및 same-source/explicit-period PIT link, ambiguity 처리 | 실제 title grammar·Census/BEA/Fed 일정, release vintage 증명 |
+| P2.7 | 인증 official-events 새 계약·일정 참조 표시 | 실운영 및 장시간 검증 |
+
+MEXC REST 관측은 실제 거래소 지수 또는 실시간 CME 시세가 아니며 품질 UNKNOWN을 유지한다. 경제 일정 참조는 실제 발표시각이 아니다. PDF·브라우저·실데이터·운영 연결을 임의로 완료하지 않는다. 신규 개발/검증 명령 및 결과는 세션 로그 참조.
+
+최종 검증: 전체 backend 208 passed / 20 warnings / 113.70s (exit 0), frontend Vitest 8 passed / Playwright 1 passed, Ruff 118 files, strict mypy 80 source files, schema/TS/lint/build/Prettier/Compose config 통과. 동일 시각 시계열 정렬의 UUID 불안정은 영속 series_version 정렬로 수정 ([TS-02-33](../troubleshooting/phase-02.md)).
+
 ## 개발 Fixture 최종 검증 (2026-11-27, 이전 세션 이력)
 
 - Backend Ruff/mypy 42 files/schema: 통과. 전체 PostgreSQL 통합 포함 pytest **79 passed / 2 deprecation warnings / 118.90s**. 초기 병렬 테스트 중 포트 타임아웃 실패는 별도 [TS-02-05](../troubleshooting/phase-02.md)에 기록, 단독 재검증 1 passed/30.92s, 정책 완화 없음.

@@ -59,7 +59,7 @@ def authorized_observations(
                     o.source_event_key,o.revision,o.value,o.source_event_at,
                     o.received_at,o.available_at,o.ingested_at,o.quality,
                     o.metadata,o.mapping_version,o.permission_version,
-                    o.partition_at,o.observation_id
+                    o.partition_at,o.observation_id,o.series_version
                  FROM market.observations o
                  WHERE o.series_id=%s
                    AND o.available_at<=%s AND o.ingested_at<=%s AND o.mapping_version=%s
@@ -67,7 +67,7 @@ def authorized_observations(
                )
                SELECT * FROM visible ORDER BY
                   CASE WHEN %s THEN source_event_key END DESC NULLS LAST, partition_at DESC,
-                  observation_id DESC LIMIT %s""",
+                  series_version DESC,observation_id DESC LIMIT %s""",
             (
                 series_id,
                 cutoff,

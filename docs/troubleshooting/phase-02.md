@@ -182,3 +182,14 @@
 - 증상: 177 passed/2 failed/19 warnings/327.53s. Phase1 scheduler 300초 경계에서 24/1 기대값 대신 0/0. SEIBro는 read-only typed snapshot 허용으로 바뀌는 중 실행되던 이전 검사에서 접근 거부를 기대하여 실패. 소스 변경 중 테스트 시작한 검증 절차 문제도 있음.
 - 조치: 모든 작업자가 수정 종료한 뒤 최신 트리에서 `test_phase1_db.py`, `test_seibro_review.py`, `test_authorized_seibro.py` 단독 직렬 재실행. 기존 scheduler 권한/간격 및 테스트 기대값 변경 없음. SEIBro raw capture/review 접근 거부, typed 조회 허용, write 차단, storage-only/owner/version 및 PIT assertion 유지.
 - 결과: 22 passed/2 warnings/75.96s. 실패 두 개 모두 재현되지 않았음. 기존 scheduler 실패의 정확한 근본 원인은 미확정이며, 최신 전체 suite 단일 실행 재검증은 필요. 결과를 합산해 전체 통과율로 과장하지 않음.
+
+## TS-02-32 — 공식 원문 수집 및 명시 기간 연결의 계약 경계
+- 증상: 기존 검수 CLI는 파일만 입력 가능하고 경제 일정의 SUMMARY/날짜-only 증거가 누락되어 actual과 동일 관측 기간을 검증할 수 없었음. SEC 공개 submissions 및 동일 filing EX-99.1 관계, BOJ 연도별 결정문 목록을 확인. PDF 및 실제 HTML grammar는 미검증.
+- 조치: fixed-source opt-in capture, source별 durable reservation/권한 fence/circuit. HTML만 정규화하여 candidate 출력, PDF 자동 파싱/자동 review는 배제. ICS metadata는 기존 provenance JSON에 보존; 동일 source/metric/unit/명시 period 외 링크하지 않음. 복수 일정·GDP estimate는 ambiguous. FRED 유효일을 Fed 실제 발표시각으로 대체하지 않음.
+- 초기 Ruff UP047/B023 및 작업자 mypy annotation 2건: Python 3.12 type parameter 문법, closure 기본인자 및 명시 타입 수정. backend Ruff/format 118 files, strict mypy 80 files 통과. 원문 mock 3 passed, 경제 관련 scoped 25 passed. live/provider 계약 검증과 구별.
+
+## TS-02-33 — 동일 시각 시계열의 최신 행 정렬 불안정
+- 최초 전체 backend 207 passed/1 failed/15 warnings/120.57s. `test_sessions_scraper_permissions_and_quarantine`에서 동일한 원본 시각의 VIX 24, 24.5 중 24가 먼저 조회되어 기대값 24.5와 불일치. `authorized_observations`의 SQL 최종 정렬이 partition_at 다음 무작위 UUID 순서였으므로 동일 시각에서 ingest 순서가 보장되지 않았음.
+- 수정: 관측의 영속 `series_version`을 조회 CTE에 포함하고 partition_at이 동일할 때 `series_version DESC`를 UUID 앞에 적용. 일봉 날짜 정렬, 원본 시각/PIT, 권한 조건은 유지. 테스트는 첫 두 값의 순서 [24.5, 24]까지 확인.
+- 재검증: 수정된 `test_phase2_db.py` 전체 통합 테스트 1 passed/20 warnings/20.81s. 신규 MEXC·official document·경제 일정 DB assertion도 도달 및 통과. 최종 전체 재실행 결과는 session 11 기록 참조.
+- 최종 고정 트리 재실행: 208 passed / 20 warnings / 113.70s / exit 0. 최초 실패를 단독 결과와 합산하지 않고 전체 단일 실행으로 검증 완료.

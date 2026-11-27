@@ -1510,6 +1510,52 @@
         "title": "ObservationResponse",
         "type": "object"
       },
+      "OfficialCalendarView": {
+        "additionalProperties": false,
+        "properties": {
+          "date_only": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Only"
+          },
+          "status": {
+            "enum": [
+              "confirmed",
+              "unspecified",
+              "tentative",
+              "cancelled",
+              "unsupported"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "title",
+          "date_only",
+          "status"
+        ],
+        "title": "OfficialCalendarView",
+        "type": "object"
+      },
       "OfficialEventView": {
         "additionalProperties": false,
         "properties": {
@@ -1529,6 +1575,16 @@
             "pattern": "Z$",
             "title": "Available At",
             "type": "string"
+          },
+          "calendar": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfficialCalendarView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "event_key": {
             "title": "Event Key",
@@ -1551,6 +1607,39 @@
             ],
             "title": "Forecast"
           },
+          "link_status": {
+            "default": "not_applicable",
+            "enum": [
+              "period_match",
+              "unmatched",
+              "ambiguous",
+              "not_applicable",
+              "context_incomplete"
+            ],
+            "title": "Link Status",
+            "type": "string"
+          },
+          "metric_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metric Id"
+          },
+          "period_match": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfficialPeriodMatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "previous": {
             "anyOf": [
               {
@@ -1561,6 +1650,17 @@
               }
             ],
             "title": "Previous"
+          },
+          "reference_period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Period"
           },
           "released_at": {
             "anyOf": [
@@ -1643,6 +1743,77 @@
           "meta"
         ],
         "title": "OfficialEventsResponse",
+        "type": "object"
+      },
+      "OfficialPeriodMatch": {
+        "additionalProperties": false,
+        "description": "A same-source, same-period reference, not a verified release vintage.",
+        "properties": {
+          "available_at": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "title": "Available At",
+            "type": "string"
+          },
+          "date_only": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Only"
+          },
+          "event_key": {
+            "title": "Event Key",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "Z$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "event_key",
+          "revision",
+          "scheduled_at",
+          "date_only",
+          "title",
+          "available_at",
+          "source_url"
+        ],
+        "title": "OfficialPeriodMatch",
         "type": "object"
       },
       "Quality": {
