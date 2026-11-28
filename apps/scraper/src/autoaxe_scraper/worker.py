@@ -185,8 +185,9 @@ def run_once(
         if broker.post(path + "/heartbeat", job.credentials()) != {"status": "leased"}:
             raise BrokerError("lease no longer valid")
 
-    # fetch_exact_html calls permit before and after network I/O. No redirects,
-    # browser fallback, arbitrary URL, compression or provider credentials.
+    # Fixed-source readers recheck permission around I/O. Only Toss may
+    # render a recognized successful HTML response; HTTP errors never trigger
+    # browser fallback. No redirects, arbitrary URLs or provider credentials.
     try:
         if source == "cnn" and fixture_parser is None:
             parsed = fetch_cnn_fear_greed(permit=permit)

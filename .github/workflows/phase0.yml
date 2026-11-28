@@ -27,11 +27,14 @@ jobs:
       - run: uv sync --project apps/executor --locked
       - run: uv run --project apps/executor --locked pytest apps/executor/tests
       - run: uv run --project apps/executor --locked python -m autoaxe_executor
-      - run: uv sync --project apps/scraper --locked
-      - run: uv run --project apps/scraper --locked ruff check apps/scraper
-      - run: uv run --project apps/scraper --locked ruff format --check apps/scraper
-      - run: uv run --project apps/scraper --locked mypy apps/scraper/src
-      - run: uv run --project apps/scraper --locked pytest apps/scraper/tests -q
+      - run: uv sync --project apps/scraper --locked --group browser
+      - run: uv run --project apps/scraper --locked --group browser ruff check apps/scraper
+      - run: uv run --project apps/scraper --locked --group browser ruff format --check apps/scraper
+      - run: uv run --project apps/scraper --locked --group browser mypy apps/scraper/src
+      - run: uv run --project apps/scraper --locked --group browser python -m playwright install --with-deps chromium
+      - run: uv run --project apps/scraper --locked --group browser pytest apps/scraper/tests -q
+        env:
+          AUTOAXE_TEST_LOOPBACK_HTTP: "1"
       - name: Pinned NHPLUG stdio smoke (no broker requests)
         run: |
           git init .phase0-cache/nhplug-mcp

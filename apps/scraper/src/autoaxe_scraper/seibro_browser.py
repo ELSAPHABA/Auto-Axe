@@ -15,8 +15,9 @@ from typing import Any
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
-from playwright.sync_api import BrowserContext, Locator, Page, Route, sync_playwright
+from playwright.sync_api import BrowserContext, Locator, Page, Route
 from scrapling import Selector
+from scrapling.fetchers import DynamicSession
 
 from autoaxe_scraper.seibro_capture import (
     MAX_INPUT,
@@ -451,39 +452,71 @@ def _reservation(ticket: Any) -> tuple[str, list[tuple[str, str]], datetime, boo
 
 def capture(ticket: Any) -> dict[str, Any]:
     country, scopes, deadline, batch = _reservation(ticket)
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(
-            headless=True,
-            chromium_sandbox=True,
-            args=[
-                "--disable-background-networking",
-                "--disable-sync",
-                "--disable-component-update",
-                "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
-            ],
-        )
-        try:
-            context = browser.new_context(
-                accept_downloads=False,
-                service_workers="block",
-                ignore_https_errors=False,
-            )
-            fence = configure_context(context, deadline)
-            page = context.new_page()
-            context.on("page", lambda popup: popup.close())
-            page.on("dialog", lambda dialog: dialog.dismiss())
-            page.on("download", lambda download: download.cancel())
-            page.goto(SOURCE_URL, wait_until="domcontentloaded", timeout=20_000)
-            results = []
-            for period, basis in scopes:
-                if fence.failed or datetime.now(UTC) >= deadline or page.url != SOURCE_URL:
-                    raise ValueError("browser capture fence failed")
-                results.append(capture_page(page, country, period, basis))
-                if fence.failed or datetime.now(UTC) >= deadline or page.url != SOURCE_URL:
-                    raise ValueError("browser capture fence failed")
-            return {"captures": results} if batch else results[0]
-        finally:
-            browser.close()
+    results: list[dict[str, Any]] = []
+    errors: list[Exception] = []
+    # Scrapling owns the ordinary browser/context lifecycle. Install the
+    # context-level fence before fetch(), not inside its swallowed setup hook.
+    with DynamicSession(
+        headless=True,
+        google_search=False,
+        retries=1,
+        timeout=20_000,
+        load_dom=False,
+        network_idle=False,
+        extra_flags=[
+            "--disable-background-networking",
+            "--disable-sync",
+            "--disable-component-update",
+            "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+        ],
+        additional_args={
+            "chromium_sandbox": True,
+            "accept_downloads": False,
+            "service_workers": "block",
+            "ignore_https_errors": False,
+            "ignore_default_args": False,
+            "user_agent": None,
+        },
+    ) as session:
+        context = session.context
+        if context is None:
+            raise ValueError("Scrapling context unavailable")
+        fence = configure_context(context, deadline)
+
+        def setup(page: Page) -> None:
+            try:
+                context.on("page", lambda popup: popup.close())
+                page.on("dialog", lambda dialog: dialog.dismiss())
+                page.on("download", lambda download: download.cancel())
+            except Exception as exc:
+                fence.failed = True
+                errors.append(exc)
+
+        def action(page: Page) -> None:
+            # Scrapling logs and swallows callback exceptions; preserve them
+            # out of band and fail closed after the fetch.
+            try:
+                for period, basis in scopes:
+                    if fence.failed or datetime.now(UTC) >= deadline or page.url != SOURCE_URL:
+                        raise ValueError("browser capture fence failed")
+                    results.append(capture_page(page, country, period, basis))
+                    if fence.failed or datetime.now(UTC) >= deadline or page.url != SOURCE_URL:
+                        raise ValueError("browser capture fence failed")
+            except Exception as exc:
+                errors.append(exc)
+
+        response = session.fetch(SOURCE_URL, page_setup=setup, page_action=action)
+        if errors:
+            raise ValueError("Scrapling page capture failed") from errors[0]
+        if (
+            fence.failed
+            or datetime.now(UTC) >= deadline
+            or response.status != 200
+            or response.url != SOURCE_URL
+            or len(results) != len(scopes)
+        ):
+            raise ValueError("incomplete or blocked Scrapling capture")
+        return {"captures": results} if batch else results[0]
 
 
 def main() -> None:

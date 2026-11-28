@@ -1,6 +1,5 @@
 """Offline browser boundary and verified control-ID fixtures (no SEIBro I/O)."""
 
-from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -8,6 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 browser = pytest.importorskip("autoaxe_scraper.seibro_browser", exc_type=ImportError)
+sync_playwright = pytest.importorskip("playwright.sync_api").sync_playwright
 
 
 @pytest.mark.parametrize(
@@ -75,7 +75,7 @@ def test_websocket_is_closed_and_no_cross_navigation():
 
 def test_missing_or_expired_ticket_never_launches(monkeypatch):
     launch = MagicMock()
-    monkeypatch.setattr(browser, "sync_playwright", launch)
+    monkeypatch.setattr(browser, "DynamicSession", launch)
     with pytest.raises(ValueError):
         browser.capture({})
     with pytest.raises(ValueError):
@@ -159,7 +159,7 @@ def html_fixture(basis):
 )
 def test_local_chromium_fixture_visible_ui_only(basis, derived):
     # No navigation or external resources. Fail if any request is attempted.
-    with browser.sync_playwright() as pw:
+    with sync_playwright() as pw:
         if not __import__("pathlib").Path(pw.chromium.executable_path).is_file():
             pytest.skip("pinned Chromium binary is not installed")
         instance = pw.chromium.launch(headless=True, chromium_sandbox=True)
@@ -210,7 +210,7 @@ def daily_ticket():
 
 def test_batch_reservation_requires_complete_unique_us_scopes(monkeypatch):
     launch = MagicMock()
-    monkeypatch.setattr(browser, "sync_playwright", launch)
+    monkeypatch.setattr(browser, "DynamicSession", launch)
     ticket = daily_ticket()
     assert set(browser._reservation(ticket)[1]) == set(browser.DAILY_SCOPES)
     for invalid in (
@@ -304,11 +304,10 @@ def test_daily_batch_chromium_all_15_scopes(monkeypatch):
 
     monkeypatch.setattr(browser, "configure_context", local_only)
     ticket = daily_ticket()
-    with browser.sync_playwright() as pw:
+    with sync_playwright() as pw:
         if not Path(pw.chromium.executable_path).is_file():
             pytest.skip("pinned Chromium binary is not installed")
-        monkeypatch.setattr(browser, "sync_playwright", lambda: nullcontext(pw))
-        result = browser.capture(ticket)
+    result = browser.capture(ticket)
     assert set(result) == {"captures"}
     captures = result["captures"]
     assert len(contexts) == 1 and requests == [browser.SOURCE_URL]
@@ -334,7 +333,7 @@ def test_daily_batch_chromium_all_15_scopes(monkeypatch):
 
 @pytest.mark.parametrize("repaint", [False, True])
 def test_identical_without_completion_is_rejected(monkeypatch, repaint):
-    with browser.sync_playwright() as pw:
+    with sync_playwright() as pw:
         if not Path(pw.chromium.executable_path).is_file():
             pytest.skip("pinned Chromium binary is not installed")
         instance = pw.chromium.launch(headless=True, chromium_sandbox=True)
@@ -363,7 +362,7 @@ def test_identical_without_completion_is_rejected(monkeypatch, repaint):
 
 
 def test_visibility_toggle_without_query_data_change_is_rejected(monkeypatch):
-    with browser.sync_playwright() as pw:
+    with sync_playwright() as pw:
         if not Path(pw.chromium.executable_path).is_file():
             pytest.skip("pinned Chromium binary is not installed")
         instance = pw.chromium.launch(headless=True, chromium_sandbox=True)

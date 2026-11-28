@@ -3,11 +3,12 @@ name = "autoaxe-scraper"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "scrapling>=0.5,<1",
+    "scrapling==0.4.15",
     "tzdata>=2025.1",
 ]
 [dependency-groups]
 browser = [
+    "scrapling[fetchers]==0.4.15",
     "playwright==1.62.0",
 ]
 dev = ["pytest>=8,<10", "ruff>=0.11,<1", "mypy>=1.15,<3"]

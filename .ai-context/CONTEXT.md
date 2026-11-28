@@ -4,6 +4,8 @@
 
 ## METADATA (메타데이터)
 
+- **최신 사용자 확정 2026-11-28 session 25:** [Scrapling 수집 리팩터링](phases/phase-02/2026-11-28-25.md). 기준 HEAD 9ffaa2f3569650a0ecbeb0434b151bb38c2a596e 원격 반영 확인. Scrapling 0.4.15 (0.5.1 Dynamic API 제거 확인), browser 그룹 fetchers 추가, SEIBro DynamicSession / Toss Fetcher→DynamicSession. 직접 Playwright launch/goto 제거, context fence 선설치 및 콜백 실패 검증. Windows 114+2 tests, Docker network-none 실제 Fetcher loopback 1 test (총 117 distinct passed), browser image build 및 Ruff/mypy/lock 통과. 기존 cadence, permissions, DB/API/거래 계약 유지. 실제 provider/운영 미검증. Phase2 IN_PROGRESS/exit BLOCKED.
+
 - **최신 사용자 확정 2026-11-28 session 24:** [SEIBro 개선 및 검증](phases/phase-02/2026-11-28-24.md). Session23 원격 push 확인, 시작 HEAD 60f81608533d9bdd403609952739f50f67f5c508. Scrapling 0.5.1 Selector+정상 Chromium, 미국 5개 기간×매수/매도/순매수 15개 일괄 조회, 일 1회 영속 자동 수집(capture-daily/run-daily), 0024 versioned adapter grant 및 자동 검증·원자적 승격, 현재 권한 충족 시 자동매매 활용 허용. 실제 오프라인 Chromium 750행, backend 31/scraper 29/web 12 tests passed. 공급자 이용권·실제 DOM/egress·실주문은 미검증. Phase2 exit BLOCKED, Phase3 미착수. [TS-02-45](../docs/troubleshooting/phase-02.md#ts-02-45--seibro-다중-조회-시-이전-결과-오인-및-검증-시계-차이).
 
 - **최신 사용자 확정 2026-11-28 session 23:** [Toss 자동매매 판단 허용 및 SEIBro 구현 분석](phases/phase-02/2026-11-28-23.md). Session21의 Toss 영구 거래 금지를 대체한다. 현재 trading grant 및 독립 검수 후 새 UST_2Y_TOSS 관측값을 개인 자동매매 판단에 사용 가능; 미검수 worker 결과, 미승인 source, 원본 시각 조작, 재배포, 운영 LIVE는 계속 차단. 900초/960초 receipt, Treasury 별도 fallback 유지. SEIBro one-shot 하루 1회 source-wide 예약, 기본 US/1주/순매수, 실제 TOP50 결과 미검증 및 거래 금지 유지. Phase2 exit BLOCKED, Phase3 미착수.

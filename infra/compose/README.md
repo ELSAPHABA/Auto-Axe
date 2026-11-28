@@ -272,6 +272,11 @@ observations are preserved. Toss uses a distinct source and series
 `UST_2Y_TOSS`, fixed public page
 `https://www.tossinvest.com/indices/ROB.US2YT-RR`, 900-second minimum
 schedule and independent source/adapter grant. No production grant is seeded.
+Session 25: the pinned Scrapling 0.4.15 browser group uses Fetcher first
+with a bounded HTTP body callback, no impersonation, no retries and no redirects.
+Only a recognized normal page requiring rendering falls back to DynamicSession;
+HTTP failures never trigger a second transport. The session's context fence is
+installed before navigation. Rebuild the browser image after the lock change.
 The browser only reads the unique visible US bonds 2Y row. Source quote time
 is unknown; results are quarantined for independent review and remain owner-only.
 Session 23 permits private automated trading decisions only for newly reviewed

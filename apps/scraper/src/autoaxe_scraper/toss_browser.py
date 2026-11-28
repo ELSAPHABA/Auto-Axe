@@ -6,13 +6,17 @@ from decimal import Decimal
 from typing import Any
 from urllib.parse import urlsplit
 
-from playwright.sync_api import BrowserContext, Error, Page, Route, sync_playwright
+from curl_cffi.curl import CURL_WRITEFUNC_ERROR
+from playwright.sync_api import BrowserContext, Error, Page, Route
+from scrapling import Selector
+from scrapling.fetchers import DynamicSession, Fetcher
 
 from autoaxe_scraper.policy import fixed_target
 from autoaxe_scraper.transport import ProviderHTTPError, SourceBlocked
 
 URL = fixed_target("toss").url
 LABEL = "미국 국채 2년"
+MAX_STATIC_BYTES = 8 * 1024**2
 # Observed during a normal public browser navigation; not standalone API targets.
 HOSTS = frozenset(
     {
@@ -128,42 +132,173 @@ def configure(context: BrowserContext, fence: Fence) -> None:
     context.route_web_socket("**/*", lambda ws: ws.close(code=1008, reason="not required"))
 
 
+def fetch_static() -> dict[str, Any] | None:
+    """One bounded, ordinary HTTP probe. None only for a recognized rendered page."""
+    body = bytearray()
+    oversized = False
+
+    def consume(chunk: bytes) -> int:
+        nonlocal oversized
+        if len(body) + len(chunk) > MAX_STATIC_BYTES:
+            oversized = True
+            return CURL_WRITEFUNC_ERROR
+        body.extend(chunk)
+        return len(chunk)
+
+    # Scrapling 0.4.15 forwards additional curl_cffi request keywords.
+    # The callback bounds the decoded response before buffering/HTML parsing.
+    options: dict[str, Any] = {
+        "content_callback": consume,
+        "accept_encoding": "identity",
+        "impersonate": None,
+        "stealthy_headers": False,
+        "follow_redirects": False,
+        "proxies": {"all": ""},
+        "retries": 1,
+        "verify": True,
+        "timeout": 4,
+        "headers": {
+            "User-Agent": "Auto-Axe/0.1 permission-gated research parser",
+            "Accept": "text/html",
+        },
+    }
+    try:
+        response = Fetcher.get(URL, **options)
+    except Exception as exc:
+        raise SourceBlocked("Toss HTTP probe unavailable or oversized") from exc
+    if oversized:
+        raise SourceBlocked("Toss HTTP response budget exceeded")
+    if response.status != 200:
+        raise ProviderHTTPError(response.status, response.headers.get("retry-after"))
+    if response.url != URL or response.history:
+        raise SourceBlocked("Toss HTTP target changed")
+    if response.headers.get("content-type", "").split(";", 1)[0].strip().lower() != "text/html":
+        raise SourceBlocked("unexpected Toss content type")
+    if response.headers.get("content-encoding", "identity").lower() != "identity":
+        raise SourceBlocked("unexpected Toss HTTP encoding")
+    try:
+        doc = Selector(body.decode("utf-8", errors="strict"))
+    except (UnicodeError, ValueError) as exc:
+        raise SourceBlocked("invalid Toss HTML") from exc
+    title = " ".join(doc.css("title::text").getall()).strip()
+    if "토스증권" not in title and "tossinvest" not in title.lower():
+        raise SourceBlocked("unrecognized Toss document")
+    if doc.xpath(
+        "//meta[translate(@http-equiv,'ABCDEFGHIJKLMNOPQRSTUVWXYZ',"
+        "'abcdefghijklmnopqrstuvwxyz')='refresh']"
+    ) or doc.css("iframe, form[action*='challenge'], #challenge-form, #cf-challenge-running"):
+        raise SourceBlocked("unexpected Toss navigation or challenge")
+    headings = " ".join(doc.css("title::text, h1::text, h2::text").getall()).lower()
+    if any(
+        phrase in headings
+        for phrase in ("access denied", "just a moment", "captcha", "접근 제한", "접근 차단")
+    ):
+        raise SourceBlocked("Toss access restriction")
+    # Only a normal branded document with scripts/styles needs rendering.
+    # Never treat hidden, scripted, or styled markup as a visible quote.
+    if doc.css("script, style, link[rel='stylesheet'], [style]"):
+        return None
+    if doc.css("[hidden], [aria-hidden], template, noscript, dialog, details"):
+        raise SourceBlocked("Toss static visibility ambiguous")
+    # Only ordinary flow-content elements without behavior or visibility
+    # attributes may be read without a browser. Unknown markup fails closed.
+    if doc.xpath(
+        "//body//*[not(self::div or self::main or self::section or self::article "
+        "or self::ul or self::ol or self::li or self::p or self::span "
+        "or self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6)]"
+    ) or doc.xpath(
+        "//body/descendant-or-self::*/@*[not(name()='role' or name()='class' "
+        "or name()='id' or name()='lang' or name()='dir')]"
+    ):
+        raise SourceBlocked("Toss static markup requires independent verification")
+    groups = doc.xpath(
+        '//*[@role="list" and .//*[self::h1 or self::h2 or self::h3 or '
+        'self::h4 or self::h5 or self::h6][normalize-space(.)="미국 채권"]]'
+    )
+    if len(groups) != 1:
+        raise SourceBlocked("Toss static group ambiguous")
+    rows = groups[0].xpath('.//*[@role="listitem" and .//*[normalize-space(.)="미국 국채 2년"]]')
+    if len(rows) != 1:
+        raise SourceBlocked("Toss static row ambiguous")
+    return parse_row("\n".join(t.strip() for t in rows[0].xpath(".//text()").getall() if t.strip()))
+
+
 def fetch_toss_two_year(
     *, permit: Callable[[], None], channel: str | None = None
 ) -> dict[str, Any]:
     permit()
+    static = fetch_static()
+    if static is not None:
+        permit()
+        return static
+    permit()
     fence = Fence()
+    # Count the HTTP probe in the original per-job budget. Reserve its full
+    # possible body size instead of allowing an additional 8 MiB on fallback.
+    fence.requests = 1
+    fence.total = MAX_STATIC_BYTES
+    results: list[dict[str, Any]] = []
+    errors: list[Exception] = []
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                channel=channel,
-                headless=True,
-                chromium_sandbox=True,
-                timeout=8000,
-            )
-            try:
-                context = browser.new_context(
-                    locale="ko-KR",
-                    timezone_id="Asia/Seoul",
-                    accept_downloads=False,
-                    service_workers="block",
-                )
-                configure(context, fence)
-                page = context.new_page()
-                page.on("popup", lambda popup: popup.close())
-                response = page.goto(URL, wait_until="domcontentloaded", timeout=10000)
-                if fence.error:
-                    raise fence.error
-                if response is None or response.status != 200:
-                    raise SourceBlocked("Toss navigation failed")
-                result = read_visible(page)
-                if fence.error:
-                    raise fence.error
-                permit()
-                return result
-            finally:
-                browser.close()
-    except Error as exc:
+        with DynamicSession(
+            headless=True,
+            real_chrome=channel == "chrome",
+            google_search=False,
+            retries=1,
+            timeout=8000,
+            load_dom=False,
+            network_idle=False,
+            locale="ko-KR",
+            timezone_id="Asia/Seoul",
+            extra_flags=[
+                "--disable-background-networking",
+                "--disable-sync",
+                "--disable-component-update",
+                "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+            ],
+            additional_args={
+                "chromium_sandbox": True,
+                "accept_downloads": False,
+                "service_workers": "block",
+                "ignore_https_errors": False,
+                "ignore_default_args": False,
+                "user_agent": None,
+            },
+        ) as session:
+            context = session.context
+            if context is None:
+                raise SourceBlocked("Scrapling context unavailable")
+            configure(context, fence)
+
+            def setup(page: Page) -> None:
+                try:
+                    context.on("page", lambda popup: popup.close())
+                    page.on("dialog", lambda dialog: dialog.dismiss())
+                    page.on("download", lambda download: download.cancel())
+                except Exception as exc:
+                    fence.error = SourceBlocked("Toss page setup failed")
+                    errors.append(exc)
+
+            def action(page: Page) -> None:
+                try:
+                    if fence.error:
+                        raise fence.error
+                    results.append(read_visible(page))
+                except Exception as exc:
+                    errors.append(exc)
+
+            response = session.fetch(URL, page_setup=setup, page_action=action)
+            if fence.error:
+                raise fence.error
+            if errors:
+                raise SourceBlocked("Toss page capture failed") from errors[0]
+            if response.status != 200 or response.url != URL or len(results) != 1:
+                raise SourceBlocked("Toss navigation or capture failed")
+    except SourceBlocked:
+        raise
+    except Exception as exc:
         if fence.error:
             raise fence.error from exc
         raise SourceBlocked("Toss browser capture unavailable") from exc
+    permit()
+    return results[0]

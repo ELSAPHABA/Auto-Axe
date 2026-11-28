@@ -22,7 +22,7 @@ SEIBro는 해외주식 TOP50 결제금액(매수/매도/순매수 USD)이며 전
 
 ### 1.1 Scrapling 수집 표준
 
-[공식 저장소](https://github.com/D4Vinci/Scrapling)의 README와 pyproject.toml을 확인했다. 2026-11-25 확인한 main의 package version은 0.5.1, requires-python >=3.10, BSD-3-Clause이며 fetchers extra에는 Playwright가 포함된다. 이는 확인한 소스 기준이며 안정 릴리스·설치·브라우저 호환성을 검증했다는 뜻이 아니다. Python 3.12에서 실제 릴리스와 dependency lock을 검증 후 고정한다. 직접 Playwright 스크래핑 코드는 신규 개발 대상에서 제외하며 프론트 E2E의 Playwright는 별개다.
+[공식 저장소](https://github.com/D4Vinci/Scrapling) 및 설치된 릴리스의 공개 API를 확인했다. Session25: 0.5.1은 DynamicSession/DynamicFetcher를 export하지 않으므로 정상 브라우저 수집 API를 제공하는 0.4.15로 고정하고 browser 그룹에 scrapling[fetchers]==0.4.15를 추가한다. Python 3.12/Playwright 1.62.0의 lock을 재생성·설치했다. 신규 수집의 브라우저 실행·세션 수명은 Scrapling이 관리하며, 기존 DOM 조작과 request fence의 Page/Route 타입만 Playwright에 의존한다. 프론트 E2E는 별개다.
 
 | 용도 | 선택 |
 |---|---|
@@ -36,7 +36,7 @@ SEIBro는 해외주식 TOP50 결제금액(매수/매도/순매수 USD)이며 전
 
 ScrapeRequest는 사용자 URL 대신 source_id, approved adapter version, 조회 기간/국가 등 정해진 enum/범위만 받는다. job broker를 통해 isolated scraper-worker가 받아 외부 도메인만 접근하고, 크기 제한된 typed ObservationCandidate와 source metadata를 검증 서비스에 반환한다. scraper에는 DB 직접 접근·NH credential·Docker socket·임의 파일 접근·내부망 접근 권한이 없다. 승인 취소는 새 작업 및 결과 반영을 차단한다. redirect, subresource, WebSocket, 다운로드, IPv4/IPv6 및 DNS 재해석을 포함한 egress 보안은 [전체 보안 설계](./security.md) §5를 따른다.
 
-대상별 계획: CNN은 사용자 지정 graphdata JSON 전용(비문서화, 승인 필요), DRAM은 검수된 정적 DOM, Toss는 정상 Playwright 렌더링, SEIBro WebSquare는 정상 렌더링 가능성 검증. 합성 fixture로 parser/DOM 변경/오인식/권한 취소/redirect/SSRF 및 브라우저 격리 테스트 후에만 활성화한다. PizzINT는 Scrapling HTML 수집 대상에서 제외하고 공개 JSON API 전용 DOUGHCON 어댑터를 사용한다.
+대상별 계획: CNN은 사용자 지정 graphdata JSON 전용(비문서화, 승인 필요), DRAM은 검수된 정적 DOM, Toss는 Scrapling Fetcher(정상 HTTP) 우선, 정상 페이지의 동적 렌더링 필요 시 DynamicSession, SEIBro WebSquare는 DynamicSession 한 세션·페이지에서 기존 15-scope UI 조회. 두 수집기는 첫 navigation 전 context fence를 설치하며 콜백 실패를 별도 보존·검증한다. HTTP 401/403/429 및 기타 비200, redirect, 인식 불가 응답, 전송 오류에서 browser fallback 금지. 정상 UI만 사용하고 impersonation/stealth/가짜 referrer/재시도는 사용하지 않는다. 실사이트 DOM·권한·운영 egress 검증 후에만 활성화한다. PizzINT는 Scrapling HTML 수집 대상에서 제외하고 공개 JSON API 전용 DOUGHCON 어댑터를 사용한다.
 
 ## 2. 파이프라인
 
@@ -44,7 +44,7 @@ ScrapeRequest는 사용자 URL 대신 source_id, approved adapter version, 조�
 
 ### 공급원 선택 및 신선도
 
-토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분한다. 2026-11-28 사용자 승인에 따라 독립 검수 및 현재 source trading grant를 충족한 최신 관측값은 개인 자동매매 판단에 사용할 수 있다. 제3자 재배포는 금지한다. 960초 수집 시각 유효성은 원본 시세 TTL이 아니며, 원본 시각이 필수인 Workflow는 UNKNOWN 처리한다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
+토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Scrapling Fetcher→DynamicSession 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분한다. 2026-11-28 사용자 승인에 따라 독립 검수 및 현재 source trading grant를 충족한 최신 관측값은 개인 자동매매 판단에 사용할 수 있다. 제3자 재배포는 금지한다. 960초 수집 시각 유효성은 원본 시세 TTL이 아니며, 원본 시각이 필수인 Workflow는 UNKNOWN 처리한다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
 
 indicator_id는 논리 지표, series_id는 원본 제공자·상품·단위·계약·정의가 고정된 시계열이다. 가격, VIX, 국채, Nasdaq 등 동일 관심 자산의 다른 계약·공급원은 분리 저장한다. Workflow는 원본 series_id 고정 기본, 사용자 명시적 허용 시에만 호환 정의의 fallback을 사용한다. UST_2Y 화면은 위 우선순위로 표시하되 장중 전략은 일별 fallback 사용을 명시적으로 허용하고 해당 신선도·정의 조건을 만족할 때만 평가한다. 전환 경계의 수익률/EDGE/rolling 계산은 재기준화 또는 UNKNOWN 처리한다.
 

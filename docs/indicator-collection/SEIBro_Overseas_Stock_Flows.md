@@ -1,6 +1,6 @@
 # SEIBro 해외주식 매수·매도 결제 통계 수집 명세
 
-> 상태(2026-11-28 Session24): Scrapling Selector + 정상 Chromium 격리 수집, 미국 15개 scope 일괄 자동 검증·영속 일일 스케줄 및 조건부 거래 권한 구현. 실제 TOP50 조회/자동 이용 권한·운영 egress 미확인, 운영 미배포. 무료 정책 적용. 최신 계약은 §8이며 이전 설계와 검수 이력은 역사적 기록이다.
+> 상태(2026-11-28 Session25): Scrapling 0.4.15 DynamicSession + Selector 격리 수집, 미국 15개 scope 일괄 자동 검증·영속 일일 스케줄 및 조건부 거래 권한 유지. 실제 TOP50 조회/자동 이용 권한·운영 egress 미확인, 운영 미배포. 무료 정책 적용. §9가 §8의 수집 기술만 대체하며 이전 설계와 검수 이력은 역사적 기록이다.
 
 공식 [국제거래외화증권예탁결제정보](https://www.data.go.kr/data/15043445/openapi.do)는 무료 REST(JSON/XML), 공공누리 2유형, 개발/운영 자동승인 및 인증키 신청 경로를 제공한다. 제공 설명은 국가/시장/증권구분 결제 통계이며 지정 TOP50의 ISIN·순위·기간별 정확한 종목 결제금액 제공은 확인되지 않았다. 따라서 별도 통계를 TOP50 원장에 대체 저장하지 않는다. 한국예탁결제원 [공유자원포털](https://api.seibro.or.kr/pubc/pubr/cmm/CMPubrHome/viewCMPubrHome.do)에서 정확한 API 계약을 확인하거나 portal@ksd.or.kr에 문의한다. 상세 검증은 [Session 18](../../.ai-context/phases/phase-02/2026-11-28-18.md).
 
@@ -115,3 +115,7 @@
 - `capture-daily` 단발, `run-daily` 지속 실행. 300초 DB 예약 확인, 86400초 source-wide 예약, 480초 batch launcher 제한, 브라우저 최대 400 요청/48 MiB. 일회 조회 실패 또는 일부 scope 누락 시 전체 배치 미승격, 당일 즉시 재시도 없음. 원본 결제 기준일/최초 수신·사용 가능 시각은 그대로 보존하고 동일 내용 재검증 시 `last_validated_at`만 별도 receipt에서 조회한다.
 - 현재 API의 거래 허용 bool은 권한 및 검증 상태 표시이며 실제 주문 가능 여부가 아니다. 후속 Workflow는 해당 조건에 필요한 결제 기준일/수집 receipt freshness, 권한 버전, 누락 여부를 함께 검사한다. 기간 중첩 합산과 TOP50 밖 종목의 0 보간은 금지한다.
 - 공급자 공식 2020-07-22 회원약관 제8/10조의 영리/제3자 이용 제한, 제14조의 투자 손실 및 적시성/정확성 면책을 재확인했다. 제14조를 자동매매 자체의 명시적 금지로 오해하지 않으나, 비회원 자동 수집 및 사용 허가를 확정하는 근거도 아니다. 공개 자료를 검토했을 뿐 실제 TOP50 데이터 요청/운영 grant는 수행하지 않았다.
+
+## 9. Session 25 Scrapling 수집 리팩터링
+
+Scrapling 0.4.15의 DynamicSession이 일반 Chromium을 시작하고 종료한다. 별도 직접 Playwright launch/goto 코드는 제거했다. 세션의 context에 최초 fetch 전에 기존 HTTP/WS fence를 설치하고, page_action에서 동일한 15개 scope를 순차 조회한다. 기존 visible-cell projection/Selector 검증, 브라우저 sandbox, TLS, 다운로드 차단, source-wide 일일 예약, deadline, atomic promotion, 거래 권한·신선도 계약은 유지한다. Scrapling이 page_setup/page_action 예외를 삼키는 특성이 있어 별도의 오류 및 결과 개수 검증을 추가했다. 운영 활성화 전 신규 수집 구현의 재검증 필요.

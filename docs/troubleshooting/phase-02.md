@@ -254,3 +254,7 @@
 - 오프라인 Chromium fixture로 15개 scope/750행 성공, no-op/repaint/visibility-only 오인, 숨은 셀 노출, 잘못된 scope 거부 확인. 마지막 scraper 관련 29 tests passed.
 - 임시 PG17 통합 테스트 중 Windows host clock과 DB container clock 차이로 synthetic capture 시각이 예약 구간 밖이라고 거부되는 오류 발생. 합성 테스트의 timestamp를 DB clock에서 얻도록 수정, 운영 검증 기준은 완화하지 않았다. 최종 backend scoped 31 tests passed, 2 기존 deprecation warnings. 실제 공급자/컨테이너 시계 동기화는 운영 선행조건이다.
 - 실제 TOP50 조회·권한·egress·동일 결과 완료 marker 및 운영 주기 미검증. [Session 24](../../.ai-context/phases/phase-02/2026-11-28-24.md) 참고.
+
+## TS-02-46 — Scrapling Dynamic API 버전 차이 및 로컬 HTTP 응답 변형
+- 0.5.1 parser-only 설치에 fetchers extra가 없고 설치된 공개 API에서 DynamicSession/DynamicFetcher 제거 확인. 정상 브라우저 lifecycle을 사용하기 위해 호환 0.4.15와 browser 그룹 fetchers extra를 lock에 고정. StealthySession으로 대체하지 않음. Scrapling page_setup/page_action 예외가 내부에서 처리되므로 context fence는 fetch 이전에 설치하고 오류/결과 개수/status/URL을 별도 확인한다.
+- Windows loopback 합성 HTTP 테스트에서 AdGuard script injection으로 원본 HTML이 변형되어 static 경로가 렌더링 필요로 분류됨. 후속 연결 reset도 관측. 호스트 보안 설정 변경 없이 격리 loopback 시험을 분리하고 CI에서 명시적으로 활성화. 최종 Windows 114+2 passed, Docker --network none 실제 Fetcher loopback 1 passed; browser image build 성공. 실제 provider/egress는 미검증. [Session 25](../../.ai-context/phases/phase-02/2026-11-28-25.md).
