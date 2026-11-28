@@ -626,6 +626,14 @@ def promote_reviewed(conn: Connection[Any], job_id: str) -> str:
         expected_units = {sid: catalog()[sid].unit for sid in SERIES[source]}
         if "unverified" in expected_units.values() or row["units"] != expected_units:
             raise PermissionDenied("verified source units required")
+        trading_allowed = False
+        if source == "toss":
+            try:
+                gate(conn, "UST_2Y_TOSS", "trading")
+            except PermissionDenied:
+                pass
+            else:
+                trading_allowed = True
         for item in candidates:
             sid = item["series_id"]
             series = catalog()[sid]
@@ -634,7 +642,7 @@ def promote_reviewed(conn: Connection[Any], job_id: str) -> str:
             )
             # Unknown source time must remain unknown; use per-job identity only.
             key = utc_string(stamp) if stamp else "review:" + job_id
-            metadata: dict[str, Any] = {"automated_trading_allowed": False}
+            metadata: dict[str, Any] = {"automated_trading_allowed": trading_allowed}
             if source == "cnn":
                 metadata["category"] = item["category"]
                 metadata["cnn"] = save_graphs(
@@ -663,7 +671,14 @@ def promote_reviewed(conn: Connection[Any], job_id: str) -> str:
                 series.mapping_version,
             )
             ids.append(ingest(conn, candidate)[0])
-        health(conn, source, "manual_required", "scrape_manually_checked_nontrading")
+        health(
+            conn,
+            source,
+            "manual_required",
+            "scrape_manually_checked_trading"
+            if trading_allowed
+            else "scrape_manually_checked_nontrading",
+        )
     else:
         health(conn, source, "manual_required", "scrape_review_rejected")
     conn.execute(

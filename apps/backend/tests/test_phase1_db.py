@@ -203,6 +203,22 @@ def test_ledger_jobs_and_mode_ingress(monkeypatch):
                 storage=True,
             )
         with psycopg.connect(market) as conn:
+            with pytest.raises(PermissionDenied):
+                gate(conn, "UST_2Y_TOSS", "trading")
+            with pytest.raises(PermissionDenied):
+                ingest(
+                    conn,
+                    Candidate(
+                        "UST_2Y_TOSS",
+                        "unapproved-trading",
+                        "4.65",
+                        None,
+                        now,
+                        now,
+                        Quality.MANUAL_CHECKED,
+                        {"source_time_verified": False, "automated_trading_allowed": True},
+                    ),
+                )
             ingest(
                 conn,
                 Candidate(

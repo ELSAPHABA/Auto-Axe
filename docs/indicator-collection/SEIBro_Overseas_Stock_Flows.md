@@ -94,7 +94,14 @@
 | 원본 페이지·조회 옵션·테이블 XML 필드 검증 | 완료 |
 | 공식 자동 수집 허용 여부 | **확인 필요** |
 | 실제 WebSquare 결과 데이터·HTML 셀렉터 검증 | **미완료** |
-| Python 스크래퍼 작성·운영 | **미구현** |
+| Python 스크래퍼 작성·운영 | 격리 Playwright one-shot 구현 및 fixture 검증 완료; 실결과 및 운영 미검증 |
 | 임시 수집 | SEIBro 화면에서 수동 기록 |
 
 관련 문서: [지표별 출처](./Indicator_Data_Sources.md) · [무료 수집 카탈로그](./Free_Data_Collection.md) · [수동 기록 레지스트리](./Manual_Collection.md).
+
+## 7. 실제 구현 점검 — Session 23
+
+- `seibro_browser.py`는 정상 Chromium/Playwright로 결제금액, 국가·기간·정렬 UI를 선택하고 화면 날짜·USD·표시된 50개 행을 검증한다. 숨은 API 호출 없음. 1/2는 buy_only/sell_only, 3/4는 표시값과 산술 검증 후 누락된 net/gross를 파생값으로 기록한다.
+- `seibro_review_cli capture-browser` 기본 US / 1주 / 순매수(4); 86400초 source-wide 예약으로 모든 국가·기간·정렬을 각각 매일 자동 수집하지 않는다. daemon 없음. 동일 초기 결과와 일치하거나 50행 미만이면 실패할 수 있다.
+- `ops.seibro_captures`, `ops.seibro_reviews`, `ops.seibro_promotions`에서 독립 검수 후 `indicators.seibro_top50_snapshots` 및 `indicators.seibro_top50_rows`에 append-only 저장. `/api/v1/dashboard/authorized/seibro`는 권한/시점별 하나의 전체 snapshot만 조회한다. DB 및 API는 automated_trading_allowed=false를 강제한다. 이번 사용자 요청은 Toss에 한정되므로 SEIBro 거래 제한은 변경하지 않는다.
+- Session 13 초기 DOM/XML 확인 및 로컬 Chromium fixture/PG17 테스트 기록, Session 18 관련 31 passed 기록만 존재한다. 실사이트 TOP50 조회 결과, 실제 운영 자동 수집 권한 및 격리 egress는 미검증. 이번에는 외부 사이트 요청 없이 코드/명세를 확인했다.

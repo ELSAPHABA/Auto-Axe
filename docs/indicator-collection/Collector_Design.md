@@ -86,7 +86,7 @@ ON indicator_observations(series_id, observation_at, first_seen_at);
 
 ## 3. 무료 수집 스케줄 (제안, 게시기관 보장 주기가 아님)
 
-토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분하고 자동 거래 및 제3자 재배포에 사용하지 않는다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
+토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분한다. 2026-11-28 사용자 승인에 따라 독립 검수 및 현재 source trading grant를 충족한 최신 관측값은 개인 자동매매 판단에 사용할 수 있다. 제3자 재배포는 금지한다. 960초 수집 시각 유효성은 원본 시세 TTL이 아니며, 원본 시각이 필수인 Workflow는 UNKNOWN 처리한다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
 
 조건 충족 시 타 조건의 즉시 갱신 요청을 허용 범위 내 처리하며 [신선도 및 갱신 표준](../tech-stack/data-collection.md)의 TTL·single-flight·timeout을 적용한다.
 

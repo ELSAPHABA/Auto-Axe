@@ -238,8 +238,12 @@ observations are preserved. Toss uses a distinct source and series
 `https://www.tossinvest.com/indices/ROB.US2YT-RR`, 900-second minimum
 schedule and independent source/adapter grant. No production grant is seeded.
 The browser only reads the unique visible US bonds 2Y row. Source quote time
-is unknown; results are quarantined for independent review, owner-only and
-nontrading. A reviewed receipt may be displayed for at most 960 seconds
+is unknown; results are quarantined for independent review and remain owner-only.
+Session 23 permits private automated trading decisions only for newly reviewed
+observations with a current source grant including `trading=True`. The administrator
+must record real source-use evidence via `set_permission` and renew the adapter grant
+for the resulting permission version; no production rights are seeded. Scraper
+candidates remain nontrading before review. A reviewed receipt is usable for at most 960 seconds
 (900-second cadence plus scheduling grace, not a market-data TTL).
 Treasury daily fallback is separately labeled.
 

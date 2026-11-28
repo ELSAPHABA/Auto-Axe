@@ -23,7 +23,12 @@ from autoaxe.application.scrape_broker import (
     submit,
 )
 from autoaxe.infrastructure.db_bootstrap import provision
-from autoaxe.infrastructure.market_store import PermissionDenied, set_permission
+from autoaxe.infrastructure.market_store import (
+    PermissionDenied,
+    gate,
+    set_permission,
+    two_year_usable,
+)
 
 IMAGE = "postgres:17@sha256:87c8b42f423b45d5247e6aa8fdb2e7762fec164c68a50fe3eb07e7bfcaf4dbcf"
 
@@ -47,7 +52,7 @@ def test_generic_scheduler_and_review_fences(monkeypatch, cnn_details):
             password=passwords["autoaxe_market_runtime"],
         )
 
-        def grant(source, *, adapter=True):
+        def grant(source, *, adapter=True, trading=False):
             with psycopg.connect(admin, dbname="autoaxe_market") as conn:
                 set_permission(
                     conn,
@@ -56,6 +61,7 @@ def test_generic_scheduler_and_review_fences(monkeypatch, cnn_details):
                     evidence="synthetic permission test only",
                     fetch=True,
                     storage=True,
+                    trading=trading,
                 )
                 version = conn.execute(
                     "SELECT permission_version FROM catalog.source_registry WHERE source_id=%s",
@@ -194,7 +200,7 @@ def test_generic_scheduler_and_review_fences(monkeypatch, cnn_details):
             assert 890 < delay <= 900
         reset_due("toss")
         assert tick("toss") == "blocked"  # Retry-After survives scheduler restart.
-        grant("toss")  # A new independently verified version, fixture only.
+        grant("toss", trading=True)  # A new independently verified version, fixture only.
         assert tick("toss") == "blocked"
         # Simulate elapsed time in the disposable fixture only.
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
@@ -243,12 +249,41 @@ def test_generic_scheduler_and_review_fences(monkeypatch, cnn_details):
             ).fetchone()
             assert str(value) == "4.2" and quality == "manual_checked"
             assert metadata == {
-                "automated_trading_allowed": False,
+                "automated_trading_allowed": True,
                 "source_time_verified": False,
                 "symbol": "ROB.US2YT-RR",
                 "source_url": "https://www.tossinvest.com/indices/ROB.US2YT-RR",
             }
             assert source_at is None and received <= available
+            assert gate(conn, "UST_2Y_TOSS", "trading")["allow_trading"] is True
+            with pytest.raises(PermissionDenied):
+                gate(conn, "UST_2Y_TOSS", "redistribution")
+            status, reason = conn.execute(
+                "SELECT status,reason FROM ops.collector_health WHERE series_id='UST_2Y_TOSS'"
+            ).fetchone()
+            assert two_year_usable(
+                "UST_2Y_TOSS", status, value, quality, metadata, received, available, reason
+            )
+            assert not two_year_usable(
+                "UST_2Y_TOSS",
+                status,
+                value,
+                quality,
+                metadata,
+                received,
+                received + timedelta(seconds=961),
+                reason,
+            )
+            assert not two_year_usable(
+                "UST_2Y_TOSS",
+                status,
+                value,
+                quality,
+                {**metadata, "automated_trading_allowed": False},
+                received,
+                available,
+                reason,
+            )
             assert (
                 conn.execute(
                     "SELECT count(*) FROM ops.outbox WHERE envelope->>'series_id'='UST_2Y_TOSS'"

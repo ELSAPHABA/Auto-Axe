@@ -2,7 +2,11 @@
 
 2026-11-27 KST. 원본 [Phase 계획](PHASE_PLAN.md) §5의 P2.1~P2.8을 변경하지 않는다. [상세 세션 기록](../../.ai-context/phases/phase-02/2026-11-27-01.md) · [별도 트러블슈팅](../troubleshooting/phase-02.md) · [전체 운영 맥락](../../.ai-context/CONTEXT.md).
 
-## 최신 재개 점검 — 2026-11-28 Session 22
+## 최신 사용자 변경 — 2026-11-28 Session 23
+
+[Session 23](../../.ai-context/phases/phase-02/2026-11-28-23.md): P2.6 Toss UST_2Y_TOSS의 자동매매 판단을 사용자 승인에 따라 허용한다. 현재 source trading grant 및 검수 완료 관측값만 허용하며 공급자 실권한/운영 LIVE는 별도이다. 기존 관측값 소급 변경 금지, 원본 시각 null, receipt 상한 960초 및 900초 수집 주기 유지. SEIBro 구현 분석은 [상세 명세](../indicator-collection/SEIBro_Overseas_Stock_Flows.md#7-실제-구현-점검--session-23) 참조; 기존 DB/API 거래 금지 유지. 전체 Phase2 exit는 여전히 BLOCKED.
+
+## 이전 재개 점검 — 2026-11-28 Session 22
 
 기준 main `74241667254a1620fc2efca0eac2c30355c90126`. [Session 22](../../.ai-context/phases/phase-02/2026-11-28-22.md) 및 [TS-02-44](../troubleshooting/phase-02.md#ts-02-44--mexc-pong-응답-기한-회귀-및-ci-실패) 우선. Phase2 IN_PROGRESS / exit BLOCKED. [최신 CI](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/46098260168) 및 [직전 CI](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/46037802004)에서 동일 MEXC pong timeout 테스트 실패(386 passed/1 failed, exit1), frontend/fixture-compose/secret-scan 성공. standalone executor/scraper/SDK steps skip. 이전 아래의 fixture 성공 및 로컬 scoped test는 해당 커밋에 한정한다. 이번 코드 수정/새 테스트 없음.
 

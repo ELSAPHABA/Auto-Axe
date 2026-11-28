@@ -44,7 +44,7 @@ ScrapeRequest는 사용자 URL 대신 source_id, approved adapter version, 조�
 
 ### 공급원 선택 및 신선도
 
-토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분하고 자동 거래 및 제3자 재배포에 사용하지 않는다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
+토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분한다. 2026-11-28 사용자 승인에 따라 독립 검수 및 현재 source trading grant를 충족한 최신 관측값은 개인 자동매매 판단에 사용할 수 있다. 제3자 재배포는 금지한다. 960초 수집 시각 유효성은 원본 시세 TTL이 아니며, 원본 시각이 필수인 Workflow는 UNKNOWN 처리한다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
 
 indicator_id는 논리 지표, series_id는 원본 제공자·상품·단위·계약·정의가 고정된 시계열이다. 가격, VIX, 국채, Nasdaq 등 동일 관심 자산의 다른 계약·공급원은 분리 저장한다. Workflow는 원본 series_id 고정 기본, 사용자 명시적 허용 시에만 호환 정의의 fallback을 사용한다. UST_2Y 화면은 위 우선순위로 표시하되 장중 전략은 일별 fallback 사용을 명시적으로 허용하고 해당 신선도·정의 조건을 만족할 때만 평가한다. 전환 경계의 수익률/EDGE/rolling 계산은 재기준화 또는 UNKNOWN 처리한다.
 

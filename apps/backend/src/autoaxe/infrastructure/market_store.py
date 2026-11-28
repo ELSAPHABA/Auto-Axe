@@ -92,8 +92,8 @@ def gate(conn: Connection[Any], series_id: str, action: str = "storage") -> dict
         raise PermissionDenied("retired PizzINT series")
     if series_id == "UST_2Y_NAVER":
         raise PermissionDenied("retired Naver series")
-    if series_id == "UST_2Y_TOSS" and action in {"trading", "redistribution"}:
-        raise PermissionDenied("Toss display observations are private and informational only")
+    if series_id == "UST_2Y_TOSS" and action == "redistribution":
+        raise PermissionDenied("Toss observations are private only")
     if series_id == "PENTAGON_PIZZA_PIZZINT" and action == "trading":
         raise PermissionDenied("DOUGHCON is informational only")
     if action == "trading" and series_id in {
@@ -193,15 +193,17 @@ def ingest(conn: Connection[Any], item: Candidate) -> tuple[str, int, bool]:
         or item.source_event_at is not None
         or item.quality.value != "manual_checked"
         or item.metadata.get("source_time_verified") is not False
-        or item.metadata.get("automated_trading_allowed") is not False
+        or not isinstance(item.metadata.get("automated_trading_allowed"), bool)
     ):
-        raise ValueError("Toss observations must be reviewed display values without source time")
+        raise ValueError("Toss observations must be reviewed values without source time")
     if series.source_id.startswith("manual:") and item.quality.value != "manual_unverified":
         raise ValueError("manual observation must be unverified")
     conn.execute(
         "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ("source:" + series.source_id,)
     )
     permitted = gate(conn, item.series_id)
+    if series.source_id == "toss" and item.metadata["automated_trading_allowed"]:
+        gate(conn, item.series_id, "trading")
     if permitted["mapping_version"] != item.mapping_version:
         raise ValueError("stale mapping")
     if item.available_at > datetime.now(UTC):
@@ -322,7 +324,7 @@ def set_permission(
     """Administrator-only; must never be exposed through an unauthenticated endpoint."""
     if source not in SOURCE_URLS or not evidence.strip():
         raise ValueError("missing source/permission evidence")
-    if (source in {"pizzint", "toss"} and trading) or (source == "toss" and redistribution):
+    if (source == "pizzint" and trading) or (source == "toss" and redistribution):
         raise ValueError("source is private/informational only")
     conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ("source:" + source,))
     conn.execute(
@@ -526,16 +528,24 @@ def two_year_usable(
     now: datetime,
     reason: str | None,
 ) -> bool:
-    """Receipt freshness is NOT source quote freshness; Toss stays informational."""
+    """Receipt freshness is NOT source quote freshness or trading permission."""
     if value is None or metadata is None:
         return False
     if sid == "UST_2Y_TOSS":
         return (
             status == "manual_required"
-            and reason == "scrape_manually_checked_nontrading"
+            and (
+                (
+                    reason == "scrape_manually_checked_nontrading"
+                    and metadata.get("automated_trading_allowed") is False
+                )
+                or (
+                    reason == "scrape_manually_checked_trading"
+                    and metadata.get("automated_trading_allowed") is True
+                )
+            )
             and quality == "manual_checked"
             and metadata.get("source_time_verified") is False
-            and metadata.get("automated_trading_allowed") is False
             and received_at is not None
             and 0 <= (now - received_at).total_seconds() <= 960
         )
