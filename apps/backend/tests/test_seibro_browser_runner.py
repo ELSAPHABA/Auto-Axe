@@ -199,6 +199,43 @@ def test_browser_provenance_and_manual_stage_fence(monkeypatch):
         stage_capture(conn, data, expected_browser_version=7)
 
 
+@pytest.mark.parametrize("delta", [-1, 0, 1])
+def test_observed_browser_net_rounding_preserved(delta):
+    data = sample()
+    data["rows"][0]["net_buy_settlement_usd"] = str(899 + delta)
+    normalized = normalize_capture(data)
+    assert normalized["rows"][0]["net_buy_settlement_usd"] == str(899 + delta)
+    assert normalized["rows"][0]["gross_settlement_usd"] == "1099"
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"net_buy_settlement_usd": "901"},
+        {
+            "buy_settlement_usd": "999.5",
+            "gross_settlement_usd": "1099.5",
+            "net_buy_settlement_usd": "900.5",
+        },
+        {"gross_settlement_usd": "1100", "net_buy_settlement_usd": "900"},
+    ],
+)
+def test_rounding_never_relaxes_derived_or_fractional_amounts(overrides):
+    data = sample()
+    data["rows"][0].update(overrides)
+    with pytest.raises(ValueError, match="arithmetic mismatch"):
+        normalize_capture(data)
+
+
+def test_manual_net_rounding_not_implicitly_authorized():
+    data = sample()
+    data["rows"][0]["net_buy_settlement_usd"] = "900"
+    del data["derived_amount"]
+    data["capture_mode"] = "manual_capture"
+    with pytest.raises(ValueError, match="arithmetic mismatch"):
+        normalize_capture(data)
+
+
 def test_reservation_is_source_wide_and_requires_grant(monkeypatch):
     monkeypatch.setattr(runner, "verify_connection", lambda *a, **k: None)
     monkeypatch.setattr(runner, "source_lock", lambda *a, **k: None)

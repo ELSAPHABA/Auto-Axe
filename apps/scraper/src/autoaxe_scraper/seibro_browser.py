@@ -45,7 +45,8 @@ MAX_REQUESTS = 400
 MAX_RESPONSE = 8 * 1024 * 1024
 MAX_TOTAL = 48 * 1024 * 1024
 MAX_BATCH_SECONDS = 600
-QUERY_TIMEOUT_SECONDS = 20
+QUERY_TIMEOUT_SECONDS = 105
+QUERY_REQUEST_TIMEOUT_MS = 90_000
 DAILY_SCOPES = tuple((str(period), basis) for period in range(1, 6) for basis in ("1", "2", "4"))
 KST = ZoneInfo("Asia/Seoul")
 
@@ -97,7 +98,23 @@ class RequestFence:
         try:
             # This is the intercepted browser request, not a handcrafted
             # submission. route.continue_ would allow unexamined redirects.
-            response = route.fetch(timeout=10_000, max_redirects=0, max_retries=0)
+            # Live three-month queries exceeded 10 seconds and the
+            # six-month net query exceeded 30 seconds.
+            # Only an ordinary intercepted POST/XHR gets the larger budget;
+            # no automatic retry, redirect or extension of the batch deadline.
+            timeout = (
+                QUERY_REQUEST_TIMEOUT_MS
+                if req.method == "POST" and req.resource_type in ("xhr", "fetch")
+                else 10_000
+            )
+            if self.deadline is not None:
+                remaining = int((self.deadline - datetime.now(UTC)).total_seconds() * 1000)
+                if remaining <= 0:
+                    self.failed = True
+                    route.abort("blockedbyclient")
+                    return
+                timeout = min(timeout, remaining)
+            response = route.fetch(timeout=timeout, max_redirects=0, max_retries=0)
             try:
                 if response.status >= 300 or not allowed_url(response.url):
                     self.failed = True
@@ -128,16 +145,16 @@ def _text(value: str) -> str:
     return re.sub(r"\s+", "", value)
 
 
-def _one(page: Page, selector: str) -> Locator:
+def _one(page: Page, selector: str, *, timeout: int = 10_000) -> Locator:
     loc = page.locator(selector)
-    loc.wait_for(state="visible", timeout=10_000)
+    loc.wait_for(state="visible", timeout=timeout)
     if loc.count() != 1:
         raise ValueError("ambiguous control")
     return loc
 
 
-def _radio(page: Page, selector: str, expected: str, label: str) -> None:
-    loc = _one(page, selector)
+def _radio(page: Page, selector: str, expected: str, label: str, *, timeout: int = 10_000) -> None:
+    loc = _one(page, selector, timeout=timeout)
     # Match the actual HTML value or associated visible label. No guessed
     # radio index is sufficient by itself.
     labels = loc.evaluate("(el) => Array.from(el.labels || []).map(l => l.innerText)")
@@ -302,7 +319,14 @@ def _grid(html: str, basis: str) -> list[dict[str, Any]]:
                         raise ValueError("displayed gross mismatch")
                     row["SUM_FRSEC_NET_BUY_AMT"] = format(buy - sell, "f")
                 else:
-                    if Decimal(_amount(row["SUM_FRSEC_NET_BUY_AMT"])) != buy - sell:
+                    net = Decimal(_amount(row["SUM_FRSEC_NET_BUY_AMT"]))
+                    # Live SEIBro displays independent integer USD amounts.
+                    # Preserve its reported net, permitting only an observed
+                    # one-dollar rounding discrepancy for integer operands.
+                    delta = net - (buy - sell)
+                    if delta != 0 and (
+                        abs(delta) != 1 or any(v != v.to_integral_value() for v in (buy, sell, net))
+                    ):
                         raise ValueError("displayed net mismatch")
                     row["SUM_FRSEC_TOT_AMT"] = format(buy + sell, "f")
         rows.append(row)
@@ -311,7 +335,9 @@ def _grid(html: str, basis: str) -> list[dict[str, Any]]:
     return rows
 
 
-def capture_page(page: Page, country: str, period: str, basis: str) -> dict[str, Any]:
+def capture_page(
+    page: Page, country: str, period: str, basis: str, *, fence: RequestFence | None = None
+) -> dict[str, Any]:
     """Single visible query with strict scope readback and fresh grid evidence."""
     if (
         country not in COUNTRIES
@@ -320,7 +346,9 @@ def capture_page(page: Page, country: str, period: str, basis: str) -> dict[str,
     ):
         raise ValueError("unsupported browser scope")
     page.set_default_timeout(2500)
-    _radio(page, "#a1_radio1_input_0", "2", "결제금액")
+    # WebSquare controls can become visible late while initial public assets
+    # finish loading. This waits for the control, not another network request.
+    _radio(page, "#a1_radio1_input_0", "2", "결제금액", timeout=30_000)
     ci, ri = COUNTRIES.index(country), int(basis) - 1
     _radio(page, f"#area_radio_input_{ci}", country, COUNTRY_LABELS[ci])
     _radio(page, f"#area_radio_2_input_{ri}", basis, RANK_LABELS[ri])
@@ -338,10 +366,18 @@ def capture_page(page: Page, country: str, period: str, basis: str) -> dict[str,
     # A header-only change or stale grid must not pass as a fresh query.
     witness = page.evaluate_handle(_QUERY_WITNESS)
     try:
+        if fence is not None and (
+            fence.failed or (fence.deadline is not None and datetime.now(UTC) >= fence.deadline)
+        ):
+            raise ValueError("browser capture fence failed")
         _one(page, "#image2").click()
         deadline = monotonic() + QUERY_TIMEOUT_SECONDS
         last = None
         while monotonic() < deadline:
+            if fence is not None and (
+                fence.failed or (fence.deadline is not None and datetime.now(UTC) >= fence.deadline)
+            ):
+                raise ValueError("browser capture fence failed")
             page.wait_for_timeout(400)
             evidence = witness.evaluate("state => state.snapshot()")
             if not evidence or not (evidence["changed"] or evidence["completed"]):
@@ -499,7 +535,7 @@ def capture(ticket: Any) -> dict[str, Any]:
                 for period, basis in scopes:
                     if fence.failed or datetime.now(UTC) >= deadline or page.url != SOURCE_URL:
                         raise ValueError("browser capture fence failed")
-                    results.append(capture_page(page, country, period, basis))
+                    results.append(capture_page(page, country, period, basis, fence=fence))
                     if fence.failed or datetime.now(UTC) >= deadline or page.url != SOURCE_URL:
                         raise ValueError("browser capture fence failed")
             except Exception as exc:

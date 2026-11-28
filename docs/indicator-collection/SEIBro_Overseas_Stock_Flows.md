@@ -1,6 +1,6 @@
 # SEIBro 해외주식 매수·매도 결제 통계 수집 명세
 
-> 상태(2026-11-28 Session25): Scrapling 0.4.15 DynamicSession + Selector 격리 수집, 미국 15개 scope 일괄 자동 검증·영속 일일 스케줄 및 조건부 거래 권한 유지. 실제 TOP50 조회/자동 이용 권한·운영 egress 미확인, 운영 미배포. 무료 정책 적용. §9가 §8의 수집 기술만 대체하며 이전 설계와 검수 이력은 역사적 기록이다.
+> 상태(2026-11-28 Session26): Scrapling 0.4.15 DynamicSession + Selector 실제 공개 화면 조회 검수 및 표시 금액 보정 없는 반올림 차이 처리. 미국 15개 scope 일괄 자동 검증·영속 일일 스케줄 및 조건부 거래 권한 유지. 운영 자동 이용 권한·egress 미확인, 운영 미배포. 무료 정책 적용. §10의 실측 결과가 이전 검수 이력을 보완한다.
 
 공식 [국제거래외화증권예탁결제정보](https://www.data.go.kr/data/15043445/openapi.do)는 무료 REST(JSON/XML), 공공누리 2유형, 개발/운영 자동승인 및 인증키 신청 경로를 제공한다. 제공 설명은 국가/시장/증권구분 결제 통계이며 지정 TOP50의 ISIN·순위·기간별 정확한 종목 결제금액 제공은 확인되지 않았다. 따라서 별도 통계를 TOP50 원장에 대체 저장하지 않는다. 한국예탁결제원 [공유자원포털](https://api.seibro.or.kr/pubc/pubr/cmm/CMPubrHome/viewCMPubrHome.do)에서 정확한 API 계약을 확인하거나 portal@ksd.or.kr에 문의한다. 상세 검증은 [Session 18](../../.ai-context/phases/phase-02/2026-11-28-18.md).
 
@@ -119,3 +119,11 @@
 ## 9. Session 25 Scrapling 수집 리팩터링
 
 Scrapling 0.4.15의 DynamicSession이 일반 Chromium을 시작하고 종료한다. 별도 직접 Playwright launch/goto 코드는 제거했다. 세션의 context에 최초 fetch 전에 기존 HTTP/WS fence를 설치하고, page_action에서 동일한 15개 scope를 순차 조회한다. 기존 visible-cell projection/Selector 검증, 브라우저 sandbox, TLS, 다운로드 차단, source-wide 일일 예약, deadline, atomic promotion, 거래 권한·신선도 계약은 유지한다. Scrapling이 page_setup/page_action 예외를 삼키는 특성이 있어 별도의 오류 및 결과 개수 검증을 추가했다. 운영 활성화 전 신규 수집 구현의 재검증 필요.
+
+## 10. Session 26 실제 공급자 공개 UI 검수
+
+- 개발 검수(사용자 명시 요청)로 로컬 정상 Scrapling 세션에서 실제 공개 화면의 미국/결제금액/기간/정렬/조회 버튼을 사용했다. 미공개 API를 직접 호출하거나 차단을 우회하지 않았다. 운영 권한 발급·운영 DB 적재·자동매매 실행은 하지 않았다.
+- 실측: 순매수 화면의 실제 가시 열은 매수·매도·순매수(합계 열은 DOM에 있으나 가시 영역에서 제외). 2026-11-21~27의 실제 50행에서 원본 순매수−(매수−매도)가 −1 USD 6행, 0 USD 41행, +1 USD 3행이었다. 정수 표시 반올림과 일치하나 공급자의 내부 계산·반올림 방식은 미확인이다.
+- 기존 정확 일치만 허용한 검증은 실제 표시값을 거부했다. 순매수 기준 browser_capture의 정수 USD에서만 ±1을 허용한다. 원본 순매수를 수정하지 않으며 숨은 합계는 읽지 않는다. 합계는 표시 매수+매도에서 파생한다. 수집기·backend 검증·0025 DB constraint가 일치하며, DB의 net_display_rounding_usd에 원본−계산 차이 및 provenance를 보존한다. 기타 기준과 수동 입력의 산술 검증 및 기존 DB 행의 의미는 그대로 유지한다.
+- 실제 3개월 query POST 약 13초, 6개월 매수·매도 약 29초, 6개월 순매수 30초 초과를 관측했다. 정상 POST XHR/fetch 최대 90초 및 UI 결과 확인 105초, 최초 제어 표시 대기 30초, fence 오류 시 즉시 중단을 적용한다. 전체 예약 deadline, 400 요청 및 응답 byte budget, 무재시도·무redirect·권한/승격 계약 유지. 1년 응답 시간은 미측정.
+- 실사이트 결과: 여러 개발 세션에서 1주/1개월/3개월 매수·매도·순매수 및 6개월 매수·매도 각각 50행, 11/15 scope 총 550행을 backend normalize_capture까지 검증했다. 6개월 순매수 timeout; 최종 검수는 페이지 초기 이미지 요청 socket hang up으로 중단, 1년 3종 미검증. 단일 실제 15-scope 일괄 성공·운영 권한/egress는 미확인. [Session26](../../.ai-context/phases/phase-02/2026-11-28-26.md).

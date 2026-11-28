@@ -56,6 +56,28 @@ def test_ui_request_forwarding_and_redirect_denial():
     assert route.fulfill.call_count == 1
 
 
+def test_long_settlement_query_timeout_is_bounded_by_reservation():
+    route = MagicMock()
+    route.request.url = browser.SOURCE_URL
+    route.request.method = "POST"
+    route.request.resource_type = "xhr"
+    route.request.is_navigation_request.return_value = False
+    response = route.fetch.return_value
+    response.url = browser.SOURCE_URL
+    response.status = 200
+    response.body.return_value = b"fixture"
+    browser.RequestFence().handle(route)
+    route.fetch.assert_called_once_with(
+        timeout=browser.QUERY_REQUEST_TIMEOUT_MS, max_redirects=0, max_retries=0
+    )
+    route.fetch.reset_mock()
+    fence = browser.RequestFence(datetime.now(UTC) + timedelta(seconds=5))
+    fence.handle(route)
+    assert 0 < route.fetch.call_args.kwargs["timeout"] <= 5000
+    assert route.fetch.call_args.kwargs["max_retries"] == 0
+    assert route.fetch.call_args.kwargs["max_redirects"] == 0
+
+
 def test_websocket_is_closed_and_no_cross_navigation():
     context = MagicMock()
     browser.configure_context(context)
@@ -146,6 +168,35 @@ def html_fixture(basis):
         "};</script>"
     )
     return html
+
+
+@pytest.mark.parametrize("delta,accepted", [(-1, True), (0, True), (1, True), (2, False)])
+def test_visible_net_whole_dollar_rounding(delta, accepted):
+    labels = list(browser.HEADER)[:4] + ["매수결제", "매도결제", "순매수결제"]
+    header = "".join(f"<th>{label}</th>" for label in labels)
+    rows = []
+    for rank in range(1, 51):
+        cells = [
+            str(rank),
+            "미국",
+            f"US{rank:09d}0",
+            "Fixture",
+            str(1000 - rank),
+            "100",
+            str(900 - rank + delta),
+        ]
+        rows.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in cells) + "</tr>")
+    html = f"<table><thead><tr>{header}</tr></thead><tbody>{''.join(rows)}</tbody></table>"
+    if accepted:
+        parsed = browser._grid(html, "4")
+        assert parsed[0]["SUM_FRSEC_NET_BUY_AMT"] == str(899 + delta)
+        assert parsed[0]["SUM_FRSEC_TOT_AMT"] == "1099"
+    else:
+        with pytest.raises(ValueError, match="net mismatch"):
+            browser._grid(html, "4")
+    if delta == 1:
+        with pytest.raises(ValueError, match="net mismatch"):
+            browser._grid(html.replace("<td>999</td>", "<td>998.5</td>", 1), "4")
 
 
 @pytest.mark.parametrize(

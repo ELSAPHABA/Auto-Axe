@@ -2,7 +2,11 @@
 
 2026-11-27 KST. 원본 [Phase 계획](PHASE_PLAN.md) §5의 P2.1~P2.8을 변경하지 않는다. [상세 세션 기록](../../.ai-context/phases/phase-02/2026-11-27-01.md) · [별도 트러블슈팅](../troubleshooting/phase-02.md) · [전체 운영 맥락](../../.ai-context/CONTEXT.md).
 
-## 최신 사용자 변경 — 2026-11-28 Session 25
+## 최신 사용자 변경 — 2026-11-28 Session 26
+
+[Session 26](../../.ai-context/phases/phase-02/2026-11-28-26.md): 실제 SEIBro 공개 UI 수신 검수 및 관측한 정수 순매수의 ±1 USD 차이 보존 처리(0025). 정상 요청의 응답 지연을 고려한 제한적 timeout 변경. 기존 운영 권한·일괄 승격 계약 유지. 전체 Phase2 exit BLOCKED.
+
+## 이전 사용자 변경 — 2026-11-28 Session 25
 
 [Session 25](../../.ai-context/phases/phase-02/2026-11-28-25.md): SEIBro DynamicSession, Toss Fetcher → DynamicSession으로 수집 기술 통일. Scrapling 0.4.15 및 fetchers 그룹 고정, 직접 브라우저 lifecycle 제거, 최초 navigation 전 context fence 및 콜백 실패 검증. 기존 예약·권한·검수·자동매매 계약은 변경하지 않는다. 실제 공급자/운영 검증 별도.
 

@@ -352,7 +352,12 @@ def test_reviewed_top50_ledger(monkeypatch):
         def launch(ticket):
             launch_calls.append(ticket)
             with psycopg.connect(runtime) as conn:
-                return daily_sample(conn.execute("SELECT clock_timestamp()").fetchone()[0])
+                result = daily_sample(conn.execute("SELECT clock_timestamp()").fetchone()[0])
+            for capture in result["captures"]:
+                if capture["rank_basis"] == "4":
+                    capture["rows"][0]["net_buy_settlement_usd"] = "900"
+                    capture["rows"][1]["net_buy_settlement_usd"] = "897"
+            return result
 
         with pytest.raises(PermissionDenied, match="independent"):
             runner.capture_daily(runtime, launch=launch)
@@ -406,6 +411,23 @@ def test_reviewed_top50_ledger(monkeypatch):
         initial_daily_view = read()
         assert initial_daily_view is not None
         assert initial_daily_view.last_validated_at == initial_daily_view.available_at
+        assert initial_daily_view.rows[0].net_buy_settlement_usd == "900"
+        assert initial_daily_view.rows[1].net_buy_settlement_usd == "897"
+        with psycopg.connect(runtime) as conn:
+            assert conn.execute(
+                """SELECT net_display_rounding_usd FROM indicators.seibro_top50_rows
+                   WHERE snapshot_id=%s AND rank<=2 ORDER BY rank""",
+                (initial_daily_view.snapshot_id,),
+            ).fetchall() == [(1,), (-1,)]
+        with (
+            pytest.raises(CheckViolation),
+            psycopg.connect(admin, dbname="autoaxe_market") as conn,
+        ):
+            conn.execute(
+                """UPDATE indicators.seibro_top50_rows SET net_display_rounding_usd=0
+                   WHERE snapshot_id=%s AND rank=1""",
+                (initial_daily_view.snapshot_id,),
+            )
         for period, basis in runner.DAILY_SCOPES:
             with psycopg.connect(reader) as conn:
                 view = read_top50(

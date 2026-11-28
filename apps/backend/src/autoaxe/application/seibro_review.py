@@ -103,6 +103,37 @@ def _label(value: Any) -> str:
     return value
 
 
+def _net_display_delta(
+    buy: Decimal, sell: Decimal, net: Decimal, *, observed_browser_net: bool
+) -> int:
+    """Validate and retain the observed whole-dollar rounding difference."""
+    with localcontext() as context:
+        context.prec = 100
+        delta = net - (buy - sell)
+        if delta == 0:
+            return 0
+        if (
+            observed_browser_net
+            and abs(delta) == 1
+            and all(v == v.to_integral_value() for v in (buy, sell, net))
+        ):
+            return int(delta)
+    raise ValueError("settlement arithmetic mismatch")
+
+
+def _row_net_display_delta(payload: dict[str, Any], row: dict[str, Any]) -> int:
+    if payload.get("derived_amount") != "gross_settlement_usd":
+        return 0
+    return _net_display_delta(
+        Decimal(row["buy_settlement_usd"]),
+        Decimal(row["sell_settlement_usd"]),
+        Decimal(row["net_buy_settlement_usd"]),
+        observed_browser_net=(
+            payload["capture_mode"] == "browser_capture" and payload["rank_basis"] == "4"
+        ),
+    )
+
+
 def normalize_capture(data: Any) -> dict[str, Any]:
     fields = {
         *SCOPE,
@@ -204,7 +235,8 @@ def normalize_capture(data: Any) -> dict[str, Any]:
                 raise ValueError("invalid settlement amount")
             values.append(Decimal(raw))
         buy, sell, gross, net = values
-        # Exact arithmetic, never silently adjust provider amounts.
+        # Exact derived arithmetic; preserve the live provider's observed
+        # integer net with at most one USD display-rounding difference.
         if partial:
             observed = buy if coverage == "buy_only" else sell
             if observed is None or observed < 0:
@@ -213,8 +245,14 @@ def normalize_capture(data: Any) -> dict[str, Any]:
             assert buy is not None and sell is not None and gross is not None and net is not None
             with localcontext() as context:
                 context.prec = 100
-                if buy < 0 or sell < 0 or gross != buy + sell or net != buy - sell:
+                if buy < 0 or sell < 0 or gross != buy + sell:
                     raise ValueError("settlement arithmetic mismatch")
+                _net_display_delta(
+                    buy,
+                    sell,
+                    net,
+                    observed_browser_net=browser and data["rank_basis"] == "4",
+                )
         metric = values[int(data["rank_basis"]) - 1]
         assert metric is not None
         if last is not None and metric > last:
@@ -404,8 +442,9 @@ def insert_snapshot(
             cur.executemany(
                 """INSERT INTO indicators.seibro_top50_rows
                 (snapshot_id,rank,country_name,isin,security_name,buy_settlement_usd,
-                 sell_settlement_usd,gross_settlement_usd,net_buy_settlement_usd,amount_coverage)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                 sell_settlement_usd,gross_settlement_usd,net_buy_settlement_usd,amount_coverage,
+                 net_display_rounding_usd)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 [
                     (
                         snapshot_id,
@@ -415,6 +454,7 @@ def insert_snapshot(
                         item["security_name"],
                         *(Decimal(item[key]) if item[key] is not None else None for key in AMOUNTS),
                         payload.get("amount_coverage", "complete"),
+                        _row_net_display_delta(payload, item),
                     )
                     for item in payload["rows"]
                 ],

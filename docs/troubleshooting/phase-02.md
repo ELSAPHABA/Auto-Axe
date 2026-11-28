@@ -258,3 +258,8 @@
 ## TS-02-46 — Scrapling Dynamic API 버전 차이 및 로컬 HTTP 응답 변형
 - 0.5.1 parser-only 설치에 fetchers extra가 없고 설치된 공개 API에서 DynamicSession/DynamicFetcher 제거 확인. 정상 브라우저 lifecycle을 사용하기 위해 호환 0.4.15와 browser 그룹 fetchers extra를 lock에 고정. StealthySession으로 대체하지 않음. Scrapling page_setup/page_action 예외가 내부에서 처리되므로 context fence는 fetch 이전에 설치하고 오류/결과 개수/status/URL을 별도 확인한다.
 - Windows loopback 합성 HTTP 테스트에서 AdGuard script injection으로 원본 HTML이 변형되어 static 경로가 렌더링 필요로 분류됨. 후속 연결 reset도 관측. 호스트 보안 설정 변경 없이 격리 loopback 시험을 분리하고 CI에서 명시적으로 활성화. 최종 Windows 114+2 passed, Docker --network none 실제 Fetcher loopback 1 passed; browser image build 성공. 실제 provider/egress는 미검증. [Session 25](../../.ai-context/phases/phase-02/2026-11-28-25.md).
+
+## TS-02-47 — SEIBro 실제 정수 표시값의 순매수 산술차 및 긴 기간 조회 응답 지연
+- 사용자 요청 실제 검수: HTTP 200, UI 조작 후 50행 렌더링 확인. DOM 전체 innerText와 가시 열은 다르므로 숨은 합계 열을 사용하지 않는다. 1주 순매수 실제 50행의 원본−계산 delta −1/0/+1 USD는 각각 6/41/3행. 기존 strict net equality가 정상 표시값을 거부했다.
+- 순매수 browser_capture에서만 정수 USD operands 및 delta ∈ {-1,0,1} 허용. 공급자 순매수 그대로 보존, 합계는 정확한 파생값, 소수·범위 초과·기타 기준·수동 입력은 strict. 0025 DB에서 명시 delta 및 derived provenance FK, 기존 행은 delta=0 유지. 원본 내부 반올림 방식은 미확인.
+- 3개월 매수 실제 조회에서 10초 POST XHR timeout 발생, 30초로 조정 후 3개월 3종 실제 약 13초, 6개월 매수/매도 약 29초 성공. 6개월 순매수는 30초 초과. 최종 XHR/fetch POST만 최대 90초, UI freshness wait 105초, 최초 control wait 30초, fence fail-fast; 전체 deadline 및 budget, 0 retries, 0 redirects 유지. 최종 초기 이미지 GET socket hang up으로 추가 검수 중단. 실제 11/15 scope 550행 backend 검증 성공; 나머지 4종 및 단일 실제 전체 batch/운영 egress와 실제 자동 이용 권한 미검증.
