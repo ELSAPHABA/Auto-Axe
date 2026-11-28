@@ -168,6 +168,41 @@ only the displayed buy/sell amount, with the other three fields null. Basis
 3/4 preserve the full amount set, marking derived values explicitly. Never attach the
 browser to the market network or disable the Chromium sandbox.
 
+### SEIBro daily collection (0024_seibro_daily)
+
+Session 24 supersedes the single-query schedule for normal US collection. The
+trusted host launcher uses the same restricted browser image, with Scrapling
+Selector extracting the rendered visible grid, and a single bounded batch
+of 15 scopes (five periods × buy/sell/net). It uses the source-wide 24-hour
+durable reservation, so the legacy single capture cannot overlap or consume
+an additional slot. A failed batch is not retried inside the reserved day.
+All 15 scopes must validate before atomic promotion. No per-capture human
+review is needed for the approved adapter. Preserve old manual review records.
+
+Before activation, independently verify source fetch/storage/trading rights,
+the real rendered result and the restricted egress configuration. Use an
+administrator grant in `ops.seibro_adapter_grants` tied to the current
+source permission version (adapter/schema version 1, interval_seconds 86400,
+real reviewer_ref and evidence_ref). Do not seed synthetic grants in production.
+The source's `allow_trading` controls trading eligibility; LIVE order
+approval is separate. Rebuild the browser image after source changes:
+
+```sh
+docker compose -f infra/compose/seibro-browser.yaml --profile browser build seibro-browser
+python -m autoaxe.entrypoints.seibro_review_cli capture-daily --execute-approved --egress-verified
+```
+
+For continuous daily operation, use
+`python -m autoaxe.entrypoints.seibro_review_cli run-daily --execute-approved --egress-verified`.
+The host daemon checks the DB slot every 300 seconds, not the provider;
+the 86400-second reservation controls actual capture frequency.
+
+Run the trusted launcher from the repository root using the backend runtime
+environment, with `AUTOAXE_MARKET_RUNTIME_DSN` and
+`AUTOAXE_SEIBRO_RESTRICTED_EGRESS_NETWORK` configured. Never pass the DB DSN
+to the isolated browser or mount the Docker socket into it. Use only one
+daily launcher; do not schedule the legacy single capture alongside it.
+
 ## Yahoo HTTP, VIX and oil collectors (0020_oil_ws)
 
 These commands require independently reviewed source grants and existing private

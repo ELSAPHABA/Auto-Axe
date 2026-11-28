@@ -74,7 +74,7 @@ const fake = [
   },
 ];
 
-function setup(failure = false, authorized = false) {
+function setup(failure = false, authorized = false, seibroTrading?: boolean) {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) =>
@@ -123,7 +123,39 @@ function setup(failure = false, authorized = false) {
                     },
                   }
                 : String(url).includes("dashboard/authorized/seibro")
-                  ? { data: null, meta: { source_id: "seibro" } }
+                  ? {
+                      data:
+                        seibroTrading === undefined
+                          ? null
+                          : {
+                              snapshot_id: "fixture",
+                              country_code: "US",
+                              period_code: "1",
+                              rank_basis: "4",
+                              period_start: "2026-11-20",
+                              period_end: "2026-11-27",
+                              as_of_date_kst: "2026-11-27",
+                              revision: 1,
+                              row_count: 1,
+                              currency: "USD",
+                              quality: "adapter_validated",
+                              automated_trading_allowed: seibroTrading,
+                              capture_mode: "browser_capture",
+                              amount_coverage: "complete",
+                              rows: [
+                                {
+                                  rank: 1,
+                                  isin: "US0000000001",
+                                  security_name: "합성 SEIBro 종목",
+                                  buy_settlement_usd: "100",
+                                  sell_settlement_usd: "40",
+                                  net_buy_settlement_usd: "60",
+                                  gross_settlement_usd: "140",
+                                },
+                              ],
+                            },
+                      meta: { source_id: "seibro" },
+                    }
                   : String(url).includes("dashboard/corporate-guidance")
                     ? {
                         data: [
@@ -340,3 +372,20 @@ test("DOUGHCON only shows an authenticated stored level and API timestamp", asyn
   expect(within(card).getByText("최근 저장값 · 참고용")).toBeVisible();
   expect(within(card).getByText(/API 시각.*2026-11-27/)).toBeVisible();
 });
+
+test.each([true, false])(
+  "SEIBro shows actual trading eligibility (%s)",
+  async (eligible) => {
+    setup(false, true, eligible);
+    const seibro = await screen.findByRole("region", {
+      name: "해외주식 결제 TOP50",
+    });
+    expect(await within(seibro).findByText("합성 SEIBro 종목")).toBeVisible();
+    expect(within(seibro).getByText(/Scrapling 자동 검증/)).toBeVisible();
+    expect(
+      within(seibro).getByText(
+        eligible ? /자동매매 판단 활용 가능/ : /자동매매 판단 권한 미확인/,
+      ),
+    ).toBeVisible();
+  },
+);

@@ -89,12 +89,20 @@ export function SeibroPanel() {
             기준일 {snapshot.as_of_date_kst} · 기간{" "}
             {snapshot.period_start ?? "미확인"} ~{" "}
             {snapshot.period_end ?? "미확인"} · {snapshot.row_count}개 · 수정{" "}
-            {snapshot.revision} · 자동 주문 사용 금지
+            {snapshot.revision} ·{" "}
+            {snapshot.automated_trading_allowed
+              ? "자동매매 판단 활용 가능"
+              : "자동매매 판단 권한 미확인"}
           </p>
           <p className="subline">
-            {snapshot.capture_mode === "browser_capture"
-              ? "브라우저 수집"
-              : "수동 등록"}
+            {snapshot.last_validated_at
+              ? `최근 자동 검증: ${snapshot.last_validated_at} · `
+              : ""}
+            {snapshot.quality === "adapter_validated"
+              ? "Scrapling 자동 검증"
+              : snapshot.capture_mode === "browser_capture"
+                ? "브라우저 수집 · 독립 검수"
+                : "수동 등록 · 독립 검수"}
             {snapshot.amount_coverage === "buy_only"
               ? " · 매수 금액만 관측"
               : ""}

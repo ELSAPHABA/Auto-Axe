@@ -48,11 +48,12 @@ class SeibroSnapshot(Contract):
     retrieved_at: UtcTime
     first_seen_at: UtcTime
     available_at: UtcTime
+    last_validated_at: UtcTime | None = None
     row_count: int
     currency: Literal["USD"]
-    quality: Literal["manual_checked"]
+    quality: Literal["manual_checked", "adapter_validated"]
     top50_coverage: Literal[True]
-    automated_trading_allowed: Literal[False]
+    automated_trading_allowed: bool
     capture_mode: Literal["manual_capture", "browser_capture"] = "manual_capture"
     derived_amount: Literal["gross_settlement_usd", "net_buy_settlement_usd"] | None = None
     amount_coverage: Literal["complete", "buy_only", "sell_only"] = "complete"
@@ -93,13 +94,33 @@ def read_top50(
             """SELECT id::text AS snapshot_id,country_code,period_code,rank_basis,
                       period_start,period_end,as_of_date_kst,revision,retrieved_at,
                       first_seen_at,available_at,row_count,currency,quality,top50_coverage,
-                      automated_trading_allowed,capture_mode,derived_amount,amount_coverage
-               FROM indicators.seibro_top50_snapshots
+                      (automated_trading_allowed AND EXISTS (
+                        SELECT 1 FROM catalog.source_registry r
+                        WHERE r.source_id='seibro' AND r.permission_status='approved'
+                          AND r.enabled AND r.free_only AND r.allow_fetch AND r.allow_storage
+                          AND r.allow_trading AND r.verified_at<=clock_timestamp()
+                          AND length(trim(r.evidence_ref))>0
+                          AND r.permission_version=s.permission_version
+                          AND (s.quality='manual_checked' OR EXISTS (
+                            SELECT 1 FROM ops.seibro_adapter_grants g
+                            WHERE g.source_id=r.source_id
+                              AND g.permission_version=r.permission_version
+                              AND g.adapter_version=1 AND g.schema_version=1
+                              AND g.verified_at<=clock_timestamp()
+                          ))
+                      )) AS automated_trading_allowed,
+                      (SELECT max(b.available_at) FROM ops.seibro_validated_promotions p
+                        JOIN ops.seibro_daily_batches b ON b.id=p.batch_id
+                        WHERE p.snapshot_id=s.id AND b.permission_version=s.permission_version
+                          AND b.available_at<=%s) AS last_validated_at,
+                      capture_mode,derived_amount,amount_coverage
+               FROM indicators.seibro_top50_snapshots s
                WHERE country_code=%s AND period_code=%s AND rank_basis=%s
                  AND permission_version=%s AND available_at<=%s
                  AND (%s::date IS NULL OR as_of_date_kst=%s)
                ORDER BY as_of_date_kst DESC,available_at DESC,revision DESC,id DESC LIMIT 1""",
             (
+                cutoff,
                 country_code,
                 period_code,
                 rank_basis,

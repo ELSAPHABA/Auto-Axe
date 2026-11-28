@@ -1,6 +1,6 @@
 # SEIBro 해외주식 매수·매도 결제 통계 수집 명세
 
-> 상태(2026-11-28): 승인형 격리 브라우저 수집기와 독립 검수·원장 구현됨. 실제 TOP50 조회/자동 이용 권한 미확인, 운영 미배포. 무료 정책을 적용한다.
+> 상태(2026-11-28 Session24): Scrapling Selector + 정상 Chromium 격리 수집, 미국 15개 scope 일괄 자동 검증·영속 일일 스케줄 및 조건부 거래 권한 구현. 실제 TOP50 조회/자동 이용 권한·운영 egress 미확인, 운영 미배포. 무료 정책 적용. 최신 계약은 §8이며 이전 설계와 검수 이력은 역사적 기록이다.
 
 공식 [국제거래외화증권예탁결제정보](https://www.data.go.kr/data/15043445/openapi.do)는 무료 REST(JSON/XML), 공공누리 2유형, 개발/운영 자동승인 및 인증키 신청 경로를 제공한다. 제공 설명은 국가/시장/증권구분 결제 통계이며 지정 TOP50의 ISIN·순위·기간별 정확한 종목 결제금액 제공은 확인되지 않았다. 따라서 별도 통계를 TOP50 원장에 대체 저장하지 않는다. 한국예탁결제원 [공유자원포털](https://api.seibro.or.kr/pubc/pubr/cmm/CMPubrHome/viewCMPubrHome.do)에서 정확한 API 계약을 확인하거나 portal@ksd.or.kr에 문의한다. 상세 검증은 [Session 18](../../.ai-context/phases/phase-02/2026-11-28-18.md).
 
@@ -94,14 +94,24 @@
 | 원본 페이지·조회 옵션·테이블 XML 필드 검증 | 완료 |
 | 공식 자동 수집 허용 여부 | **확인 필요** |
 | 실제 WebSquare 결과 데이터·HTML 셀렉터 검증 | **미완료** |
-| Python 스크래퍼 작성·운영 | 격리 Playwright one-shot 구현 및 fixture 검증 완료; 실결과 및 운영 미검증 |
+| Python 스크래퍼 작성·운영 | Scrapling Selector + 정상 Chromium 15-scope 일괄 및 일일 영속 스케줄 구현, 오프라인 Chromium/DB 검증; 실결과 및 운영 미검증 |
 | 임시 수집 | SEIBro 화면에서 수동 기록 |
 
 관련 문서: [지표별 출처](./Indicator_Data_Sources.md) · [무료 수집 카탈로그](./Free_Data_Collection.md) · [수동 기록 레지스트리](./Manual_Collection.md).
 
-## 7. 실제 구현 점검 — Session 23
+## 7. 이전 구현 점검 — Session 23 (역사적 기록)
 
 - `seibro_browser.py`는 정상 Chromium/Playwright로 결제금액, 국가·기간·정렬 UI를 선택하고 화면 날짜·USD·표시된 50개 행을 검증한다. 숨은 API 호출 없음. 1/2는 buy_only/sell_only, 3/4는 표시값과 산술 검증 후 누락된 net/gross를 파생값으로 기록한다.
 - `seibro_review_cli capture-browser` 기본 US / 1주 / 순매수(4); 86400초 source-wide 예약으로 모든 국가·기간·정렬을 각각 매일 자동 수집하지 않는다. daemon 없음. 동일 초기 결과와 일치하거나 50행 미만이면 실패할 수 있다.
 - `ops.seibro_captures`, `ops.seibro_reviews`, `ops.seibro_promotions`에서 독립 검수 후 `indicators.seibro_top50_snapshots` 및 `indicators.seibro_top50_rows`에 append-only 저장. `/api/v1/dashboard/authorized/seibro`는 권한/시점별 하나의 전체 snapshot만 조회한다. DB 및 API는 automated_trading_allowed=false를 강제한다. 이번 사용자 요청은 Toss에 한정되므로 SEIBro 거래 제한은 변경하지 않는다.
 - Session 13 초기 DOM/XML 확인 및 로컬 Chromium fixture/PG17 테스트 기록, Session 18 관련 31 passed 기록만 존재한다. 실사이트 TOP50 조회 결과, 실제 운영 자동 수집 권한 및 격리 egress는 미검증. 이번에는 외부 사이트 요청 없이 코드/명세를 확인했다.
+
+## 8. Session 24 사용자 확정 개선 계약
+
+미국(US), 조회 기간 1주/1개월/3개월/6개월/1년, 매수(1)/매도(2)/순매수(4)의 15개 조합을 하루 한 번 영속 예약 및 자동 수집한다. Scrapling 기반 정상 브라우저 표시값 추출, 안전한 요청 경계, 자동 구조/수치/순위/기간 검증, 권한 버전 및 중복 방지를 유지한다. 조회 대상의 순위 집합을 섞지 않으며 관측하지 않은 금액은 null, 파생값은 provenance로 구분한다. 공급자 승인과 독립적으로 사용자 제품 기능상 모든 검증된 SEIBro 수급 필드의 자동매매 판단 활용을 허용한다. 실제 운영 사용은 승인된 fetch/storage/trading grant 및 adapter 검증 근거, 최신 허용된 데이터와 Workflow 실행 계약을 충족해야 한다. 과거 레코드의 권한 및 출처는 소급 변경하지 않는다. 미검증 수집·결측·권한 없음은 거래 판단 UNKNOWN이며 실제 주문 승인과 별개이다.
+
+- 브라우저는 Playwright의 일반 Chromium sandbox를 유지하고 화면에 표시된 셀만 detached HTML로 투영하여 Scrapling 0.5.1 Selector로 파싱한다. 원본 페이지 HTML, 숨은 셀, 비공개 요청 응답/JS 상태는 저장·추출하지 않는다. 동일한 결과는 조회 후 기존 행 전체 교체와 명시적인 aria-busy 완료 증거가 있을 때만 수용한다. 실사이트 해당 동작은 미확인이다.
+- 0024 migration: `ops.seibro_adapter_grants`, `ops.seibro_daily_batches`, `ops.seibro_validated_promotions`. 현재 source version과 독립 adapter 승인 이후 15개 검증 결과를 하나의 트랜잭션으로 승격하고 `quality=adapter_validated`로 보존한다. 별도 수동 검수 레코드를 조작하지 않는다. 기존 단발 수동 경로는 호환 유지하며 새 독립 검수 결과도 현재 trading grant에 따라 이용 가능하다.
+- `capture-daily` 단발, `run-daily` 지속 실행. 300초 DB 예약 확인, 86400초 source-wide 예약, 480초 batch launcher 제한, 브라우저 최대 400 요청/48 MiB. 일회 조회 실패 또는 일부 scope 누락 시 전체 배치 미승격, 당일 즉시 재시도 없음. 원본 결제 기준일/최초 수신·사용 가능 시각은 그대로 보존하고 동일 내용 재검증 시 `last_validated_at`만 별도 receipt에서 조회한다.
+- 현재 API의 거래 허용 bool은 권한 및 검증 상태 표시이며 실제 주문 가능 여부가 아니다. 후속 Workflow는 해당 조건에 필요한 결제 기준일/수집 receipt freshness, 권한 버전, 누락 여부를 함께 검사한다. 기간 중첩 합산과 TOP50 밖 종목의 0 보간은 금지한다.
+- 공급자 공식 2020-07-22 회원약관 제8/10조의 영리/제3자 이용 제한, 제14조의 투자 손실 및 적시성/정확성 면책을 재확인했다. 제14조를 자동매매 자체의 명시적 금지로 오해하지 않으나, 비회원 자동 수집 및 사용 허가를 확정하는 근거도 아니다. 공개 자료를 검토했을 뿐 실제 TOP50 데이터 요청/운영 grant는 수행하지 않았다.

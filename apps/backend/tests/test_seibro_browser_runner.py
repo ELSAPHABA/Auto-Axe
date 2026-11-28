@@ -48,6 +48,89 @@ def sample():
     }
 
 
+def daily_sample(stamp=NOW):
+    captures = []
+    for period, basis in runner.DAILY_SCOPES:
+        data = sample() | {
+            "period_code": period,
+            "rank_basis": basis,
+            "retrieved_at_utc": stamp.isoformat(),
+        }
+        if basis in ("1", "2"):
+            observed = "buy_settlement_usd" if basis == "1" else "sell_settlement_usd"
+            data["derived_amount"] = None
+            data["amount_coverage"] = "buy_only" if basis == "1" else "sell_only"
+            for row in data["rows"]:
+                for field in (
+                    "buy_settlement_usd",
+                    "sell_settlement_usd",
+                    "gross_settlement_usd",
+                    "net_buy_settlement_usd",
+                ):
+                    if field != observed:
+                        row[field] = None
+        captures.append(data)
+    return {"captures": captures}
+
+
+def daily_ticket():
+    return {
+        "country": "US",
+        "scopes": [{"period": p, "basis": b} for p, b in runner.DAILY_SCOPES],
+        "permission_version": 7,
+        "deadline": (NOW + timedelta(seconds=490)).isoformat(),
+    }
+
+
+def test_daily_exact_scopes_and_validation():
+    result = daily_sample()
+    normalized = runner.normalize_daily(result, daily_ticket(), NOW)
+    assert len(normalized) == 15
+    assert sum(len(c["rows"]) for c in normalized) == 750
+    assert [(c["period_code"], c["rank_basis"]) for c in normalized] == list(runner.DAILY_SCOPES)
+    assert normalized[0]["rows"][0]["net_buy_settlement_usd"] is None
+    assert normalized[2]["rows"][0]["net_buy_settlement_usd"] == "899"
+    with pytest.raises(ValueError, match="envelope"):
+        runner.normalize_daily({"captures": result["captures"][:-1]}, daily_ticket(), NOW)
+    result["captures"][-1] = result["captures"][0]
+    with pytest.raises(ValueError, match="repeated"):
+        runner.normalize_daily(result, daily_ticket(), NOW)
+    result = daily_sample()
+    result["captures"][-1]["period_start"] = "2026-11-11"
+    with pytest.raises(ValueError, match="inconsistent settlement"):
+        runner.normalize_daily(result, daily_ticket(), NOW)
+    with pytest.raises(ValueError, match="outside reservation"):
+        runner.normalize_daily(daily_sample(), daily_ticket(), NOW + timedelta(seconds=491))
+
+
+def test_daily_requires_independent_grant(monkeypatch):
+    monkeypatch.setattr(runner, "browser_permission", lambda c: 7)
+    conn = MagicMock()
+    conn.execute.return_value.fetchone.return_value = None
+    with pytest.raises(PermissionDenied, match="independent"):
+        runner.daily_adapter_grant(conn, 7)
+    conn.execute.return_value.fetchone.return_value = (False,)
+    assert runner.daily_adapter_grant(conn, 7) is False
+    conn.execute.return_value.fetchone.return_value = (True,)
+    assert runner.daily_adapter_grant(conn, 7) is True
+    with pytest.raises(PermissionDenied, match="grant changed"):
+        runner.daily_adapter_grant(conn, 8)
+
+
+def test_daily_daemon_waits_after_failure_and_respects_not_due():
+    capture = MagicMock(side_effect=[PermissionDenied("private"), "not_due", "validated batch 15"])
+    report = MagicMock()
+    sleep = MagicMock(side_effect=[None, None, KeyboardInterrupt])
+    with pytest.raises(KeyboardInterrupt):
+        runner.run_daily_loop("fixture", capture=capture, report=report, sleep=sleep)
+    assert capture.call_count == 3
+    assert [call.args for call in sleep.call_args_list] == [(300,), (300,), (300,)]
+    assert [call.args for call in report.call_args_list] == [
+        ("SEIBro daily capture blocked or unavailable",),
+        ("validated batch 15",),
+    ]
+
+
 def test_browser_requires_fetch_not_storage_only():
     conn = MagicMock()
     cursor = conn.execute.return_value

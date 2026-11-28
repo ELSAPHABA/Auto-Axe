@@ -72,7 +72,7 @@ PER/PBR/ROE는 Ticker.info를 우선 사용한다. ROE 원본 ratio와 표시 pe
 
 ### 4.3 결제 통계 및 가이던스
 
-SEIBro는 국가·기간별 매수/매도/순매수 결제금액 USD를 수집한다. TOP50과 전체 합계, 결제와 체결을 구분한다. 승인 전 자동 스크래핑 비활성. 가이던스는 회계기간, GAAP/adjusted, 전망 범위, 원문 및 공개시각을 저장하며 애널리스트 컨센서스와 구분한다.
+SEIBro는 국가·기간별 매수/매도/순매수 결제금액 USD를 수집한다. TOP50과 전체 합계, 결제와 체결을 구분한다. Session24 사용자 확정: Scrapling 기반 수집, 미국 5개 기간(1주/1개월/3개월/6개월/1년) × 매수/매도/순매수 15개 scope를 일 1회 영속 수집하고 자동 검증·해시 중복 방지 후 저장한다. 제품상 자동매매 판단 전면 허용, 공급자 fetch/storage/trading 승인 및 현재 관측값의 검증 상태·권한 버전·시점 조건은 유지하며 미승인/결측은 UNKNOWN. LIVE 주문 승인은 별도이다. 가이던스는 회계기간, GAAP/adjusted, 전망 범위, 원문 및 공개시각을 저장하며 애널리스트 컨센서스와 구분한다.
 
 상세: [누적 거래량](../indicator-collection/YFinance_1s_Stock_Cumulative_Volume.md) · [재무·기술지표](../indicator-collection/YFinance_Valuation_and_Moving_Averages.md) · [SEIBro](../indicator-collection/SEIBro_Overseas_Stock_Flows.md).
 

@@ -332,3 +332,142 @@ def test_reviewed_top50_ledger(monkeypatch):
                        gross_settlement_usd=200,net_buy_settlement_usd=0 WHERE snapshot_id=%s""",
                     (sid,),
                 )
+
+        from test_seibro_browser_runner import daily_sample
+
+        from autoaxe.application import seibro_browser_runner as runner
+
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            set_permission(
+                conn,
+                "seibro",
+                approved=True,
+                evidence="synthetic daily only",
+                fetch=True,
+                storage=True,
+                trading=True,
+            )
+        launch_calls = []
+
+        def launch(ticket):
+            launch_calls.append(ticket)
+            with psycopg.connect(runtime) as conn:
+                return daily_sample(conn.execute("SELECT clock_timestamp()").fetchone()[0])
+
+        with pytest.raises(PermissionDenied, match="independent"):
+            runner.capture_daily(runtime, launch=launch)
+        assert not launch_calls
+        with psycopg.connect(runtime) as conn:
+            with pytest.raises(InsufficientPrivilege):
+                conn.execute("INSERT INTO ops.seibro_adapter_grants DEFAULT VALUES")
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            conn.execute(
+                """INSERT INTO ops.seibro_adapter_grants
+                (permission_version,adapter_version,schema_version,interval_seconds,
+                 reviewer_ref,evidence_ref)
+                SELECT permission_version,1,1,86400,'fixture reviewer','fixture evidence'
+                FROM catalog.source_registry WHERE source_id='seibro'"""
+            )
+        with psycopg.connect(runtime) as conn:
+            before_reviews = conn.execute("SELECT count(*) FROM ops.seibro_reviews").fetchone()[0]
+            before_snapshots = conn.execute(
+                "SELECT count(*) FROM indicators.seibro_top50_snapshots"
+            ).fetchone()[0]
+        assert runner.capture_daily(runtime, launch=launch).startswith("validated ")
+        assert len(launch_calls) == 1 and len(launch_calls[0]["scopes"]) == 15
+        assert runner.capture_daily(runtime, launch=launch) == "not_due"
+        assert (
+            runner.capture_once(
+                runtime,
+                country="US",
+                period="1",
+                basis="4",
+                launch=launch,
+            )
+            == "not_due"
+        )
+        assert len(launch_calls) == 1
+        with psycopg.connect(runtime) as conn:
+            assert conn.execute("SELECT count(*) FROM ops.seibro_reviews").fetchone()[0] == (
+                before_reviews
+            )
+            assert (
+                conn.execute("SELECT count(*) FROM ops.seibro_validated_promotions").fetchone()[0]
+                == 15
+            )
+            assert (
+                conn.execute("SELECT count(*) FROM indicators.seibro_top50_snapshots").fetchone()[0]
+                == before_snapshots + 15
+            )
+            assert conn.execute(
+                """SELECT count(*),count(DISTINCT available_at),sum(row_count)
+                   FROM indicators.seibro_top50_snapshots WHERE quality='adapter_validated'"""
+            ).fetchone() == (15, 1, 750)
+        initial_daily_view = read()
+        assert initial_daily_view is not None
+        assert initial_daily_view.last_validated_at == initial_daily_view.available_at
+        for period, basis in runner.DAILY_SCOPES:
+            with psycopg.connect(reader) as conn:
+                view = read_top50(
+                    conn,
+                    country_code="US",
+                    period_code=period,
+                    rank_basis=basis,
+                    cutoff=conn.execute("SELECT clock_timestamp()").fetchone()[0],
+                    private_use=True,
+                )
+                assert view is not None and view.quality == "adapter_validated"
+                assert view.automated_trading_allowed and len(view.rows) == 50
+
+        def due():
+            with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+                conn.execute(
+                    """UPDATE ops.official_poll_slots SET next_requested_at=clock_timestamp()
+                       WHERE task_id='seibro_browser'"""
+                )
+
+        due()
+        assert runner.capture_daily(runtime, launch=launch).startswith("validated ")
+        refreshed_daily_view = read()
+        assert refreshed_daily_view is not None
+        assert refreshed_daily_view.snapshot_id == initial_daily_view.snapshot_id
+        assert refreshed_daily_view.retrieved_at == initial_daily_view.retrieved_at
+        assert refreshed_daily_view.available_at == initial_daily_view.available_at
+        assert refreshed_daily_view.last_validated_at > initial_daily_view.last_validated_at
+        assert read(cutoff=initial_daily_view.available_at) == initial_daily_view
+        with psycopg.connect(runtime) as conn:
+            # A subsequent receipt records retrieval; unchanged content is not a new revision.
+            assert conn.execute("SELECT count(*) FROM ops.seibro_daily_batches").fetchone()[0] == 2
+            assert (
+                conn.execute("SELECT count(*) FROM ops.seibro_validated_promotions").fetchone()[0]
+                == 30
+            )
+            assert (
+                conn.execute("SELECT count(*) FROM indicators.seibro_top50_snapshots").fetchone()[0]
+                == before_snapshots + 15
+            )
+        due()
+        with pytest.raises(ValueError, match="envelope"):
+            runner.capture_daily(runtime, launch=lambda ticket: {"captures": []})
+        assert runner.capture_daily(runtime, launch=launch) == "not_due"
+        with psycopg.connect(runtime) as conn:
+            assert conn.execute("SELECT count(*) FROM ops.seibro_daily_batches").fetchone()[0] == 2
+        with psycopg.connect(admin, dbname="autoaxe_market") as conn:
+            conn.execute("DELETE FROM ops.seibro_adapter_grants WHERE source_id='seibro'")
+        view = read()
+        assert view is not None and not view.automated_trading_allowed
+        manual_new = sample() | {"period_code": "3"}
+        cid, digest = stage(manual_new)
+        review(cid, digest)
+        assert promote(cid)[0] == "promoted"
+        with psycopg.connect(reader) as conn:
+            manual_view = read_top50(
+                conn,
+                country_code="US",
+                period_code="3",
+                rank_basis="4",
+                cutoff=conn.execute("SELECT clock_timestamp()").fetchone()[0],
+                private_use=True,
+            )
+        assert manual_view is not None and manual_view.quality == "manual_checked"
+        assert manual_view.automated_trading_allowed and manual_view.last_validated_at is None

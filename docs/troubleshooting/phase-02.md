@@ -248,3 +248,9 @@
 - 조사: 테스트의 PING_SECONDS=0.01, PONG_TIMEOUT=0.02, FakeSocket([])는 recv에서 Future 대기, 1초 session. stream_tickers는 pending pong이 있어도 next_ping 도달 시 다시 ping하여 pong_due를 갱신한다. PING_SECONDS < PONG_TIMEOUT이면 이전 deadline이 연장될 수 있다. 정적 코드 확인 및 CI 로그가 일치하나 수정·재현 후 root cause 확정 필요. CI 실패를 Toss/CNN 자체의 결함으로 단정하지 않는다.
 - 다음 재현: `uv run --project apps/backend --locked pytest apps/backend/tests/test_phase2_mexc_ws.py::test_missing_pong_times_out -q`. outstanding pong deadline을 보존하고 next_ping 및 wait 계산에서 busy-loop를 방지하는 후보 변경; 정상 pong, 지연 pong, market frames, permission fence, session bounds 재검증. timeout 완화, 테스트 삭제/skip, 단순 재실행으로 해결 선언 금지. 이후 전체 CI 4/4 확인.
 - 이번 세션은 원격 감사/문서 기록만 수행. 코드 변경, 로컬 재현, 신규 pytest/외부 provider 호출 및 운영 배포 없음. 상태 OPEN. [Session 22](../../.ai-context/phases/phase-02/2026-11-28-22.md) 참조.
+
+## TS-02-45 — SEIBro 다중 조회 시 이전 결과 오인 및 검증 시계 차이
+- 기존 단발 수집은 동일 결과를 무조건 거부했고, 다중 조회 전환 시 헤더만 바뀌거나 숨은 셀이 나타나는 상황에서 이전 표를 새 데이터로 판단할 위험이 있다. Scrapling으로 보이는 셀만 파싱하고 조회 직전/이후 본문 비교, 실제 행 변경 및 두 번의 안정된 관측을 확인한다. 동일 결과는 기존 표시 행 전체 교체 및 조회 후 aria-busy 완료 주기가 모두 관측된 경우에만 인정한다. 실사이트의 해당 완료 신호는 미확인이다.
+- 오프라인 Chromium fixture로 15개 scope/750행 성공, no-op/repaint/visibility-only 오인, 숨은 셀 노출, 잘못된 scope 거부 확인. 마지막 scraper 관련 29 tests passed.
+- 임시 PG17 통합 테스트 중 Windows host clock과 DB container clock 차이로 synthetic capture 시각이 예약 구간 밖이라고 거부되는 오류 발생. 합성 테스트의 timestamp를 DB clock에서 얻도록 수정, 운영 검증 기준은 완화하지 않았다. 최종 backend scoped 31 tests passed, 2 기존 deprecation warnings. 실제 공급자/컨테이너 시계 동기화는 운영 선행조건이다.
+- 실제 TOP50 조회·권한·egress·동일 결과 완료 marker 및 운영 주기 미검증. [Session 24](../../.ai-context/phases/phase-02/2026-11-28-24.md) 참고.

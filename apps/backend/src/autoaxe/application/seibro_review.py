@@ -75,6 +75,20 @@ def browser_permission(conn: Connection[Any]) -> int:
     return int(row[7])
 
 
+def trading_permission(conn: Connection[Any], version: int) -> bool:
+    """New independently verified data may trade only under current explicit source grant."""
+    return (
+        conn.execute(
+            """SELECT 1 FROM catalog.source_registry WHERE source_id='seibro'
+           AND permission_version=%s AND permission_status='approved' AND enabled
+           AND free_only AND allow_fetch AND allow_storage AND allow_trading
+           AND verified_at<=clock_timestamp() AND length(trim(evidence_ref))>0""",
+            (version,),
+        ).fetchone()
+        is not None
+    )
+
+
 def _date(raw: Any) -> date:
     if not isinstance(raw, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", raw):
         raise ValueError("explicit ISO date required")
@@ -298,83 +312,111 @@ def promote_capture(conn: Connection[Any], capture_id: str) -> tuple[str, str | 
         if receipt[1] != row["decision"]:
             raise PermissionDenied("review decision changed")
         return "duplicate", str(receipt[0]) if receipt[0] else None
+    if conn.execute(
+        "SELECT 1 FROM ops.seibro_validated_promotions WHERE capture_id=%s", (capture_id,)
+    ).fetchone():
+        raise PermissionDenied("capture already belongs to validated daily ledger")
     snapshot_id = None
     state = "rejected"
     if row["decision"] == "checked":
-        scope = {key: payload[key] for key in SCOPE}
-        scope_hash = canonical_sha256(scope)
-        content_hash = canonical_sha256({"scope": scope, "rows": payload["rows"]})
-        if payload["capture_mode"] == "browser_capture":
-            content_hash = canonical_sha256(
-                {
-                    "scope": scope,
-                    "rows": payload["rows"],
-                    "capture_mode": "browser_capture",
-                    "derived_amount": payload["derived_amount"],
-                    **(
-                        {"amount_coverage": payload["amount_coverage"]}
-                        if "amount_coverage" in payload
-                        else {}
-                    ),
-                }
-            )
-        old = conn.execute(
-            """SELECT id,revision,content_hash,permission_version
-            FROM indicators.seibro_top50_snapshots WHERE scope_hash=%s
-            ORDER BY revision DESC LIMIT 1""",
-            (scope_hash,),
-        ).fetchone()
-        if old and old[2] == content_hash and old[3] == version:
-            snapshot_id, state = str(old[0]), "duplicate"
-        else:
-            snapshot_id, state = str(uuid4()), "promoted"
-            conn.execute(
-                """INSERT INTO indicators.seibro_top50_snapshots
-                (id,capture_id,permission_version,scope_hash,content_hash,revision,country_code,
-                period_code,rank_basis,period_start,period_end,as_of_date_kst,retrieved_at,
-                first_seen_at,available_at,row_count,capture_mode,derived_amount,amount_coverage)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-                (
-                    snapshot_id,
-                    capture_id,
-                    version,
-                    scope_hash,
-                    content_hash,
-                    old[1] + 1 if old else 1,
-                    *(scope[key] for key in SCOPE),
-                    payload["retrieved_at_utc"],
-                    row["first_seen_at"],
-                    now,
-                    len(payload["rows"]),
-                    payload["capture_mode"],
-                    payload.get("derived_amount"),
-                    payload.get("amount_coverage", "complete"),
-                ),
-            )
-            with conn.cursor() as cur:
-                cur.executemany(
-                    """INSERT INTO indicators.seibro_top50_rows
-                    (snapshot_id,rank,country_name,isin,security_name,buy_settlement_usd,
-                     sell_settlement_usd,gross_settlement_usd,net_buy_settlement_usd,amount_coverage)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-                    [
-                        (
-                            snapshot_id,
-                            item["rank"],
-                            item["country_name"],
-                            item["isin"],
-                            item["security_name"],
-                            *(
-                                Decimal(item[key]) if item[key] is not None else None
-                                for key in AMOUNTS
-                            ),
-                            payload.get("amount_coverage", "complete"),
-                        )
-                        for item in payload["rows"]
-                    ],
-                )
+        state, snapshot_id = insert_snapshot(
+            conn,
+            payload,
+            capture_id,
+            version,
+            row["first_seen_at"],
+            now,
+            trading=trading_permission(conn, version),
+        )
     conn.execute(
         "INSERT INTO ops.seibro_promotions(capture_id,snapshot_id,decision) VALUES (%s,%s,%s)",
         (capture_id, snapshot_id, row["decision"]),
     )
+    return state, snapshot_id
+
+
+def insert_snapshot(
+    conn: Connection[Any],
+    payload: dict[str, Any],
+    capture_id: str,
+    version: int,
+    first_seen_at: datetime,
+    now: datetime,
+    *,
+    quality: str = "manual_checked",
+    trading: bool = False,
+) -> tuple[str, str]:
+    """Write one normalized snapshot while holding the source transaction lock."""
+    scope = {key: payload[key] for key in SCOPE}
+    scope_hash = canonical_sha256(scope)
+    content_hash = canonical_sha256({"scope": scope, "rows": payload["rows"]})
+    if payload["capture_mode"] == "browser_capture":
+        content_hash = canonical_sha256(
+            {
+                "scope": scope,
+                "rows": payload["rows"],
+                "capture_mode": "browser_capture",
+                "derived_amount": payload["derived_amount"],
+                **(
+                    {"amount_coverage": payload["amount_coverage"]}
+                    if "amount_coverage" in payload
+                    else {}
+                ),
+            }
+        )
+    old = conn.execute(
+        """SELECT id,revision,content_hash,permission_version,quality,automated_trading_allowed
+        FROM indicators.seibro_top50_snapshots WHERE scope_hash=%s
+        ORDER BY revision DESC LIMIT 1""",
+        (scope_hash,),
+    ).fetchone()
+    if old and tuple(old[2:]) == (content_hash, version, quality, trading):
+        snapshot_id, state = str(old[0]), "duplicate"
+    else:
+        snapshot_id, state = str(uuid4()), "promoted"
+        conn.execute(
+            """INSERT INTO indicators.seibro_top50_snapshots
+            (id,capture_id,permission_version,scope_hash,content_hash,revision,country_code,
+            period_code,rank_basis,period_start,period_end,as_of_date_kst,retrieved_at,
+            first_seen_at,available_at,row_count,capture_mode,derived_amount,amount_coverage,
+            quality,automated_trading_allowed)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (
+                snapshot_id,
+                capture_id,
+                version,
+                scope_hash,
+                content_hash,
+                old[1] + 1 if old else 1,
+                *(scope[key] for key in SCOPE),
+                payload["retrieved_at_utc"],
+                first_seen_at,
+                now,
+                len(payload["rows"]),
+                payload["capture_mode"],
+                payload.get("derived_amount"),
+                payload.get("amount_coverage", "complete"),
+                quality,
+                trading,
+            ),
+        )
+        with conn.cursor() as cur:
+            cur.executemany(
+                """INSERT INTO indicators.seibro_top50_rows
+                (snapshot_id,rank,country_name,isin,security_name,buy_settlement_usd,
+                 sell_settlement_usd,gross_settlement_usd,net_buy_settlement_usd,amount_coverage)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                [
+                    (
+                        snapshot_id,
+                        item["rank"],
+                        item["country_name"],
+                        item["isin"],
+                        item["security_name"],
+                        *(Decimal(item[key]) if item[key] is not None else None for key in AMOUNTS),
+                        payload.get("amount_coverage", "complete"),
+                    )
+                    for item in payload["rows"]
+                ],
+            )
     return state, snapshot_id

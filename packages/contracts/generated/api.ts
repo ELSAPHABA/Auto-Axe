@@ -1158,11 +1158,8 @@ export interface components {
              * Format: date
              */
             as_of_date_kst: string;
-            /**
-             * Automated Trading Allowed
-             * @constant
-             */
-            automated_trading_allowed: false;
+            /** Automated Trading Allowed */
+            automated_trading_allowed: boolean;
             /**
              * Available At
              * Format: date-time
@@ -1191,6 +1188,8 @@ export interface components {
              * Format: date-time
              */
             first_seen_at: string;
+            /** Last Validated At */
+            last_validated_at?: string | null;
             /**
              * Period Code
              * @enum {string}
@@ -1202,9 +1201,9 @@ export interface components {
             period_start: string | null;
             /**
              * Quality
-             * @constant
+             * @enum {string}
              */
-            quality: "manual_checked";
+            quality: "manual_checked" | "adapter_validated";
             /**
              * Rank Basis
              * @enum {string}

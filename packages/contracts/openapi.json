@@ -2439,7 +2439,6 @@
             "type": "string"
           },
           "automated_trading_allowed": {
-            "const": false,
             "title": "Automated Trading Allowed",
             "type": "boolean"
           },
@@ -2496,6 +2495,19 @@
             "title": "First Seen At",
             "type": "string"
           },
+          "last_validated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "Z$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Validated At"
+          },
           "period_code": {
             "enum": [
               "1",
@@ -2532,7 +2544,10 @@
             "title": "Period Start"
           },
           "quality": {
-            "const": "manual_checked",
+            "enum": [
+              "manual_checked",
+              "adapter_validated"
+            ],
             "title": "Quality",
             "type": "string"
           },

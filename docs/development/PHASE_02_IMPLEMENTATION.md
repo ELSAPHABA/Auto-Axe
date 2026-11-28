@@ -2,9 +2,13 @@
 
 2026-11-27 KST. 원본 [Phase 계획](PHASE_PLAN.md) §5의 P2.1~P2.8을 변경하지 않는다. [상세 세션 기록](../../.ai-context/phases/phase-02/2026-11-27-01.md) · [별도 트러블슈팅](../troubleshooting/phase-02.md) · [전체 운영 맥락](../../.ai-context/CONTEXT.md).
 
-## 최신 사용자 변경 — 2026-11-28 Session 23
+## 최신 사용자 변경 — 2026-11-28 Session 24
 
-[Session 23](../../.ai-context/phases/phase-02/2026-11-28-23.md): P2.6 Toss UST_2Y_TOSS의 자동매매 판단을 사용자 승인에 따라 허용한다. 현재 source trading grant 및 검수 완료 관측값만 허용하며 공급자 실권한/운영 LIVE는 별도이다. 기존 관측값 소급 변경 금지, 원본 시각 null, receipt 상한 960초 및 900초 수집 주기 유지. SEIBro 구현 분석은 [상세 명세](../indicator-collection/SEIBro_Overseas_Stock_Flows.md#7-실제-구현-점검--session-23) 참조; 기존 DB/API 거래 금지 유지. 전체 Phase2 exit는 여전히 BLOCKED.
+[Session 24](../../.ai-context/phases/phase-02/2026-11-28-24.md): SEIBro Scrapling 기반 15개 미국 TOP50 조회 scope 일괄 자동 수집·검증 및 자동매매 활용 허용. 0024 migration으로 버전별 adapter 승인과 batch receipt를 도입한다. 과거 검수 기록/원본별 순위·금액·시각 보존. 실제 공급자 승인 및 운영 검증은 별도 gate; Phase 2 전체 exit BLOCKED. 상세 [SEIBro 계약](../indicator-collection/SEIBro_Overseas_Stock_Flows.md#8-session-24-사용자-확정-개선-계약).
+
+## 이전 사용자 변경 — 2026-11-28 Session 23
+
+[Session 23](../../.ai-context/phases/phase-02/2026-11-28-23.md): P2.6 Toss UST_2Y_TOSS의 자동매매 판단을 사용자 승인에 따라 허용한다. 현재 source trading grant 및 검수 완료 관측값만 허용하며 공급자 실권한/운영 LIVE는 별도이다. 기존 관측값 소급 변경 금지, 원본 시각 null, receipt 상한 960초 및 900초 수집 주기 유지. 당시 SEIBro 구현 분석은 [상세 명세](../indicator-collection/SEIBro_Overseas_Stock_Flows.md#7-이전-구현-점검--session-23-역사적-기록) 참조; 당시 거래 금지 결정은 Session24에서 대체되었다. 전체 Phase2 exit는 여전히 BLOCKED.
 
 ## 이전 재개 점검 — 2026-11-28 Session 22
 
