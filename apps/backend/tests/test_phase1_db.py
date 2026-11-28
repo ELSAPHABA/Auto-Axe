@@ -196,23 +196,38 @@ def test_ledger_jobs_and_mode_ingress(monkeypatch):
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(
                 conn,
-                "naver",
+                "toss",
                 approved=True,
                 evidence="synthetic test permission",
                 fetch=True,
                 storage=True,
             )
         with psycopg.connect(market) as conn:
-            ingest(conn, Candidate("UST_2Y_NAVER", "primary", "4.65", now, now, now))
+            ingest(
+                conn,
+                Candidate(
+                    "UST_2Y_TOSS",
+                    "primary",
+                    "4.65",
+                    None,
+                    now,
+                    now,
+                    Quality.MANUAL_CHECKED,
+                    {"source_time_verified": False, "automated_trading_allowed": False},
+                ),
+            )
             conn.execute(
                 "INSERT INTO ops.collector_health VALUES "
-                "('UST_2Y_NAVER','healthy','fixture',clock_timestamp())"
+                "('UST_2Y_TOSS','manual_required','scrape_manually_checked_nontrading',clock_timestamp())"
             )
-            assert select_two_year(conn, now)[0] == "UST_2Y_NAVER"
+            assert select_two_year(conn, now)[0] == "UST_2Y_TOSS"
+            assert select_two_year(conn, now + timedelta(seconds=961))[0] == "UST_2Y_TREASURY"
+            with pytest.raises(ValueError):
+                ingest(conn, Candidate("UST_2Y_TOSS", "invalid", "4.7", now, now, now))
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(
                 conn,
-                "naver",
+                "toss",
                 approved=False,
                 evidence="synthetic revoked",
                 fetch=False,
@@ -221,7 +236,19 @@ def test_ledger_jobs_and_mode_ingress(monkeypatch):
         with psycopg.connect(market) as conn:
             assert select_two_year(conn, now)[0] == "UST_2Y_TREASURY"
             with pytest.raises(PermissionDenied):
-                ingest(conn, Candidate("UST_2Y_NAVER", "after-revoke", "4.7", now, now, now))
+                ingest(
+                    conn,
+                    Candidate(
+                        "UST_2Y_TOSS",
+                        "after-revoke",
+                        "4.7",
+                        None,
+                        now,
+                        now,
+                        Quality.MANUAL_CHECKED,
+                        {"source_time_verified": False, "automated_trading_allowed": False},
+                    ),
+                )
             submit_collection(conn, "FIXTURE_PRICE", "worker", "test-one")
         assert run_one(market, synthetic_collect) == "succeeded"
         assert relay_batch(relay, mode, "dry") > 0
@@ -270,7 +297,7 @@ def test_ledger_jobs_and_mode_ingress(monkeypatch):
             )
             assert (
                 conn.execute(
-                    "SELECT count(*) FROM catalog.permission_versions WHERE source_id='naver'"
+                    "SELECT count(*) FROM catalog.permission_versions WHERE source_id='toss'"
                 ).fetchone()[0]
                 == 3
             )

@@ -2,7 +2,7 @@
 
 ## 1. 적용 범위
 
-시장가격은 Binance 공개 체결 스트림을 기본으로 한다. VIX 및 국채 3M/5Y/10Y/30Y와 미국 주식·ETF의 지정 지표는 yfinance를 사용한다. 네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+시장가격은 Binance 공개 체결 스트림을 기본으로 한다. VIX 및 국채 3M/5Y/10Y/30Y와 미국 주식·ETF의 지정 지표는 yfinance를 사용한다. 토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분하고 자동 거래 및 제3자 재배포에 사용하지 않는다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
 
 ## 2. 대상별 기본 데이터 소스
 
@@ -11,7 +11,7 @@
 - SMA/EMA 및 5/10/20거래일 고저가의 OHLCV는 로컬 우선(Cache-first). 필요한 유효 확정봉·EMA 초기화 이력이 로컬에 있으면 외부 요청 0회, 없거나 불완전하면 부족한 거래세션 구간만 Yahoo HTTP 요청 후 로컬 원장과 병합하여 계산한다. [상세](./YFinance_Valuation_and_Moving_Averages.md#4-auto-axe-수집계산-주기).
 
 - VIX는 반드시 원본 이벤트 기준 TTL 10초 및 허용 범위 내 즉시 갱신. 원본 지연/미수신은 stale 또는 UNKNOWN으로 처리하고 TTL을 늘리거나 수신시각으로 대체하지 않는다. VIX는 필수 신선도 요구사항이며 공급자 제약으로 충족하지 못하면 신호 차단, 별도 검증 필요.
-- 미국 국채 3M/5Y/10Y/30Y는 yfinance 정기 조회 900초(15분). 기존 원본 TTL 300초는 조회 주기와 구분해 유지하며, 오래된 관측을 15분 동안 최신으로 간주하지 않는다. 2Y Naver 우선/Treasury 일별 임시 fallback은 그대로 유지.
+- 미국 국채 3M/5Y/10Y/30Y는 yfinance 정기 조회 900초(15분). 기존 원본 TTL 300초는 조회 주기와 구분해 유지하며, 오래된 관측을 15분 동안 최신으로 간주하지 않는다. 2Y Toss 우선/Treasury 일별 임시 fallback은 그대로 유지.
 - WTI/Brent는 각각 Binance WS CLUSDT/BZUSDT를 최우선으로, 해당 스트림 실패 시에만 Yahoo WS CL=F/BZ=F fallback. Binance 정상 복구 시 우선 원본으로 복귀하고 사유·시각·원본을 기록한다. 정규 휴장과 장애를 구분한다. Yahoo USD 만기선물과 Binance USDT 연동 영구선물은 별도 series, 상품·단위·계약·지연을 표시하고 전환 경계 수익률/EDGE/rolling은 UNKNOWN 또는 재기준화. Yahoo WS 실제 심볼 수신 검증 전 fallback을 가동하지 않는다.
 - NVDA/QLD WS day_volume 로컬 1Hz 기록, 후행/예상 PER·PBR 일별, ROE 실적 발표 후, 확정 OHLCV 기반 SMA 5/20/60/120/200 및 EMA 12/26, 최근 5/10/20 실제 거래 세션 고저가를 유지한다. ETF 기업 재무비율은 결측. NQ=F 지연 1분봉 비교도 유지.
 - yfinance HTTP 구현은 기존 명세대로 복원하는 방향으로 확정한다. 최초 과거 OHLCV 일괄 확보 후 증분 수집(일봉 확정 후 거래일 1회, 정정·분할·배당 및 워밍업 보존), 캐시·single-flight·bounded request/concurrency/timeout, 429 Retry-After/backoff 및 403 중단, UI refresh와 정기 외부 호출 분리. 내부 재시도/쿠키 요청 포함 실제 호출량 제어 검증 필요. 개인·연구·교육·비영리, 제3자 재배포 금지 및 기존 권한 게이트 유지. 개발 구현과 공급자 운영 허용 여부는 별개.
@@ -33,7 +33,7 @@
 | 나스닥 100 선물·연동 신호 | **MEXC `NAS100_USDT` 무료 Futures WebSocket(개발/검증 후보)**; Binance `QQQUSDT` 별도 보조, yfinance `NQ=F` 지연 CME 기준 | `NASDAQ100_MEXC_PERP_USDT` / 별도 2시리즈 | MEXC는 지수 연동 영구선물, Binance는 QQQ ETF 연동 계약, Yahoo는 CME 실제 NQ 지연 시세. WS 수신 미검증; [조사 문서](./Nasdaq100_Futures_Data_Sources.md) |
 | VIX | yfinance `^VIX` | `VIX` | Cboe VIX 지수, 원본 기준 TTL 10초; 지연 가능 |
 | 미국 국채 3개월 | yfinance `^IRX` | `UST_3M` | Yahoo 13주물 금리지표 |
-| 미국 국채 2년 | **네이버 증권 `US2YT=RR` 최우선; 실패/실행 불가 시에만 Treasury `BC_2YEAR` 임시 일별 fallback** | `UST_2Y` (논리); `UST_2Y_NAVER` / `UST_2Y_TREASURY` (원본) | 네이버 게시 수익률 및 Treasury 공식 par yield를 별도 유지 |
+| 미국 국채 2년 | **토스증권 `ROB.US2YT-RR` 최우선; 실패/실행 불가 시에만 Treasury `BC_2YEAR` 임시 일별 fallback** | `UST_2Y` (논리); `UST_2Y_TOSS` / `UST_2Y_TREASURY` (원본) | 토스증권 게시 수익률 및 Treasury 공식 par yield를 별도 유지 |
 | 미국 국채 5년 | yfinance `^FVX` | `UST_5Y` | Yahoo 5년물 금리지표 |
 | 미국 국채 10년 | yfinance `^TNX` | `UST_10Y` | Yahoo 10년물 금리지표 |
 | 미국 국채 30년 | yfinance `^TYX` | `UST_30Y` | Yahoo 30년물 금리지표 |
@@ -46,18 +46,13 @@
 
 ## 3. 국채 2년물 수집 및 검증 근거
 
-네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분하고 자동 거래 및 제3자 재배포에 사용하지 않는다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
 
 전환 후 일별 Treasury 값은 별도 원본과 freshness를 유지한다. 실거래 Workflow는 원본 고정 기본이며 명시적 fallback 허용 및 품질 검증 없이는 UNKNOWN. [공통 시계열 계약](../tech-stack/data-storage.md) · [신선도](../tech-stack/data-collection.md).
 
-원본 페이지: [m.stock.naver.com/marketindex/bond/US2YT=RR](https://m.stock.naver.com/marketindex/bond/US2YT=RR).
+원본 페이지: [토스증권 2년물](https://www.tossinvest.com/indices/ROB.US2YT-RR).
 
-2026-11-23 HTTP 실증:
-- 원본 HTML: HTTP 200.
-- 실제 화면 데이터 공급 엔드포인트: `GET https://m.stock.naver.com/front-api/marketIndex/bondList?countryCode=USA` → HTTP 200 JSON.
-- 해당 레코드 선택: `result[].reutersCode == "US2YT=RR"`.
-- 주요 필드: `closePrice`(수익률 숫자 문자열), `localTradedAt`(타임존 포함 관측시각), `priceDataType`, `delayTime`, `marketStatus`, `name`.
-- 실측 응답 예시는 `closePrice="4.6490"`, `localTradedAt="2026-11-20T17:05:00-05:00"`, `priceDataType="REALTIME"`, `delayTime=0`이었다.
+2026-11-28 사용자 승인 및 단발 검증: robots.txt 대상 경로 허용, HTTP 200 정적 HTML에는 수익률 미포함. 정상 Chrome/Playwright 렌더링 후 미국 채권 목록의 정확한 2년물 행을 확인했다. 숫자 표시 애니메이션 및 전일 대비 변동률을 수익률로 혼동하지 않는다. 원본 시세 갱신 시각은 미확인이다. 독립 source/adapter grant와 검수 전 승격 금지. 수집 시각은 원본 시각이 아니며 공급자 약관 전문 및 원천 라이선스 별도 검토. 기존 Naver 2026-11-23 조사 기록은 Git 이력에 보존한다.
 
 ## 4. 수집 PoC 실행
 
@@ -92,5 +87,5 @@ python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m -
 - [Binance Spot market-data documentation](https://developers.binance.com/en/docs/products/spot/web-socket-streams)
 - [Binance USDⓈ-M Futures market streams](https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/Introduction)
 - [Binance API 검증 및 관련 계약 차이](./Binance_API_Coverage.md)
-- [네이버 원본 2년물](https://m.stock.naver.com/marketindex/bond/US2YT=RR)
+- [토스증권 원본 2년물](https://www.tossinvest.com/indices/ROB.US2YT-RR)
 - [U.S. Treasury 공식 일별 수익률 XML](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed)

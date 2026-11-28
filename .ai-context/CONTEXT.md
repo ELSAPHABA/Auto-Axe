@@ -4,6 +4,8 @@
 
 ## METADATA (메타데이터)
 
+- **최신 사용자 확정 2026-11-28 session 21:** [토스증권 2Y 교체](phases/phase-02/2026-11-28-21.md). Naver 2Y 퇴역, Toss `ROB.US2YT-RR` / `UST_2Y_TOSS` 승인형 Playwright 900초, Treasury 일별 fallback 유지. 정상 브라우저 DOM 확인, 원본 시간 미확인, 독립 검수·개인 열람 전용·거래 금지, 0023 migration. 실제 운영 grant/격리 컨테이너 실측 미완료. 이전 Naver 지시는 이 결정으로 대체된다. Session 20 CNN graphdata 종합·하위 지표 및 그래프 보존 구현(0022, 시작 HEAD 3f1587f)은 그대로 유지.
+
 - **사용자 확정 2026-11-28 session 19:** [CNN JSON 전용/Naver 15분](phases/phase-02/2026-11-28-19.md). CNN graphdata만 자동 대상, HTML 제거, 원본 score/rating/timestamp만, Naver 900초 조회(기존 TTL/Treasury fallback 유지). 0021 migration 및 합성 DB 테스트 통과. 실제 공급자 운영 허용/실측 미확인.
 
 - **최신 개발 인계 2026-11-28 session 18:** [CNN/Naver/DRAM/SEIBro](phases/phase-02/2026-11-28-18.md). 기존 수집기 유지 및 reviewed DOM manifest, 운영/fixture 분리, 수치/시각 검증, grant 갱신 시 Retry-After 보존. 공식 무료 국제거래외화증권예탁결제정보 API는 TOP50 동등성 미확인. 네 공급원 실제 자동 수집 미검증, no prod deploy. 세부 잔여 조건은 로그 참조.

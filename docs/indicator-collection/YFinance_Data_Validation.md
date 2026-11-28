@@ -48,7 +48,7 @@ python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
 | 데이터 | 1차 무료 신뢰 소스 | yfinance 용도 | 운영 실패·권한 미확인 시 |
 |---|---|---|---|
 | VIX | yfinance `^VIX` 기본; [Cboe EOD CSV](https://www.cboe.com/tradable_products/vix/vix_historical_data) | 지연 가능 실험 조회·대조 (`^VIX`) | 장중 수동 |
-| 미 국채 수익률 | yfinance 3M/5Y/10Y/30Y, 2Y 네이버 최우선(허가 필요); [Treasury 일별](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) | 장중 수익률 지표 관찰 (`^TNX` 등) | 장중 수동 |
+| 미 국채 수익률 | yfinance 3M/5Y/10Y/30Y, 2Y 토스증권 최우선(허가 필요); [Treasury 일별](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed) | 장중 수익률 지표 관찰 (`^TNX` 등) | 장중 수동 |
 | WTI·Brent | Binance 연동 영구선물 기본; [EIA 현물 일별](https://www.eia.gov/opendata/documentation.php) | 선물 동향 별도 관찰 (`CL=F`, `BZ=F`) | 선물/현물 분리해 수동 |
 
 `source=Yahoo`, `method=yfinance`, `quote_delay_minutes`(실제 알려질 때만), `instrument_type`, `contract`, `last_bar_at`, `downloaded_at`, `data_license_status`, `validated_against`를 기록한다. 권한·지연 확인을 전제로 VIX·국채 3M/5Y/10Y/30Y 및 지정 주식·ETF 지표에 기본 적용하고, 원자재·BTC Yahoo 가격은 별도 비교용으로 제한한다.
@@ -66,7 +66,7 @@ python docs/examples/yfinance_probe.py --websocket --ws-seconds 45
 
 ## 5. 추가 심볼 조회 검증
 
-국채 5개 만기는 3개월 `^IRX`, 2년 네이버 `US2YT=RR` 최우선(실패/실행 불가 시에만 Treasury `BC_2YEAR` 임시 일별 fallback), 5년 `^FVX`, 10년 `^TNX`, 30년 `^TYX`이다. 2년 선물 `2YY=F`·`ZT=F`는 현물 파 수익률과 다르다. 2026-11-22 Yahoo chart 실조회에서 `^UST2Y`, `^US2Y`, `US2Y`는 404; `2YY=F`는 2-Year Yield Futures로 조회됨을 확인했다.
+국채 5개 만기는 3개월 `^IRX`, 2년 토스증권 `ROB.US2YT-RR` 최우선(실패/실행 불가 시에만 Treasury `BC_2YEAR` 임시 일별 fallback), 5년 `^FVX`, 10년 `^TNX`, 30년 `^TYX`이다. 2년 선물 `2YY=F`·`ZT=F`는 현물 파 수익률과 다르다. 2026-11-22 Yahoo chart 실조회에서 `^UST2Y`, `^US2Y`, `US2Y`는 404; `2YY=F`는 2-Year Yield Futures로 조회됨을 확인했다.
 
 VIX `^VIX`는 기본 지표이고 `CL=F`, `BZ=F`, `GC=F`, `BTC-USD`는 별도 비교 시계열이다. Gold API 현물 추정 참고와 Binance 기본 계약 가격은 분리한다. [적용 정책](./Market_Source_Policy_20261123.md).
 

@@ -4,7 +4,7 @@
 
 ## 0. 기본 수집 — Binance 실시간 + 국채 5만기
 
-네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패 또는 권한·접근 제한으로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 자동화·저장·활용 권한 확인 전에는 네이버 요청을 실행하지 않으며 접근 제한을 우회하지 않는다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분하고 자동 거래 및 제3자 재배포에 사용하지 않는다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
 
 VIX 10초는 원본 신선도 TTL이며 아래 PoC 조회 간격과 별개다.
 
@@ -23,17 +23,16 @@ python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m -
 # Binance가 원본 지표를 지원하지 않는 경우: VIX, 국채 3M/5Y/10Y/30Y
 python docs/examples/realtime_collector.py yf-market --symbols VIX UST_3M UST_5Y UST_10Y UST_30Y --period 1d --bar-interval 1m
 
-# 국채 2Y 지정 출처 네이버 US2YT=RR (자동화 권한 확인 후에만 실행)
-python docs/examples/realtime_collector.py naver-2y
+# 국채 2Y는 별도 승인형 Toss Playwright 서비스 사용 (아래 운영 문서 참조)
 
-# 네이버 2Y 실패/실행 불가 시 임시 fallback 및 공식 5개 만기 일별 비교
+# 토스증권 2Y 실패/실행 불가 시 임시 fallback 및 공식 5개 만기 일별 비교
 python docs/examples/realtime_collector.py treasury-five
 
 # 금 현물 추정가격은 선택적 참고 시리즈 (기본 금 영구선물과 별개)
 python docs/examples/realtime_collector.py gold-spot-reference
 ```
 
-네이버 모바일 증권의 `US2YT=RR` 화면은 `closePrice`·`localTradedAt` 필드를 제공한다.
+토스 2Y 운영 연결 및 검수는 [Compose 운영 안내](../../infra/compose/README.md)를 참조한다.
 
 **주의:** Binance `XAUUSDT`, `XAGUSDT`, `COPPERUSDT`, `CLUSDT`, `BZUSDT`는 **원자재 연동 영구선물**, `BTCUSDT`는 **USDT 호가 현물**이다. 이들은 Yahoo `GC=F`·`CL=F`·`BZ=F`, 금 현물 또는 BTC/USD와 동일하지 않다. [시장 데이터 소스 정책](./Market_Source_Policy_20261123.md).
 
@@ -190,7 +189,7 @@ python docs/examples/manual_record.py --series CNN_FEAR_GREED --value 65 --unit 
 
 - PizzINT DOUGHCON: `GET https://www.pizzint.watch/api/dashboard-data`의 `defcon_level`(1~5)만 추출한다. `success`와 `timestamp`는 검증용이다. 5분 주기 전용 스케줄러 및 운영 컨테이너는 [운영 가이드](../../infra/compose/README.md#pizzint-doughcon-collector)를 따른다. 원본 응답 및 기타 필드 저장·HTML 폴백 없음.
 - CNN 원본: `https://edition.cnn.com/markets/fear-and-greed`.
-- CNN 및 네이버의 자동화·저장 권한 미확인 시 실행 금지. [수집 및 보안](../tech-stack/data-collection.md). PizzINT 운영 수집은 기존 generic scraper/broker와 분리된 공개 API 전용 컨테이너에서만 실행한다.
+- CNN 및 토스증권의 자동화·저장 권한 미확인 시 실행 금지. [수집 및 보안](../tech-stack/data-collection.md). PizzINT 운영 수집은 기존 generic scraper/broker와 분리된 공개 API 전용 컨테이너에서만 실행한다.
 
 ```bash
 python -m pip install yfinance

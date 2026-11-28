@@ -57,7 +57,10 @@ SOURCES = {
         "?w2xPath=/IPORTAL/user/ovsSec/BIP_CNTS10013V.xml&menuNo=921",
         "browser",
     ),
-    "naver": SourcePolicy("naver", "https://m.stock.naver.com/marketindex/bond/US2YT=RR"),
+    "naver": SourcePolicy(
+        "naver", "https://m.stock.naver.com/marketindex/bond/US2YT=RR", "retired"
+    ),
+    "toss": SourcePolicy("toss", "https://www.tossinvest.com/indices/ROB.US2YT-RR", "browser"),
 }
 
 

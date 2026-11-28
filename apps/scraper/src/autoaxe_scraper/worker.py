@@ -27,7 +27,7 @@ from autoaxe_scraper.transport import (
     fetch_exact_html,
 )
 
-HTTP_SOURCES = frozenset({"cnn", "dramexchange", "naver"})
+HTTP_SOURCES = frozenset({"cnn", "dramexchange", "toss"})
 BROKER_PATH = "/internal/v1/scrape/jobs"
 MAX_BROKER_BYTES = 262_144
 JOB_BUDGET_SECONDS = 25
@@ -161,9 +161,11 @@ def run_once(
     """Claim one exact source; all failures abandon the lease without ingest."""
     if source not in HTTP_SOURCES:
         raise BrokerError("source unavailable to generic HTTP worker")
-    if source == "cnn" and contract is not None:
-        raise BrokerError("CNN is JSON-only")
-    if source != "cnn" and (contract is None) == (fixture_parser is None):
+    if source == "toss" and os.environ.get("AUTOAXE_TOSS_EGRESS_VERIFIED") != "1":
+        raise BrokerError("restricted browser egress not verified")
+    if source in {"cnn", "toss"} and (contract is not None or fixture_parser is not None):
+        raise BrokerError("source uses a fixed dedicated adapter")
+    if source == "dramexchange" and (contract is None) == (fixture_parser is None):
         raise BrokerError("reviewed DOM contract required; fixtures must be injected explicitly")
     if contract is not None:
         contract.check(source)
@@ -188,6 +190,10 @@ def run_once(
     try:
         if source == "cnn" and fixture_parser is None:
             parsed = fetch_cnn_fear_greed(permit=permit)
+        elif source == "toss":
+            from autoaxe_scraper.toss_browser import fetch_toss_two_year
+
+            parsed = fetch_toss_two_year(permit=permit)
         else:
             html = fetch_exact_html(fixed_target(source), permit=permit)
             if contract is not None:
@@ -232,7 +238,7 @@ def run_once(
 
 def _child(source: str) -> None:
     try:
-        contract = None if source == "cnn" else load_contract(source)
+        contract = None if source in {"cnn", "toss"} else load_contract(source)
         broker = TLSBroker(
             os.environ["AUTOAXE_SCRAPE_BROKER_HOST"],
             int(os.environ.get("AUTOAXE_SCRAPE_BROKER_PORT", "8443")),

@@ -23,7 +23,7 @@ def test_any_private_dns_answer_blocks_every_outbound_call():
 
     with pytest.raises(SourceBlocked):
         fetch_exact_html(
-            SOURCES["naver"],
+            SOURCES["dramexchange"],
             permit=lambda: None,
             resolve=lambda *_a, **_kw: address("127.0.0.1"),
             dial=NeverConnect,
@@ -158,7 +158,7 @@ def test_ambiguous_or_incomplete_provider_response_rejected(extra_headers):
     conn = FakeConnection(FramingResponse(b"<p>x</p>"))
     with pytest.raises(SourceBlocked):
         fetch_exact_html(
-            SOURCES["naver"],
+            SOURCES["dramexchange"],
             permit=lambda: None,
             resolve=lambda *_a, **_kw: address("8.8.8.8"),
             dial=lambda host, ip: conn,

@@ -80,14 +80,8 @@ def test_poll_dispatch():
         ratio=lambda s, k: [{"symbol": s, "timestamp": MS, RATIOS[k][1]: "1.25"}],
         yahoo=lambda sid: normalize_yahoo(sid, symbol="^VIX", close="20", stamp=NOW, received=NOW),
         treasury=lambda: xml,
-        naver_result=lambda: {
-            "isSuccess": True,
-            "result": [
-                {"reutersCode": "US2YT=RR", "closePrice": "4.6", "localTradedAt": NOW.isoformat()}
-            ],
-        },
         clock=lambda: NOW,
     )
-    for sid in ("BINANCE_GLOBAL_ACCOUNTS_BTCUSDT", "VIX", "UST_2Y_TREASURY", "UST_2Y_NAVER"):
+    for sid in ("BINANCE_GLOBAL_ACCOUNTS_BTCUSDT", "VIX", "UST_2Y_TREASURY"):
         assert adapter.collect(sid)[0].series_id == sid
         assert calls[-2:] == [sid, sid]

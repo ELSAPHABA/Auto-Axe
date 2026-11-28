@@ -7,7 +7,7 @@ services:
       context: ../..
       dockerfile: apps/backend/Dockerfile
       target: backend
-    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.scrape_scheduler_cli", "schedule", "--sources", "cnn", "dramexchange", "naver", "--daemon"]
+    command: ["/app/.venv/bin/python", "-m", "autoaxe.entrypoints.scrape_scheduler_cli", "schedule", "--sources", "cnn", "dramexchange", "toss", "--daemon"]
     environment:
       AUTOAXE_SCRAPE_BROKER_MARKET_DSN: ${AUTOAXE_SCRAPE_BROKER_MARKET_DSN:?set broker runtime DSN}
     networks: [market]

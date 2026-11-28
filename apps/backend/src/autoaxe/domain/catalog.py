@@ -27,7 +27,7 @@ SOURCE_URLS = {
     "binance_spot": "https://developers.binance.com/en/docs/products/spot/web-socket-streams",
     "binance_futures": "https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/Introduction",
     "yfinance": "https://finance.yahoo.com/",
-    "naver": "https://m.stock.naver.com/marketindex/bond/US2YT=RR",
+    "toss": "https://corp.tossinvest.com/en/terms/v2?id=35",
     "treasury": "https://home.treasury.gov/treasury-daily-interest-rate-xml-feed",
     "gold_reference": "https://gold-api.com/docs",
     "eia": "https://www.eia.gov/opendata/",
@@ -73,7 +73,7 @@ MANUAL_URLS = {
     "CNN_FEAR_GREED": "https://edition.cnn.com/markets/fear-and-greed",
     "SEIBRO_OVS_STOCK_TOP50_SETTLEMENT": "https://seibro.or.kr/",
     "VIX_INTRADAY": "https://www.cboe.com/tradable_products/vix/",
-    "UST_2Y_INTRADAY": "https://m.stock.naver.com/marketindex/bond/US2YT=RR",
+    "UST_2Y_INTRADAY": "https://www.tossinvest.com/indices/ROB.US2YT-RR",
 }
 for _sid in MANUAL:
     SOURCE_URLS["manual:" + _sid] = MANUAL_URLS.get(
@@ -213,15 +213,15 @@ def catalog() -> dict[str, Series]:
         )
     rows.append(
         Series(
-            "UST_2Y_NAVER",
+            "UST_2Y_TOSS",
             "UST_2Y",
-            "naver",
-            "US2YT=RR",
+            "toss",
+            "ROB.US2YT-RR",
             "us_two_year_treasury_yield",
             "percent",
             None,
             "snapshot",
-            300,
+            None,
         )
     )
     for tenor, sym in TREASURY.items():

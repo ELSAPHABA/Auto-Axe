@@ -1279,6 +1279,8 @@ export interface components {
              * @default 1
              */
             schema_version: number;
+            /** Two Year Selected */
+            two_year_selected?: string | null;
             /** Versions */
             versions: {
                 [key: string]: number;

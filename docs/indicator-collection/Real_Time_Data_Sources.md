@@ -17,9 +17,9 @@
 | 실제 CME 나스닥 100 선물(지연) | yfinance `NQ=F` 1분봉 | Yahoo의 CME 지연 시세; 라이선스된 실시간 피드가 아님 |
 | VIX 원지수 | yfinance `^VIX` | 원본 TTL 10초, 지연 가능 최신봉, 미검증 WS 미사용 |
 | 미국 국채 3M/5Y/10Y/30Y | yfinance `^IRX/^FVX/^TNX/^TYX` | 지연 가능한 금리지표 |
-| 미국 국채 2Y | [Naver `US2YT=RR`](https://m.stock.naver.com/marketindex/bond/US2YT=RR) 최우선 | 허가 전 자동화 금지; 실패/실행 불가 시에만 Treasury XML 임시 일별 fallback. 원본 분리·복구 시 복귀 |
+| 미국 국채 2Y | [Toss `ROB.US2YT-RR`](https://www.tossinvest.com/indices/ROB.US2YT-RR) 최우선 | 허가 전 자동화 금지; 실패/실행 불가 시에만 Treasury XML 임시 일별 fallback. 원본 분리·복구 시 복귀 |
 
-확인된 네이버 원본 백엔드 JSON은 `https://m.stock.naver.com/front-api/marketIndex/bondList?countryCode=USA`에 `reutersCode=US2YT=RR`, `closePrice`, `localTradedAt`, `priceDataType`, `delayTime`, `marketStatus` 필드가 있다. **인터페이스가 공개되어 있다고 수집 권한이 있는 것은 아니다.** 강제로 접근 제한을 우회하지 않는다.
+토스는 공개 화면의 표시값만 수집하고 비공식 API 직접 호출이나 제한 우회를 하지 않는다. 원본 시각 미확인.
 
 금 현물 추정 참고는 Gold API 별도 `gold-spot-reference` 명령. VIX 공식 일별 Cboe CSV, Treasury 5개 만기 공식 일별 XML, EIA 유가 현물 일별 데이터는 개별 원본 검증·장기 백테스트용이다.
 

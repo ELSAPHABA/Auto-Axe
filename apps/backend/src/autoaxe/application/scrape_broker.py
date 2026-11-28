@@ -22,11 +22,11 @@ from autoaxe.infrastructure.jobs import retry_after
 from autoaxe.infrastructure.market_store import PermissionDenied, gate, ingest, verify_connection
 from autoaxe.infrastructure.sessions import digest
 
-SOURCES = {"cnn", "pizzint", "dramexchange", "seibro", "naver"}
+SOURCES = {"cnn", "pizzint", "dramexchange", "seibro", "toss"}
 SERIES = {
     "cnn": ("CNN_FEAR_GREED_CNN",),
     "dramexchange": ("DRAM_DDR5_UDIMM_AUTO", "DRAM_DDR5_RDIMM_AUTO"),
-    "naver": ("UST_2Y_NAVER",),
+    "toss": ("UST_2Y_TOSS",),
 }
 
 
@@ -73,7 +73,7 @@ def adapter_grant(conn: Connection[Any], source: str, version: int) -> int:
     # A renewed approval is not a license to shorten an outstanding Retry-After.
     if circuit and ((circuit[0] == version and circuit[1]) or circuit[2]):
         raise PermissionDenied("source circuit open")
-    return max(int(row[0]), 900) if source == "naver" else int(row[0])
+    return max(int(row[0]), 900) if source == "toss" else int(row[0])
 
 
 def reap(conn: Connection[Any], source: str) -> int:
@@ -438,7 +438,7 @@ def validate_candidates(source: str, candidates: list[dict[str, Any]]) -> None:
     }
     expected = {
         "cnn": {"CNN_FEAR_GREED_CNN"},
-        "naver": {"UST_2Y_NAVER"},
+        "toss": {"UST_2Y_TOSS"},
         "dramexchange": set(dram_items),
     }[source]
     if len(candidates) != len(expected):
@@ -474,6 +474,14 @@ def validate_candidates(source: str, candidates: list[dict[str, Any]]) -> None:
             if parsed.utcoffset() is None or parsed > datetime.now(UTC):
                 raise ValueError("invalid CNN source timestamp")
             validate_details(item["details"], datetime.now(UTC))
+        elif source == "toss":
+            if (
+                set(item) != common | {"automated_trading_allowed"}
+                or item["source_event_at"] is not None
+                or item["automated_trading_allowed"] is not False
+                or not -10 <= value <= 30
+            ):
+                raise ValueError("invalid Toss 2Y display candidate")
         else:
             stamp = item.get("source_event_at")
             if not isinstance(stamp, str) or len(stamp) > 64:
@@ -481,8 +489,6 @@ def validate_candidates(source: str, candidates: list[dict[str, Any]]) -> None:
             parsed = datetime.fromisoformat(stamp)
             if parsed.tzinfo is None or parsed > datetime.now(UTC):
                 raise ValueError("source timestamp must be timezone aware and not future")
-            if source == "naver" and set(item) != common:
-                raise ValueError("invalid Naver candidate")
             if source == "dramexchange" and (
                 set(item) != common | {"item", "unit", "unit_verified", "source_id"}
                 or item["item"] != dram_items[sid]
@@ -638,6 +644,12 @@ def promote_reviewed(conn: Connection[Any], job_id: str) -> str:
                     received=row["submitted_at"],
                     reviewed=reviewed,
                     job_id=job_id,
+                )
+            if source == "toss":
+                metadata.update(
+                    source_url="https://www.tossinvest.com/indices/ROB.US2YT-RR",
+                    symbol="ROB.US2YT-RR",
+                    source_time_verified=False,
                 )
             candidate = Candidate(
                 sid,

@@ -30,7 +30,7 @@ def test_catalog():
     assert rows["BITCOIN_BINANCE_SPOT"].source_id == "binance_spot"
     assert rows["BINANCE_GLOBAL_ACCOUNTS_BTCUSDT"].source_id == "binance_futures"
     assert rows["VIX"].ttl == 10 and rows["UST_10Y"].ttl == 300
-    assert rows["UST_2Y_NAVER"].indicator_id == rows["UST_2Y_TREASURY"].indicator_id
+    assert rows["UST_2Y_TOSS"].indicator_id == rows["UST_2Y_TREASURY"].indicator_id
     assert not any("DUBAI" in x for x in rows)
     assert FUTURES_WS.startswith("wss://fstream.binance.com/market/stream?streams=")
 

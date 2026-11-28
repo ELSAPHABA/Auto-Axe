@@ -7,12 +7,13 @@ No adapter grant or review approval is created by this CLI.
 import argparse
 import os
 import time
+from datetime import UTC, datetime
 from uuid import UUID
 
 import psycopg
 
 from autoaxe.application.scrape_broker import SERIES, promote_reviewed, schedule_due
-from autoaxe.infrastructure.market_store import PermissionDenied
+from autoaxe.infrastructure.market_store import PermissionDenied, select_two_year
 
 
 def main() -> None:
@@ -44,6 +45,12 @@ def main() -> None:
                     print(f"{source}: {state}", flush=True)
             except (psycopg.Error, PermissionDenied, ValueError):
                 print(f"{source}: blocked_or_unavailable", flush=True)
+        if "toss" in args.sources:
+            try:
+                with psycopg.connect(dsn, connect_timeout=3) as conn:
+                    select_two_year(conn, datetime.now(UTC))
+            except (psycopg.Error, PermissionDenied, ValueError):
+                print("UST_2Y: selection unavailable", flush=True)
         if not args.daemon:
             return
         time.sleep(60)

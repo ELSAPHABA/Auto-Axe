@@ -90,6 +90,10 @@ def gate(conn: Connection[Any], series_id: str, action: str = "storage") -> dict
         raise ValueError("unsupported action")
     if series_id == "PENTAGON_PIZZA":
         raise PermissionDenied("retired PizzINT series")
+    if series_id == "UST_2Y_NAVER":
+        raise PermissionDenied("retired Naver series")
+    if series_id == "UST_2Y_TOSS" and action in {"trading", "redistribution"}:
+        raise PermissionDenied("Toss display observations are private and informational only")
     if series_id == "PENTAGON_PIZZA_PIZZINT" and action == "trading":
         raise PermissionDenied("DOUGHCON is informational only")
     if action == "trading" and series_id in {
@@ -183,6 +187,15 @@ def ingest(conn: Connection[Any], item: Candidate) -> tuple[str, int, bool]:
         item.value not in (None, "1", "2", "3", "4", "5") or item.metadata
     ):
         raise ValueError("DOUGHCON observations contain only the level and standard timestamps")
+    if series.source_id == "toss" and (
+        item.value is None
+        or not -10 <= Decimal(item.value) <= 30
+        or item.source_event_at is not None
+        or item.quality.value != "manual_checked"
+        or item.metadata.get("source_time_verified") is not False
+        or item.metadata.get("automated_trading_allowed") is not False
+    ):
+        raise ValueError("Toss observations must be reviewed display values without source time")
     if series.source_id.startswith("manual:") and item.quality.value != "manual_unverified":
         raise ValueError("manual observation must be unverified")
     conn.execute(
@@ -309,8 +322,8 @@ def set_permission(
     """Administrator-only; must never be exposed through an unauthenticated endpoint."""
     if source not in SOURCE_URLS or not evidence.strip():
         raise ValueError("missing source/permission evidence")
-    if source == "pizzint" and trading:
-        raise ValueError("DOUGHCON is informational only")
+    if (source in {"pizzint", "toss"} and trading) or (source == "toss" and redistribution):
+        raise ValueError("source is private/informational only")
     conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ("source:" + source,))
     conn.execute(
         """UPDATE catalog.source_registry SET permission_status=%s,enabled=%s,
@@ -461,41 +474,32 @@ def select_two_year(conn: Connection[Any], now: datetime) -> tuple[str | None, s
     """Only permitted healthy source; no source blending, explicit transition audit."""
     verify_connection(conn, write=True)
     conn.execute("SELECT pg_advisory_xact_lock(hashtextextended('selection:UST_2Y',0))")
-    for source in ("naver", "treasury"):
+    for source in ("toss", "treasury"):
         conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ("source:" + source,))
     chosen = None
     reason = "no_permitted_source"
-    for sid in ("UST_2Y_NAVER", "UST_2Y_TREASURY"):
+    for sid in ("UST_2Y_TOSS", "UST_2Y_TREASURY"):
         try:
-            gate(conn, sid)
+            info = gate(conn, sid)
+            gate(conn, sid, "fetch")
         except PermissionDenied:
             continue
         row = conn.execute(
-            """SELECT h.status,o.value,o.source_event_at,o.quality,o.metadata
+            """SELECT h.status,o.value,o.source_event_at,o.quality,o.metadata,o.received_at,h.reason
             FROM ops.collector_health h LEFT JOIN market.latest_observations l USING(series_id)
             LEFT JOIN market.observations o ON o.partition_at=l.partition_at
-            AND o.observation_id=l.observation_id WHERE h.series_id=%s""",
-            (sid,),
+            AND o.observation_id=l.observation_id AND o.permission_version=%s
+            WHERE h.series_id=%s""",
+            (info["permission_version"], sid),
         ).fetchone()
         if row is None:
-            if sid.endswith("NAVER"):
-                reason = "primary_status_unknown"
-                break
             continue
-        healthy = row[0] in ("healthy", "no_update") and row[1] is not None
-        if healthy and sid.endswith("NAVER"):
-            healthy = (
-                row[2] is not None
-                and row[3] == "valid"
-                and (0 <= (now - row[2]).total_seconds() <= 300)
-            )
-        if healthy and sid.endswith("TREASURY"):
-            healthy = bool(row[4].get("official_daily"))
+        healthy = two_year_usable(sid, row[0], row[1], row[3], row[4], row[5], now, row[6])
         if healthy:
             chosen = sid
             reason = (
                 "primary_recovered_or_healthy"
-                if sid.endswith("NAVER")
+                if sid.endswith("TOSS")
                 else "primary_unavailable_daily_fallback"
             )
             break
@@ -510,3 +514,33 @@ def select_two_year(conn: Connection[Any], now: datetime) -> tuple[str | None, s
             (chosen, reason, now),
         )
     return chosen, reason
+
+
+def two_year_usable(
+    sid: str,
+    status: str | None,
+    value: Any,
+    quality: str | None,
+    metadata: dict[str, Any] | None,
+    received_at: datetime | None,
+    now: datetime,
+    reason: str | None,
+) -> bool:
+    """Receipt freshness is NOT source quote freshness; Toss stays informational."""
+    if value is None or metadata is None:
+        return False
+    if sid == "UST_2Y_TOSS":
+        return (
+            status == "manual_required"
+            and reason == "scrape_manually_checked_nontrading"
+            and quality == "manual_checked"
+            and metadata.get("source_time_verified") is False
+            and metadata.get("automated_trading_allowed") is False
+            and received_at is not None
+            and 0 <= (now - received_at).total_seconds() <= 960
+        )
+    return (
+        sid == "UST_2Y_TREASURY"
+        and status in {"healthy", "no_update"}
+        and bool(metadata.get("official_daily"))
+    )

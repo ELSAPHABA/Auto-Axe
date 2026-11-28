@@ -90,7 +90,7 @@ Binance Spot BTCUSDT 및 TradFi Futures 5종은 독립 상품으로 구독한다
 | 실제 발표·정책 결정 | 예정 시각 전후 집중, 호출 제한 준수 |
 | 만기·위칭 | 주간 및 변경 공지, 해당 주 일별 확인 |
 | DRAM 모듈 | 일 1회 점검, 주간 원본 갱신만 적재 |
-| SEIBro·CNN·네이버 | 권한에 따른 수동 또는 승인형 수집 |
+| SEIBro·CNN·토스증권 | 권한에 따른 수동 또는 승인형 수집 |
 | PizzINT DOUGHCON | 공개 JSON API의 단계(1~5)만 승인형 수집, 대체 없음 |
 
 주기는 프로젝트 제안이며 공급자의 갱신 보장이 아니다. [상세 정책](../indicator-collection/Free_Data_Collection.md).
@@ -115,7 +115,7 @@ REST OpenAPI 3.1, Versioned JSON Schema 그래프, Pydantic Common Event Envelop
 
 ### 4.1 식별 및 정정
 
-indicator_id(논리 지표)와 series_id(원본 정의)를 분리한다. UST_2Y는 네이버 UST_2Y_NAVER 최우선, 스크래핑 실패/실행 불가에 한해 UST_2Y_TREASURY 임시 fallback, 정상 복구 시 복귀한다. 다른 원본의 변화량을 연결하지 않고 전환 provenance를 보존한다.
+indicator_id(논리 지표)와 series_id(원본 정의)를 분리한다. UST_2Y는 토스증권 UST_2Y_TOSS 최우선, 스크래핑 실패/실행 불가에 한해 UST_2Y_TREASURY 임시 fallback, 정상 복구 시 복귀한다. 다른 원본의 변화량을 연결하지 않고 전환 provenance를 보존한다.
 
 - 원본 상품과 공급자별 시계열을 분리한다. 현물/영구선물/만기선물, USD/USDT, 정규장/시간외를 혼합하지 않는다.
 - 관측값은 공급자·시계열·원본 관측시각·계약/종목·집계기간을 고려한 복합 식별자를 사용한다. 정정은 revision으로 보존한다.

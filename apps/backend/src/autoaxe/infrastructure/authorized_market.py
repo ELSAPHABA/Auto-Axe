@@ -48,6 +48,7 @@ def authorized_observations(
         or row[4] is not True
         or row[5] is not True
         or (row[6] is not True and not private_use)
+        or (series.source_id == "toss" and not private_use)
         or row[7] is None
         or not row[8]
     ):
@@ -63,6 +64,7 @@ def authorized_observations(
                  FROM market.observations o
                  WHERE o.series_id=%s
                    AND o.available_at<=%s AND o.ingested_at<=%s AND o.mapping_version=%s
+                   AND (NOT %s OR o.permission_version=%s)
                  ORDER BY o.source_event_key,o.revision DESC
                )
                SELECT * FROM visible ORDER BY
@@ -73,6 +75,8 @@ def authorized_observations(
                 cutoff,
                 cutoff,
                 series.mapping_version,
+                series.source_id == "toss",
+                row[9],
                 series_id in {"NVDA_DAILY_OHLCV", "QLD_DAILY_OHLCV"},
                 limit,
             ),

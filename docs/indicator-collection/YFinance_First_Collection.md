@@ -7,7 +7,7 @@
 | 만기 | 내부 series_id | 기본 수집 | 심볼/원본 필드 | 특징 |
 |---|---|---|---|---|
 | 3개월 | `UST_3M` | **yfinance** | `^IRX` | Yahoo의 13-week T-bill 수익률 관련 **지표** |
-| 2년 | `UST_2Y` | **네이버 최우선(승인 필요); 실패/실행 불가 시에만 Treasury 임시 일별 fallback** | `US2YT=RR` / `BC_2YEAR` | 허가 전 자동 네이버 수집 비활성; Yahoo 2Y 원본 미확인 |
+| 2년 | `UST_2Y` | **토스증권 최우선(승인 필요); 실패/실행 불가 시에만 Treasury 임시 일별 fallback** | `ROB.US2YT-RR` / `BC_2YEAR` | 허가 전 자동 토스증권 수집 비활성; Yahoo 2Y 원본 미확인 |
 | 5년 | `UST_5Y` | **yfinance** | `^FVX` | Yahoo 5Y 국채 수익률 지표 |
 | 10년 | `UST_10Y` | **yfinance** | `^TNX` | Yahoo 10Y 국채 수익률 지표 |
 | 30년 | `UST_30Y` | **yfinance** | `^TYX` | Yahoo 30Y 국채 수익률 지표 |
@@ -68,6 +68,6 @@ python docs/examples/realtime_collector.py gold-spot-reference
 2. **금 현물(spot)과 선물, 원유 현물과 선물, Treasury 공식 par yield와 Yahoo Cboe 금리지표는 서로 다른 시리즈**로 유지한다.
 3. yfinance 공식 WebSocket 클래스는 있지만 실제 `^IRX,^FVX,^TNX,^TYX,^VIX,CL=F,BZ=F`의 WS 이벤트 전달 및 무지연 업데이트를 확인하지 못했다. **기본은 `Ticker.history` 폴링**, WebSocket은 [진단 예제](../examples/yfinance_probe.py)로만 검증한다.
 4. Yahoo/yfinance는 [개인·연구용 이용 제한](https://github.com/ranaroussi/yfinance)과 Yahoo의 콘텐츠 이용권 문제가 있어 **자동매매와 외부 재배포**에 사용하기 전 관련 약관을 반드시 확인한다.
-5. **2년물**: 네이버 최우선, 실패/실행 불가 시에만 Treasury 임시 일별 fallback, 정상 복구 시 복귀. Treasury 장애 시 결측·지연으로 표시한다. 2년 금리 선물을 공식 현물 수익률로 위장하지 않는다.
+5. **2년물**: 토스증권 최우선, 실패/실행 불가 시에만 Treasury 임시 일별 fallback, 정상 복구 시 복귀. Treasury 장애 시 결측·지연으로 표시한다. 2년 금리 선물을 공식 현물 수익률로 위장하지 않는다.
 
 관련 문서: [무료 소스 마스터](./Free_Data_Collection.md) · [실행 가이드](./Realtime_Quickstart.md) · [yfinance 실증](./YFinance_Data_Validation.md).

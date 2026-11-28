@@ -237,3 +237,8 @@
 - 이전 generic worker가 fixture parser의 data-* 속성을 그대로 사용했다. 실제 공급자 DOM에서 확인한 속성이 아니므로 운영용 계약으로 간주할 수 없음. 독립 검수 manifest와 SHA256, source URL/permission version/expiry 일치 조건으로 운영 파서를 분리했다. Manifest가 없으면 broker claim 전 실패. 현재 실제 공급원 manifest 미생성.
 - 기존 adapter_grant 및 SEIBro browser reservation에서 이전 permission_version의 Retry-After가 무시되는 문제 발견. 재승인 후에도 활성 cooldown 유지. 테스트는 격리 DB에서 시간 경과를 모의하고 실제 제한을 우회하지 않음.
 - DRAM 공개 색인에서 Module Spot Price 표시 구조와 GMT+8 갱신 문구만 확인(오래된 crawl, 실제 실측 아님). CNN robots 제한/Naver 조회 불가/SEIBro TOP50 동등 API 미확인. [Session 18](../../.ai-context/phases/phase-02/2026-11-28-18.md) 참고.
+
+## TS-02-43 — Toss 2년물의 동적 DOM 및 원본 시간 미확인
+- 정적 HTML은 HTTP 200이어도 수익률을 포함하지 않으며 상단 애니메이션 숫자를 단순 추출하면 오인식할 수 있다. 정상 Chrome에서 미국 채권 목록과 2년물의 정확한 표시행을 확인했다. Playwright 역할/제목/레이블 및 행 형식 검증으로 10년물이나 전일 대비 변동률 선택을 차단한다.
+- 원본 시세 시각은 확인되지 않아 수신시각으로 대체하지 않는다. 검수된 표시값만 개인용으로 저장/표시하며 자동 거래 및 재배포를 차단한다. 960초 수집 receipt 상한은 원본 TTL이 아니다. 구 Naver 원장을 재라벨링하지 않고 새로운 Toss 시계열 및 별도 Treasury 일별 fallback을 사용한다.
+- 임시 PG17 관련 49 tests 통과. 정상 페이지 DOM 조사와 운영형 요청 fence/컨테이너 실측은 구별한다. 권한 및 egress 검증, 운영 DB upgrade와 실제 주기 수집은 별도. [Session 21](../../.ai-context/phases/phase-02/2026-11-28-21.md).

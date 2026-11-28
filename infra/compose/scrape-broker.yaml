@@ -65,6 +65,38 @@ services:
     cpus: 0.5
     init: true
     restart: "no"
+  toss-worker:
+    profiles: [toss]
+    build:
+      context: ../..
+      dockerfile: apps/scraper/Dockerfile
+      target: toss-browser
+    command: ["toss", "--daemon"]
+    environment:
+      AUTOAXE_TOSS_EGRESS_VERIFIED: ${AUTOAXE_TOSS_EGRESS_VERIFIED:-0}
+      AUTOAXE_SCRAPE_BROKER_HOST: scrape-broker
+      AUTOAXE_SCRAPE_BROKER_PORT: "8443"
+      AUTOAXE_SCRAPE_BROKER_CA: /run/scrape-tls/server-ca.pem
+      AUTOAXE_SCRAPER_CERT: /run/scrape-tls/worker.pem
+      AUTOAXE_SCRAPER_KEY: /run/scrape-tls/worker.key
+    volumes:
+      - type: bind
+        source: ${AUTOAXE_SCRAPER_TLS_DIR:?set worker-only TLS directory}
+        target: /run/scrape-tls
+        read_only: true
+        bind:
+          create_host_path: false
+    networks: [control, restricted-egress]
+    read_only: true
+    tmpfs: ["/tmp"]
+    shm_size: 256m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    mem_limit: 1g
+    cpus: 1.0
+    init: true
+    restart: unless-stopped
 networks:
   control:
     internal: true

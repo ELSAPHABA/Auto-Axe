@@ -2737,6 +2737,17 @@
             "title": "Schema Version",
             "type": "integer"
           },
+          "two_year_selected": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Two Year Selected"
+          },
           "versions": {
             "additionalProperties": {
               "type": "integer"

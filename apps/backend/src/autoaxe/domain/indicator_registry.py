@@ -18,6 +18,24 @@ class IndicatorDefinition:
 
 STATIC = (
     IndicatorDefinition(
+        "UST_2Y_TOSS",
+        "미국 국채 2년 (토스증권)",
+        "market",
+        "toss",
+        "percent",
+        "15m",
+        "원본 갱신 시각 미확인; 검수된 표시값 / Treasury 일별 fallback",
+    ),
+    IndicatorDefinition(
+        "UST_2Y_TREASURY",
+        "미국 국채 2년 (미 재무부 일별)",
+        "market",
+        "treasury",
+        "percent",
+        "1d",
+        "공식 일별 par yield; 장중 실시간 값 아님",
+    ),
+    IndicatorDefinition(
         "VIX_YAHOO_WS",
         "VIX Yahoo 지수 quote",
         "market",

@@ -20,12 +20,12 @@ def test_no_contract_does_not_claim():
             pytest.fail("broker contacted without reviewed contract")
 
     with pytest.raises(BrokerError, match="reviewed DOM"):
-        run_once(NoBroker(), "naver")
+        run_once(NoBroker(), "dramexchange")
 
 
 def test_cnn_html_contract_is_retired():
     c = contract("cnn", {"root": "#widget", "score": ".score", "category": ".category"})
-    with pytest.raises(BrokerError, match="JSON-only"):
+    with pytest.raises(BrokerError, match="fixed dedicated adapter"):
         run_once(None, "cnn", contract=c)
 
 

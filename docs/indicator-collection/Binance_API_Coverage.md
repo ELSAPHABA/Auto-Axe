@@ -78,7 +78,7 @@ curl 'https://fapi.binance.com/fapi/v1/klines?symbol=BZUSDT&interval=1m&limit=2'
 
 실제 수집 전 `exchangeInfo`의 `TRADING`·거래 세션 및 거주지역 상품 제공 여부를 확인. Binance USDⓈ-M Futures는 2026-04-23 이후 **반드시** `/market/stream` 또는 `/market/ws` 라우팅을 사용한다 ([공식 2026년 WS 변경 안내](https://developers.binance.me/en/docs/products/derivatives-trading-usds-futures/websocket-market-streams/Important-WebSocket-Change-Notice)). Binance USDⓈ-M Futures는 [REST·WebSocket 공개 API](https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/Introduction)를 지원하며, Spot 공개 market-data 사용법은 [Binance 공식 개발자 문서](https://developers.binance.com/en/docs/products/spot/rest-api). WebSocket 예: `wss://fstream.binance.com/market/stream?streams=btcusdt@aggTrade/xauusdt@kline_1m/clusdt@kline_1m/bzusdt@kline_1m` — **공식 스트림 문법을 기반으로 한 예시이며 본 조사에서 장시간 WS 실제 이벤트 수신은 별도 시험하지 않았다**.
 
-Binance Spot BTC/USDT 및 금·은·구리·WTI·Brent 연동 영구선물 체결 스트림은 기본 시장가격 공급원이다. VIX·국채 3M/5Y/10Y/30Y는 yfinance, 2Y는 네이버 최우선(실패/실행 불가 시에만 Treasury 임시 일별 fallback). [시장 데이터 소스 정책](./Market_Source_Policy_20261123.md).
+Binance Spot BTC/USDT 및 금·은·구리·WTI·Brent 연동 영구선물 체결 스트림은 기본 시장가격 공급원이다. VIX·국채 3M/5Y/10Y/30Y는 yfinance, 2Y는 토스증권 최우선(실패/실행 불가 시에만 Treasury 임시 일별 fallback). [시장 데이터 소스 정책](./Market_Source_Policy_20261123.md).
 
 무료 실증 재실행: `python docs/examples/binance_coverage_probe.py`. 수집기·시장지표 구별: [YFinance_First_Collection.md](./YFinance_First_Collection.md).
 

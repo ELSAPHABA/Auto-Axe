@@ -292,47 +292,8 @@ def gold_spot_reference():
 
 
 def naver_2y():
-    """Source: Naver US2YT=RR page's public backing JSON; ONLY with consent.
-
-    Naver robots.txt currently says 'Disallow: /' for all user agents and
-    NAVER policy restricts unauthorized automated collection. No evasion.
-    """
-    if os.getenv("AUTO_AXE_NAVER_SCRAPE_AUTHORIZED") != "1":
-        raise RuntimeError(
-            "Naver automated scraping is disabled: m.stock.naver.com/robots.txt "
-            "Disallow: / and Naver policies restrict collection. Only set "
-            "AUTO_AXE_NAVER_SCRAPE_AUTHORIZED=1 after obtaining authorization; "
-            "until then run 'treasury-five' for official daily UST_2Y."
-        )
-    data = request("GET", NAVER_BOND_LIST, params={"countryCode": "USA"}).json()
-    if data.get("isSuccess") is not True or not isinstance(data.get("result"), list):
-        raise RuntimeError("Naver bond list schema changed or returned unsuccessful status")
-    rows = [x for x in data["result"] if x.get("reutersCode") == "US2YT=RR"]
-    if len(rows) != 1:
-        raise RuntimeError(f"Expected one US2YT=RR row, got {len(rows)}")
-    row = rows[0]
-    price = row.get("closePrice")
-    time_string = row.get("localTradedAt")
-    if not price or not time_string:
-        raise RuntimeError("Naver US 2Y returned no price or source timestamp")
-    stamp = dt.datetime.fromisoformat(time_string)
-    if stamp.tzinfo is None:
-        raise RuntimeError("Naver source timestamp lacks timezone information")
-    age_minutes = (dt.datetime.now(UTC) - stamp.astimezone(UTC)).total_seconds() / 60
-    if age_minutes < -5:
-        raise RuntimeError("Naver source timestamp is in the future")
-    emit("naver_page", "UST_2Y", float(str(price).replace(",", "")),
-         stamp.isoformat(), unit="percent", reuters_code="US2YT=RR",
-         instrument_type="us_two_year_treasury_yield",
-         source_url=NAVER_2Y_PAGE, data_endpoint=NAVER_BOND_LIST,
-         scraping_authorization_required=True,
-         source_market_status=row.get("marketStatus"),
-         declared_delay_minutes=row.get("delayTime"),
-         source_price_type=row.get("priceDataType"),
-         age_minutes=round(age_minutes, 2),
-         status="stale" if age_minutes > 30 else "recent_observation",
-         note="Naver page data, not a licensed exchange direct feed; verify publisher permission")
-
+    """Retired source; use approved Toss browser or Treasury daily fallback."""
+    raise RuntimeError("Naver 2Y retired; use the approved Toss worker or treasury-five")
 
 
 def sec_8k():

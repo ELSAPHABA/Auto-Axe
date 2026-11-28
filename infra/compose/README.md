@@ -229,3 +229,32 @@ previous CNN HTML grants, and extends outstanding Naver schedules to at least
 the worker only quarantines score/rating/original timestamp. No live provider
 activation or provider permission is implied. Naver grant intervals shorter
 than 900 seconds are clamped to 900; longer approved intervals are respected.
+
+## TossInvest US 2Y (0023_toss_2y; supersedes Naver above)
+
+The Naver source and pending leases are retired by the migration; historical
+observations are preserved. Toss uses a distinct source and series
+`UST_2Y_TOSS`, fixed public page
+`https://www.tossinvest.com/indices/ROB.US2YT-RR`, 900-second minimum
+schedule and independent source/adapter grant. No production grant is seeded.
+The browser only reads the unique visible US bonds 2Y row. Source quote time
+is unknown; results are quarantined for independent review, owner-only and
+nontrading. A reviewed receipt may be displayed for at most 960 seconds
+(900-second cadence plus scheduling grace, not a market-data TTL).
+Treasury daily fallback is separately labeled.
+
+After migration, rights review, source/adapter grant, TLS provisioning and
+external network verification, run the existing scheduler overlay and:
+
+```sh
+docker compose -f infra/compose/scrape-broker.yaml --profile toss up -d scrape-broker toss-worker
+```
+
+Set `AUTOAXE_TOSS_EGRESS_VERIFIED=1` only after independently enforcing
+the exact browser host allowlist in `toss_browser.py` and blocking private
+destinations, DNS rebinding and unintended egress. Keep the browser sandbox
+enabled; do not attach to the market network. The flag does not itself create
+network restrictions. Provider failures do not cause retries within a job;
+broker cooldown and Retry-After remain authoritative. Ordinary Chrome DOM
+inspection succeeded; hardened container live execution and production grants
+have not been verified.

@@ -129,30 +129,30 @@ def test_generic_scheduler_and_review_fences(monkeypatch, cnn_details):
                     ),
                 )
 
-        assert tick("naver") == "blocked"
-        grant("naver", adapter=False)
-        assert tick("naver") == "blocked"
+        assert tick("toss") == "blocked"
+        grant("toss", adapter=False)
+        assert tick("toss") == "blocked"
         with psycopg.connect(market) as conn:
             with pytest.raises(InsufficientPrivilege):
-                conn.execute("INSERT INTO ops.scrape_adapter_grants(source_id) VALUES ('naver')")
+                conn.execute("INSERT INTO ops.scrape_adapter_grants(source_id) VALUES ('toss')")
         with psycopg.connect(market) as conn:
             deadline = conn.execute("SELECT clock_timestamp()+interval '3 minutes'").fetchone()[0]
-            legacy = submit(conn, "naver", {}, "legacy-fixture", deadline)
+            legacy = submit(conn, "toss", {}, "legacy-fixture", deadline)
         with psycopg.connect(market) as conn:
             with pytest.raises(PermissionDenied):
-                claim(conn, source="naver", scheduled_only=True)
+                claim(conn, source="toss", scheduled_only=True)
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             conn.execute(
                 "UPDATE ops.scrape_jobs SET deadline_at=clock_timestamp()-interval '1 second' "
                 "WHERE id=%s",
                 (legacy,),
             )
-        version = grant("naver")
+        version = grant("toss")
         with ThreadPoolExecutor(max_workers=2) as pool:
-            assert sorted(pool.map(tick, ["naver", "naver"])) == ["not_due", "scheduled"]
-        first = lease("naver")
+            assert sorted(pool.map(tick, ["toss", "toss"])) == ["not_due", "scheduled"]
+        first = lease("toss")
         assert first.permission_version == version
-        assert tick("naver") == "not_due"
+        assert tick("toss") == "not_due"
         with psycopg.connect(market) as conn:
             assert (
                 conn.execute(
@@ -161,13 +161,13 @@ def test_generic_scheduler_and_review_fences(monkeypatch, cnn_details):
                 ).fetchone()[0]
                 == 900
             )
-            assert claim(conn, source="naver", scheduled_only=True) is None
+            assert claim(conn, source="toss", scheduled_only=True) is None
             assert heartbeat(conn, first.job_id, first.lease_token, first.nonce)
             with pytest.raises(PermissionDenied):
                 fail(
                     conn,
                     first.job_id,
-                    "naver",
+                    "toss",
                     "forged-token",
                     first.nonce,
                     reason="http",
@@ -178,7 +178,7 @@ def test_generic_scheduler_and_review_fences(monkeypatch, cnn_details):
                 fail(
                     conn,
                     first.job_id,
-                    "naver",
+                    "toss",
                     first.lease_token,
                     first.nonce,
                     reason="http",
@@ -189,33 +189,34 @@ def test_generic_scheduler_and_review_fences(monkeypatch, cnn_details):
             )
             delay = conn.execute(
                 "SELECT extract(epoch FROM retry_at-clock_timestamp()) "
-                "FROM ops.poll_circuits WHERE source_id='naver'"
+                "FROM ops.poll_circuits WHERE source_id='toss'"
             ).fetchone()[0]
             assert 890 < delay <= 900
-        reset_due("naver")
-        assert tick("naver") == "blocked"  # Retry-After survives scheduler restart.
-        grant("naver")  # A new independently verified version, fixture only.
-        assert tick("naver") == "blocked"
+        reset_due("toss")
+        assert tick("toss") == "blocked"  # Retry-After survives scheduler restart.
+        grant("toss")  # A new independently verified version, fixture only.
+        assert tick("toss") == "blocked"
         # Simulate elapsed time in the disposable fixture only.
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             conn.execute(
-                "UPDATE ops.poll_circuits SET retry_at=clock_timestamp() WHERE source_id='naver'"
+                "UPDATE ops.poll_circuits SET retry_at=clock_timestamp() WHERE source_id='toss'"
             )
-        assert tick("naver") == "scheduled"
-        second = lease("naver")
+        assert tick("toss") == "scheduled"
+        second = lease("toss")
         stamp = (datetime.now(UTC) - timedelta(seconds=60)).isoformat()
         candidate = {
-            "series_id": "UST_2Y_NAVER",
+            "series_id": "UST_2Y_TOSS",
             "value": "4.2",
-            "source_event_at": stamp,
+            "source_event_at": None,
             "quality": "manual_review_required",
+            "automated_trading_allowed": False,
         }
         with psycopg.connect(market) as conn:
             with pytest.raises(ValueError):
                 complete(
                     conn,
                     second.job_id,
-                    "naver",
+                    "toss",
                     second.lease_token,
                     second.nonce,
                     [{**candidate, "series_id": "VIX"}],
@@ -226,46 +227,51 @@ def test_generic_scheduler_and_review_fences(monkeypatch, cnn_details):
                 promote_reviewed(conn, second.job_id)
             assert (
                 conn.execute(
-                    "SELECT count(*) FROM market.observations WHERE series_id='UST_2Y_NAVER'"
+                    "SELECT count(*) FROM market.observations WHERE series_id='UST_2Y_TOSS'"
                 ).fetchone()[0]
                 == 0
             )
             with pytest.raises(InsufficientPrivilege):
                 conn.execute("INSERT INTO ops.scrape_reviews(job_id) VALUES (%s)", (second.job_id,))
-        review(second, {"UST_2Y_NAVER": "percent"})
+        review(second, {"UST_2Y_TOSS": "percent"})
         with psycopg.connect(market) as conn:
             assert promote_reviewed(conn, second.job_id) == "promoted"
             assert promote_reviewed(conn, second.job_id) == "duplicate"
             value, quality, metadata, source_at, received, available = conn.execute(
                 "SELECT value,quality,metadata,source_event_at,received_at,available_at "
-                "FROM market.observations WHERE series_id='UST_2Y_NAVER'"
+                "FROM market.observations WHERE series_id='UST_2Y_TOSS'"
             ).fetchone()
             assert str(value) == "4.2" and quality == "manual_checked"
-            assert metadata == {"automated_trading_allowed": False}
-            assert source_at == datetime.fromisoformat(stamp) < received <= available
+            assert metadata == {
+                "automated_trading_allowed": False,
+                "source_time_verified": False,
+                "symbol": "ROB.US2YT-RR",
+                "source_url": "https://www.tossinvest.com/indices/ROB.US2YT-RR",
+            }
+            assert source_at is None and received <= available
             assert (
                 conn.execute(
-                    "SELECT count(*) FROM ops.outbox WHERE envelope->>'series_id'='UST_2Y_NAVER'"
+                    "SELECT count(*) FROM ops.outbox WHERE envelope->>'series_id'='UST_2Y_TOSS'"
                 ).fetchone()[0]
                 == 1
             )
-        reset_due("naver")
-        assert tick("naver") == "scheduled"
-        third = lease("naver")
+        reset_due("toss")
+        assert tick("toss") == "scheduled"
+        third = lease("toss")
         quarantine(third, [candidate])
-        review(third, {"UST_2Y_NAVER": "percent"}, hash_override="a" * 64)
+        review(third, {"UST_2Y_TOSS": "percent"}, hash_override="a" * 64)
         with psycopg.connect(market) as conn:
             with pytest.raises(PermissionDenied, match="hash mismatch"):
                 promote_reviewed(conn, third.job_id)
-        reset_due("naver")
-        assert tick("naver") == "scheduled"
-        fourth = lease("naver")
+        reset_due("toss")
+        assert tick("toss") == "scheduled"
+        fourth = lease("toss")
         quarantine(fourth, [candidate])
-        review(fourth, {"UST_2Y_NAVER": "percent"})
+        review(fourth, {"UST_2Y_TOSS": "percent"})
         with psycopg.connect(admin, dbname="autoaxe_market") as conn:
             set_permission(
                 conn,
-                "naver",
+                "toss",
                 approved=False,
                 evidence="synthetic revocation",
                 fetch=False,

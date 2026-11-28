@@ -58,7 +58,7 @@ Exit: 기존 roadmap Phase 0 및 contracts §10의 초기 API/Graph/Event/Data/D
 | P1.2 | 시장 원장, migrations, query | immutable observations/revisions/latest, 복합 키, source_event_at/available_at/received_at/ingested_at 구분, native partitioning, provenance, typed Decimal/UTC, cursor/as_of/quality |
 | P1.3 | Durable job/outbox/inbox | SKIP LOCKED claim/lease/token/heartbeat/retry/dedupe, at-least-once, version/gap, mode ingress, DB transaction rollback/crash, no global sequence ordering assumption |
 | P1.4 | Binance | Spot BTCUSDT trade + XAUUSDT/XAGUSDT/COPPERUSDT/CLUSDT/BZUSDT futures aggTrade, REST recovery, reconnect/ping/gap; futures market path wss://fstream.binance.com/market/stream?streams=...; 6 futures symbols × 4 ratio kinds = 24 series, 5m aggregates/300s poll, BTC price Spot vs futures ratio |
-| P1.5 | VIX/국채 | ^VIX TTL 10초 필수·허용 범위 내 즉시 갱신, ^IRX/^FVX/^TNX/^TYX 정기 조회 15분·원본 TTL 5분; UST_2Y_NAVER 최우선 승인형, 실패/실행 불가 때만 UST_2Y_TREASURY BC_2YEAR 임시 일별 fallback, 복귀, provenance, 전환 간 변화량 금지; Treasury XML 5개 만기 검증 |
+| P1.5 | VIX/국채 | ^VIX TTL 10초 필수·허용 범위 내 즉시 갱신, ^IRX/^FVX/^TNX/^TYX 정기 조회 15분·원본 TTL 5분; UST_2Y_TOSS 최우선 승인형, 실패/실행 불가 때만 UST_2Y_TREASURY BC_2YEAR 임시 일별 fallback, 복귀, provenance, 전환 간 변화량 금지; Treasury XML 5개 만기 검증 |
 | P1.6 | 수동 입력/CLI migration | 기존 manual_record.py·realtime_collector.py 기능 parity, URL/단위/관측·입력시각/입력자/검수, 권한 우회 금지; 기존 PoC 보존. 조회 API /api/v1/market, /indicators; 읽기 MCP 기반 가능 |
 | P1.7 | 복구·품질 | duplicate/late/revision/no_data/no_update/stale/disconnected, 429 Retry-After/5xx backoff/403 차단, bounded backpressure, provider contract fixture, fake WS, Testcontainers 및 replay |
 
@@ -75,7 +75,7 @@ Exit: FR-001~007 및 해당 시장 수집 계약, PoC parity(동일 입력 대�
 | P2.3 | Nasdaq/경제/정책 | MEXC NAS100_USDT 후보 Protobuf 전환 예정 2026-12-01 재검증, Binance QQQUSDT 별도, Yahoo NQ=F 지연 CME; BLS/BEA/Census/FOMC 일정 및 actual/revision 분리, Fed target range/FRED, BOJ 목표 vs 실효, BoE IUDBEDR, ECB DFR |
 | P2.4 | 캘린더/가이던스 | SEC EDGAR 8-K/Exhibit 99.1/IR, GAAP/adjusted, fiscal period·low/high·first_seen_at; 미국 표준 분기 만기는 규칙 기반 생성 및 검수 거래일 캘린더로 휴장일 보정·예상 DTE를 기본 제공. OCC/CME/Cboe 실제 계약 근거 및 Binance Options는 별도 범위; nominal/last_trade/processing/settlement, 4 family YES/NO/UNKNOWN triple/quad 판정, 확정 DTE 실제 세션 |
 | P2.5 | 격리 Scrapling | private broker FastAPI mTLS claim/heartbeat/result, source_id allowlist, lease/fencing/nonce/deadline/size/schema/revoke, worker DB/거래 비밀 없음, sandbox/egress/private IP/DNS/redirect/subresource 방어. HTTP 우선, 필요한 정상 렌더링만 승인; Playwright는 UI E2E 직접 사용 |
-| P2.6 | 승인형 산업/심리 | CNN 지정 URL score/category; PizzINT 공개 JSON API DOUGHCON(`defcon_level` 1~5)만, 5분 영속 스케줄·전용 Docker 실행, 실패 시 미수집, 금융 판단/자동 주문 금지; SEIBro TOP50 USD 결제(매수/매도/순매수, 기간/국가, 전체 시장 아님); DRAM DDR5 UDIMM 16GB 4800/5600, RDIMM 32GB 4800/5600, Module Spot Price Session Average/Last Update GMT+8; Naver 2Y 실제 승인형 parser; 미승인/실패는 null/manual/quarantine |
+| P2.6 | 승인형 산업/심리 | CNN 지정 URL score/category; PizzINT 공개 JSON API DOUGHCON(`defcon_level` 1~5)만, 5분 영속 스케줄·전용 Docker 실행, 실패 시 미수집, 금융 판단/자동 주문 금지; SEIBro TOP50 USD 결제(매수/매도/순매수, 기간/국가, 전체 시장 아님); DRAM DDR5 UDIMM 16GB 4800/5600, RDIMM 32GB 4800/5600, Module Spot Price Session Average/Last Update GMT+8; Toss 2Y 실제 승인형 parser; 미승인/실패는 null/manual/quarantine |
 | P2.7 | 대시보드 및 상세 | Live3x 레퍼런스의 dark token/시장 온도계/시세카드/sparkline/글로벌 롱숏 토글/RatioBar 및 4종 상세/캔들·거래량·SMA/EMA·고저가/지표·일정·품질/공급원 정의; React Router, Query/Zustand, Lightweight Charts/ECharts, Table/Virtual, RHF/Zod, responsive/accessibility |
 | P2.8 | 실시간 UI | SSE ready→buffer→REST snapshot→version delta, gap/overflow/reconnect/권한 폐기→resync, heartbeat/세션/모드별 cache, UI coalescing만 허용, polling fallback; 실제 화면 Vitest/Playwright 및 contract |
 
@@ -177,7 +177,7 @@ FR-001~007 → P1/P2, FR-101~111 → P1/P2, FR-201~211 → P2, FR-301~310 → P2
 |---|---|---|
 | R01 | Python/Node/nhplug/MCP/Scrapling 버전 교집합, 라이선스, sandbox | 0, 2, 5, 6 |
 | R02 | source별 자동 조회/저장/재배포/거래 권리·호출 제한, MEXC 전환 및 NVDA/QLD WS 실측, VIX TTL 충족 | 1–2, 7 |
-| R03 | CNN/SEIBro/DRAM/Naver 스크래핑 허가와 DOM·시간·단위/수동 검수; PizzINT DOUGHCON 공개 API 범위·스키마 검증; Cboe dashboard 자동 추출 금지 | 2 |
+| R03 | CNN/SEIBro/DRAM/Toss 스크래핑 허가와 DOM·시간·단위/수동 검수; PizzINT DOUGHCON 공개 API 범위·스키마 검증; Cboe dashboard 자동 추출 금지 | 2 |
 | R04 | point-in-time history와 모델 최소 표본/기준 모델/임계값/뉴스 모델 권한 | 4 |
 | R05 | 정확한 NH master parsing, 주문 API/계좌/상품/모의 지원·수수료·한도·idempotency/대사 | 5 |
 | R06 | MCP revision/host interoperability, OAuth registration/audience, 외부 정책 | 0, 6 |

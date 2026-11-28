@@ -34,7 +34,7 @@ class StrictDTO(BaseModel):
 
 
 class ClaimRequest(StrictDTO):
-    source_id: Literal["cnn", "pizzint", "dramexchange", "seibro", "naver"]
+    source_id: Literal["cnn", "pizzint", "dramexchange", "seibro", "toss"]
     lease_seconds: int = Field(default=30, ge=1, le=60)
 
 
@@ -57,13 +57,13 @@ class HeartbeatRequest(StrictDTO):
 
 
 class ResultRequest(HeartbeatRequest):
-    source_id: Literal["cnn", "pizzint", "dramexchange", "seibro", "naver"]
+    source_id: Literal["cnn", "pizzint", "dramexchange", "seibro", "toss"]
     adapter_version: int = Field(default=1, ge=1, le=1)
     candidates: list[dict[str, Any]] = Field(max_length=100)
 
 
 class FailureRequest(HeartbeatRequest):
-    source_id: Literal["cnn", "dramexchange", "naver"]
+    source_id: Literal["cnn", "dramexchange", "toss"]
     reason: Literal["http", "schema", "transport"]
     http_status: int | None = Field(default=None, ge=100, le=599)
     retry_header: str | None = Field(default=None, max_length=128)
@@ -72,7 +72,7 @@ class FailureRequest(HeartbeatRequest):
 MAX_REQUEST_BYTES = 262_144
 _VERIFIED_PEER = object()
 _PEER_KEY = "autoaxe.scrape.verified_peer"
-HTTP_SOURCES = frozenset({"cnn", "dramexchange", "naver"})
+HTTP_SOURCES = frozenset({"cnn", "dramexchange", "toss"})
 
 
 def _allowed_fingerprints() -> tuple[str, ...]:

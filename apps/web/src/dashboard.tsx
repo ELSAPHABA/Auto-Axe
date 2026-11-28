@@ -199,7 +199,10 @@ function DoughconCard({ row }: { row: IndicatorView }) {
 
 function IndicatorCard({ row }: { row: IndicatorView }) {
   const snapshot = useAuthorizedSnapshot();
-  const selected = snapshot?.meta.oil_selected?.[row.indicator_id];
+  const twoYear = row.indicator_id === "UST_2Y_TOSS";
+  const selected = twoYear
+    ? (snapshot?.meta.two_year_selected ?? null)
+    : snapshot?.meta.oil_selected?.[row.indicator_id];
   const sourceId =
     row.indicator_id === "VIX" &&
     snapshot?.data.some((p) => p.series_id === "VIX_YAHOO_WS")
@@ -209,11 +212,15 @@ function IndicatorCard({ row }: { row: IndicatorView }) {
         : selected;
   const point = snapshot?.data.find((item) => item.series_id === sourceId);
   const oilName = row.indicator_id === "WTI_BINANCE_PERP" ? "WTI" : "Brent";
-  const label = selected?.endsWith("_YAHOO_FUTURES_WS")
-    ? `${oilName} (Yahoo 선물 fallback)`
-    : selected?.endsWith("_SNAPSHOT")
-      ? `${oilName} (Binance WS)`
-      : row.label;
+  const label = twoYear
+    ? selected === "UST_2Y_TREASURY"
+      ? "미국 국채 2년 (미 재무부 일별 fallback)"
+      : "미국 국채 2년 (토스증권)"
+    : selected?.endsWith("_YAHOO_FUTURES_WS")
+      ? `${oilName} (Yahoo 선물 fallback)`
+      : selected?.endsWith("_SNAPSHOT")
+        ? `${oilName} (Binance WS)`
+        : row.label;
   if (row.indicator_id === "PENTAGON_PIZZA_PIZZINT")
     return <DoughconCard row={row} />;
   return (
@@ -244,13 +251,22 @@ function IndicatorCard({ row }: { row: IndicatorView }) {
         </span>
       </div>
       <p className="indicator-note">
-        {point?.source_event_at
-          ? "원본 시각 (UTC): " + point.source_event_at
-          : selected === null
-            ? "활성 원유 공급원 없음"
-            : row.source_note || row.cadence}
+        {twoYear && selected === "UST_2Y_TOSS"
+          ? "원본 갱신 시각 미확인 · 수집 시각 (UTC): " +
+            (point?.received_at ?? "—")
+          : twoYear && selected === "UST_2Y_TREASURY"
+            ? "미 재무부 공식 일별값 · 장중 실시간 아님"
+            : twoYear && selected === null
+              ? "승인된 2년물 관측값 없음"
+              : point?.source_event_at
+                ? "원본 시각 (UTC): " + point.source_event_at
+                : selected === null
+                  ? "활성 원유 공급원 없음"
+                  : row.source_note || row.cadence}
       </p>
-      <span className="indicator-frequency">{row.cadence}</span>
+      <span className="indicator-frequency">
+        {twoYear && selected === "UST_2Y_TREASURY" ? "1d" : row.cadence}
+      </span>
       {(row.category === "market" || point) && (
         <Link
           className="indicator-detail-link"
@@ -661,6 +677,7 @@ export function DashboardHome() {
             "WTI_BINANCE_PERP",
             "BRENT_BINANCE_PERP",
             "VIX",
+            "UST_2Y_TOSS",
             "NASDAQ100_MEXC_PERP_USDT",
           ].map((id) => {
             const row = data.find((item) => item.indicator_id === id);

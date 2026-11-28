@@ -4,12 +4,12 @@
 
 ## 수집 정책
 
-네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분하고 자동 거래 및 제3자 재배포에 사용하지 않는다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
 
 VIX 원본 TTL은 10초이며 [전체 신선도 표준](../tech-stack/data-collection.md)을 적용한다.
 
 - **가격·체결 데이터:** Binance 무료 **WebSocket 우선** — 금·은·구리 연동 영구선물 `XAUUSDT`, `XAGUSDT`, `COPPERUSDT`, WTI 연동 영구선물 `CLUSDT`, Brent 연동 영구선물 `BZUSDT`, 비트코인 현물 `BTCUSDT`. REST로도 최근 가격을 조회할 수 있다. *수신 틱이 존재할 때만* 거래소 실시간 체결이고, 거래소·계약 거래시간 밖에는 갱신되지 않는다.
-- **VIX·국채 금리지표:** Binance에 동일한 원본이 없어 yfinance `^VIX`, `^IRX`, `^FVX`, `^TNX`, `^TYX` 유지 (지연 가능). **미국 2년물은 지정된 네이버 증권 페이지** [US2YT=RR](https://m.stock.naver.com/marketindex/bond/US2YT=RR)에서 값을 확인한다. 다만 `robots.txt`가 `Disallow: /`이므로 무허가 자동 수집은 비활성화; 실패/실행 불가 시에만 Treasury 공식 일별 수익률로 임시 fallback하고 정상 복구 시 복귀.
+- **VIX·국채 금리지표:** yfinance 지정 심볼 유지. **미국 2년물:** 토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분하고 자동 거래 및 제3자 재배포에 사용하지 않는다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
 - **경제지표·정책·기업 가이던스·만기일:** 공식 무료 API, 보도자료, RSS/Atom, ICS 우선. 허가받은 스크래핑 또는 수동 입력.
 - **수집 대상에 두바이유는 없음.**
 
@@ -18,12 +18,12 @@ VIX 원본 TTL은 10초이며 [전체 신선도 표준](../tech-stack/data-colle
 | 만기 | 기본 소스 | 표기/심볼 |
 |---|---|---|
 | 3개월 | yfinance 지표 | `^IRX` |
-| 2년 | **네이버 증권 US2YT=RR (자동화 허가 필요)** | `US2YT=RR`; 실패/실행 불가 시 임시 Treasury 일별 `BC_2YEAR` |
+| 2년 | **토스증권 ROB.US2YT-RR (자동화 허가 필요)** | `ROB.US2YT-RR`; 실패/실행 불가 시 임시 Treasury 일별 `BC_2YEAR` |
 | 5년 | yfinance 지표 | `^FVX` |
 | 10년 | yfinance 지표 | `^TNX` |
 | 30년 | yfinance 지표 | `^TYX` |
 
-Yahoo 금리지표와 미국 재무부 공식 par yield는 다른 제공 체계다. 2년물 네이버 표시값은 원본 시간·지연표시를 저장하며 국채 금리선물·레버리지 ETF로 대체하지 않는다.
+Yahoo 금리지표와 미국 재무부 공식 par yield는 다른 제공 체계다. 2년물 토스증권 표시값은 원본 시간·지연 미확인 상태와 수집 시각을 별도 보존하며 국채 금리선물·레버리지 ETF로 대체하지 않는다.
 
 ## 시장 가격 및 거래 통계
 
@@ -59,11 +59,10 @@ python docs/examples/realtime_collector.py binance-longshort --ratio-period 5m -
 # VIX와 국채 3M/5Y/10Y/30Y: yfinance 지연 가능
 python docs/examples/realtime_collector.py yf-market
 
-# 2년물: 네이버 실패/실행 불가 시 임시 공식 Treasury 일별 값
+# 2년물: 토스증권 실패/실행 불가 시 임시 공식 Treasury 일별 값
 python docs/examples/realtime_collector.py treasury-five
 
-# 네이버: 승인을 받은 경우에만 AUTO_AXE_NAVER_SCRAPE_AUTHORIZED=1 설정
-python docs/examples/realtime_collector.py naver-2y
+# 토스: 별도 승인형 Playwright 운영 경로 사용 (Compose 안내 참조)
 ```
 
 ## 문서
@@ -71,7 +70,7 @@ python docs/examples/realtime_collector.py naver-2y
 - [시장 데이터 소스 정책](./Market_Source_Policy_20261123.md) · [Binance API 직접 검증](./Binance_API_Coverage.md)
 - [실행 가이드](./Realtime_Quickstart.md) · [전체 무료 데이터 카탈로그](./Free_Data_Collection.md) · [수집기 아키텍처](./Collector_Design.md)
 - [yfinance 지원 검증](./YFinance_Data_Validation.md) · [yfinance 수집 적용 범위](./YFinance_First_Collection.md)
-- [수동 기록 정책](./Manual_Collection.md) · [실행 코드](../examples/realtime_collector.py) · [스크래핑 권한 검증 예제](../examples/naver_bond_source_probe.py)
+- [수동 기록 정책](./Manual_Collection.md) · [실행 코드](../examples/realtime_collector.py) · [토스 수집 운영 안내](../../infra/compose/README.md)
 
 > Binance 무료 공개 시장데이터는 거래소의 공개 시세일 뿐, 다른 거래소의 무지연 가격 또는 현물 지표와 동일하다는 의미는 아니다. 해당 상품의 제공 지역 및 Binance 이용조건을 확인한다.
 

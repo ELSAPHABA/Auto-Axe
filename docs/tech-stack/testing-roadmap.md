@@ -2,7 +2,7 @@
 
 ## 1. 테스트 구성
 
-실행 계약의 필수 검수: 조건 충족 시 관련 타 조건 즉시 갱신 및 committed snapshot 재평가, refresh dedupe/timeout/원본 TTL(VIX 10초), 네이버 2Y 우선 및 실패 시에만 Treasury 임시 fallback/복귀, source series 분리, 사전·개별 승인, Order Coordinator priority/매수·매도별 최대량·예약·충돌, reset/retry 멱등 키, 5개 모드 원장 격리, MCP disconnect/client revoke와 거래 승인 철회 구분. 합성 fixture로 우선 검증하고 실제 제공자·브로커 권한과 호환성 검증 전 LIVE 차단.
+실행 계약의 필수 검수: 조건 충족 시 관련 타 조건 즉시 갱신 및 committed snapshot 재평가, refresh dedupe/timeout/원본 TTL(VIX 10초), 토스증권 2Y 우선 및 실패 시에만 Treasury 임시 fallback/복귀, source series 분리, 사전·개별 승인, Order Coordinator priority/매수·매도별 최대량·예약·충돌, reset/retry 멱등 키, 5개 모드 원장 격리, MCP disconnect/client revoke와 거래 승인 철회 구분. 합성 fixture로 우선 검증하고 실제 제공자·브로커 권한과 호환성 검증 전 LIVE 차단.
 
 | 영역 | 도구·검증 |
 |---|---|

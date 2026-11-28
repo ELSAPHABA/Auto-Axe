@@ -4,7 +4,7 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
-from autoaxe.adapters.providers import normalize_naver, normalize_ratio, normalize_treasury
+from autoaxe.adapters.providers import normalize_ratio, normalize_treasury
 from autoaxe.domain.catalog import FUTURES, RATIOS, YAHOO, catalog
 from autoaxe.domain.market import Candidate
 
@@ -17,14 +17,12 @@ class PollAdapters:
         ratio: Callable[[str, str], list[dict[str, Any]]],
         yahoo: Callable[[str], Candidate],
         treasury: Callable[[], bytes],
-        naver_result: Callable[[], dict[str, Any]],
         clock: Callable[[], datetime],
     ) -> None:
         self.authorize = authorize
         self.ratio = ratio
         self.yahoo = yahoo
         self.treasury = treasury
-        self.naver_result = naver_result  # typed result from approved isolated scraper, not HTTP
         self.clock = clock
 
     def collect(self, sid: str) -> list[Candidate]:
@@ -44,8 +42,6 @@ class PollAdapters:
                 for row in normalize_treasury(self.treasury(), self.clock())
                 if row.series_id == sid
             ]
-        elif sid == "UST_2Y_NAVER":
-            rows = [normalize_naver(self.naver_result(), self.clock())]
         else:
             raise ValueError("no polling adapter")
         self.authorize(sid)

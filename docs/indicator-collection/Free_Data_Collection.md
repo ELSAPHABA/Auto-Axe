@@ -4,7 +4,7 @@
 
 ## 1. 공통 수집 정책
 
-네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분하고 자동 거래 및 제3자 재배포에 사용하지 않는다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
 
 VIX 원본 TTL 10초 및 나머지 지표별 신선도는 [수집 기술 명세](../tech-stack/data-collection.md)를 따른다.
 
@@ -64,9 +64,9 @@ MEXC `NAS100_USDT`는 지수 연동 영구선물이며 실시간 수신·지연�
 | 지표 | 우선 수집 출처·방법 | 대안 및 보조 경로 | 수동·결측 처리 | 빈도 및 주의사항 |
 |---|---|---|---|---|
 | VIX | **yfinance `^VIX`** (우선) / Cboe 무료 일별 CSV 검증 | Cboe Quote Dashboard 자동 추출 금지 | 데이터 권한·지연 문제 시 장중 수동 | **yfinance 분봉 수신 검증, 무지연 보장 없음** |
-| 미국 국채 금리 3M·2Y·5Y·10Y·30Y | **3M/5Y/10Y/30Y: yfinance `^IRX/^FVX/^TNX/^TYX`; 2Y: 네이버 `US2YT=RR` ** | | | Yahoo 지표·네이버 게시 수익률·Treasury 일별값을 별도 표기 |
+| 미국 국채 금리 3M·2Y·5Y·10Y·30Y | **3M/5Y/10Y/30Y: yfinance `^IRX/^FVX/^TNX/^TYX`; 2Y: 토스증권 `ROB.US2YT-RR` ** | | | Yahoo 지표·토스증권 게시 수익률·Treasury 일별값을 별도 표기 |
 
-- **기본:** VIX `yfinance ^VIX`, 국채 3M `^IRX`, 5Y `^FVX`, 10Y `^TNX`, 30Y `^TYX`. **2Y 최우선 출처:** [네이버 `US2YT=RR`](https://m.stock.naver.com/marketindex/bond/US2YT=RR). 실측 JSON의 `closePrice`·`localTradedAt` 확인.
+- **기본:** VIX `yfinance ^VIX`, 국채 3M `^IRX`, 5Y `^FVX`, 10Y `^TNX`, 30Y `^TYX`. **2Y 최우선 출처:** [토스증권 `ROB.US2YT-RR`](https://www.tossinvest.com/indices/ROB.US2YT-RR). 정상 브라우저의 2년물 표시행만 검수; 원본 갱신 시각 미확인.
 
 - VIX [Cboe 공식 EOD CSV](https://www.cboe.com/tradable_products/vix/vix_historical_data): `https://cdn-api.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv`. 시장 운영시간의 실제 스트리밍이 아니다. Cboe Quotes Dashboard에 명시된 **자동화 추출 금지**를 준수한다.
 - Treasury [일별 공식 파 수익률](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics), [XML 제공 안내](https://home.treasury.gov/treasury-daily-interest-rate-xml-feed): 2Y/10Y 등 단위 `percent`. [FRED DGS2/DGS10](https://fred.stlouisfed.org/series/DGS10)은 무료 개인 조회 참고만. 국채 현물 수익률과 국채 선물 가격은 전혀 다른 값.
@@ -169,7 +169,7 @@ SEIBro의 국가·조회기간별 해외주식 TOP50 매수·매도·순매수 �
 |---|---|---|---|---|
 | 미국 주식 CNN 공포·탐욕 | 지정 비문서화 JSON endpoint (승인형) | HTML 자동 수집 제거 | 허용 수동 기록 또는 결측 | 기존 승인 주기 유지, 원본 시각 보존, 실시간성 미보장 |
 
-**지정 수집 대상(2026-11-28 사용자 확정):** `GET https://production.dataviz.cnn.io/index/fearandgreed/graphdata` JSON만 자동 수집 대상으로 한다. `fear_and_greed.score/rating/timestamp`만 보존하고 그래프 이력·하위 지표는 폐기한다. HTML fallback 없음. 비문서화 endpoint의 공개 응답 기록은 확인했으나 자동 접근·저장 권한 및 실제 worker 응답은 미검증; 기존 HTML 권한은 승계하지 않는다. 네이버 US2YT=RR 정기 조회는 900초 이상(기본 900초), 기존 Treasury 일별 fallback 유지.
+**지정 수집 대상(2026-11-28 사용자 확정):** `GET https://production.dataviz.cnn.io/index/fearandgreed/graphdata` JSON만 자동 수집 대상으로 한다. Session 20 이후 종합·하위 지표 및 그래프를 승인형으로 보존한다. HTML fallback 없음. 비문서화 endpoint의 공개 응답 기록은 확인했으나 자동 접근·저장 권한 및 실제 worker 응답은 미검증; 기존 HTML 권한은 승계하지 않는다. 2년물은 별도 토스증권 승인형 수집으로 교체. Treasury 일별 fallback 유지.
 
 ### 5.3 PizzINT DOUGHCON
 

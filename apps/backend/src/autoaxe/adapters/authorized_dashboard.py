@@ -26,7 +26,7 @@ from autoaxe.domain.catalog import catalog
 from autoaxe.domain.owner_access import is_configured_owner
 from autoaxe.entrypoints.auth import SESSION_COOKIE
 from autoaxe.entrypoints.auth import _dsn as identity_dsn
-from autoaxe.infrastructure.market_store import PermissionDenied, verify_connection
+from autoaxe.infrastructure.market_store import PermissionDenied, two_year_usable, verify_connection
 from autoaxe.infrastructure.sessions import authorize
 
 router = APIRouter(prefix="/api/v1/dashboard/authorized", tags=["dashboard-authorized"])
@@ -56,6 +56,7 @@ class SnapshotMeta(Contract):
     mode: str = "market_read"
     versions: dict[str, int]
     oil_selected: dict[str, str | None] = Field(default_factory=dict)
+    two_year_selected: str | None = None
 
 
 class AuthorizedSnapshot(Contract):
@@ -97,23 +98,26 @@ def read_snapshot(
                 rows = cur.execute(
                     """SELECT s.series_id,s.source_id,s.mapping_version,s.unit,
                        r.permission_version,COALESCE(v.version,0) AS version,
-                       o.value,o.quality,o.source_event_at,o.received_at,
-                       h.status,h.checked_at
+                       o.value,o.quality,o.source_event_at,o.received_at,o.metadata,
+                       h.status,h.checked_at,h.reason
                        FROM catalog.series s JOIN catalog.source_registry r USING(source_id)
                        LEFT JOIN market.series_versions v USING(series_id)
                        LEFT JOIN market.latest_observations l USING(series_id)
                        LEFT JOIN market.observations o ON o.partition_at=l.partition_at
                          AND o.observation_id=l.observation_id
                          AND o.mapping_version=s.mapping_version
+                         AND (s.series_id NOT IN ('UST_2Y_TOSS','UST_2Y_TREASURY')
+                              OR o.permission_version=r.permission_version)
                          AND o.available_at<=%s AND o.ingested_at<=%s
                        LEFT JOIN ops.collector_health h ON h.series_id=s.series_id
                        WHERE r.permission_status='approved' AND r.enabled AND r.free_only
                          AND r.allow_fetch AND r.allow_storage
                          AND (r.allow_redistribution OR %s::boolean)
+                         AND (s.source_id<>'toss' OR %s::boolean)
                          AND r.verified_at IS NOT NULL AND r.evidence_ref <> ''
                          AND s.source_id <> 'fixture'
                        ORDER BY s.series_id""",
-                    (as_of, as_of, private),
+                    (as_of, as_of, private, private),
                 ).fetchall()
                 oil_selections = cur.execute(
                     """SELECT DISTINCT ON(indicator_id) indicator_id,series_id
@@ -219,6 +223,23 @@ def read_snapshot(
                 oil_selected[indicator] = selected
             else:
                 oil_selected[indicator] = None
+        two_year_selected = None
+        row_by_id = {row["series_id"]: row for row in rows}
+        for sid_2y in ("UST_2Y_TOSS", "UST_2Y_TREASURY"):
+            if sid_2y in by_id:
+                r2 = row_by_id[sid_2y]
+                if two_year_usable(
+                    sid_2y,
+                    r2["status"],
+                    r2["value"],
+                    r2["quality"],
+                    r2["metadata"],
+                    r2["received_at"],
+                    as_of,
+                    r2["reason"],
+                ):
+                    two_year_selected = sid_2y
+                    break
         return SnapshotState(
             AuthorizedSnapshot(
                 data=points,
@@ -227,6 +248,7 @@ def read_snapshot(
                     as_of=as_of,
                     versions={p.series_id: p.version for p in points},
                     oil_selected=oil_selected,
+                    two_year_selected=two_year_selected,
                 ),
             ),
             (grant.session_hash, grant.auth_version, private),
@@ -273,6 +295,7 @@ def changes(old: SnapshotState, new: SnapshotState) -> list[str]:
     if not events and (
         old.snapshot.data != new.snapshot.data
         or old.snapshot.meta.oil_selected != new.snapshot.meta.oil_selected
+        or old.snapshot.meta.two_year_selected != new.snapshot.meta.two_year_selected
     ):
         events.append(sse_event("market.refresh", {"schema_version": 1, "mode": "market_read"}))
     return events

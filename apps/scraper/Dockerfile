@@ -16,6 +16,10 @@ RUN uv sync --locked --group browser \
 USER 10003
 ENTRYPOINT ["/app/.venv/bin/python", "-m", "autoaxe_scraper.seibro_browser", "--reserved-capture"]
 
+FROM seibro-browser AS toss-browser
+ENTRYPOINT ["/app/.venv/bin/python", "-m", "autoaxe_scraper.worker"]
+CMD ["--help"]
+
 FROM scraper-base AS scraper
 USER 10003
 CMD ["/app/.venv/bin/python", "-m", "pytest", "-p", "no:cacheprovider", "tests", "-q"]

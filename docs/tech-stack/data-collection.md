@@ -10,11 +10,11 @@
 | Binance XAUUSDT/XAGUSDT/COPPERUSDT/CLUSDT/BZUSDT | Futures aggTrade WS 및 REST | USDT 영구선물 별도 상품, 원자산 대체 금지 |
 | Binance 롱숏 | REST 4종(global account/top account/top position/taker), 5m 이상 | 계정·포지션·거래량 기준 분리, 원본 갱신 확인 |
 | Nasdaq | MEXC NAS100_USDT Protobuf 어댑터 후보, Binance QQQUSDT 별도, yfinance NQ=F 지연 비교 | MEXC 실제 수신 검증 및 2026-12-01 예정 전환 재확인; NQ 실시간으로 위장 금지 |
-| VIX·국채 | yfinance ^VIX/^IRX/^FVX/^TNX/^TYX, Treasury XML | Yahoo 지연·단위 확인; 2Y는 Naver 최우선, 실패/실행 불가 시에만 BC_2YEAR 임시 일별 fallback |
+| VIX·국채 | yfinance ^VIX/^IRX/^FVX/^TNX/^TYX, Treasury XML | Yahoo 지연·단위 확인; 2Y는 Toss 최우선, 실패/실행 불가 시에만 BC_2YEAR 임시 일별 fallback |
 | 미국 주식·ETF | yfinance AsyncWebSocket day_volume, 별도 1Hz sampler, Ticker.history | 새 메시지 없음 상태·세션 리셋, 통합 시장 거래량 보장 없음 |
 | 기업 재무·기술 | Ticker.info, OHLCV, pandas rolling/EMA | point-in-time 이력, ETF 재무 필드 결측 |
 | 공식 경제·정책·가이던스 | httpx, feedparser, icalendar, lxml/XML/JSON | SEC EDGAR, BLS, FRED, EIA, Treasury, 중앙은행/거래소 공식 발표; API 키 무료 등록·권한 |
-| CNN F&G, SEIBro, DRAMeXchange, Naver 2Y | 승인 이후 Scrapling (Selector/Fetcher 우선, 필요한 정상 렌더링만 별도 검증) | 기본 비활성, 허가/수동 이용 범위 확인; 우회 금지 |
+| CNN F&G, SEIBro, DRAMeXchange, Toss 2Y | 승인 이후 Scrapling (Selector/Fetcher 우선, 필요한 정상 렌더링만 별도 검증) | 기본 비활성, 허가/수동 이용 범위 확인; 우회 금지 |
 | PizzINT DOUGHCON | 고정 HTTPS JSON GET, `defcon_level`만 정규화 | 1~5 정수, API timestamp 검증, 5분 영속 스케줄, 원본 payload 미보관, HTML/수동 폴백 없음 |
 | 수동 입력 | Pydantic DTO + 검수 UI/CSV import | 원본 URL·값·시각·입력자·단위·권한·검수, 자동으로 표기 금지 |
 
@@ -36,7 +36,7 @@ SEIBro는 해외주식 TOP50 결제금액(매수/매도/순매수 USD)이며 전
 
 ScrapeRequest는 사용자 URL 대신 source_id, approved adapter version, 조회 기간/국가 등 정해진 enum/범위만 받는다. job broker를 통해 isolated scraper-worker가 받아 외부 도메인만 접근하고, 크기 제한된 typed ObservationCandidate와 source metadata를 검증 서비스에 반환한다. scraper에는 DB 직접 접근·NH credential·Docker socket·임의 파일 접근·내부망 접근 권한이 없다. 승인 취소는 새 작업 및 결과 반영을 차단한다. redirect, subresource, WebSocket, 다운로드, IPv4/IPv6 및 DNS 재해석을 포함한 egress 보안은 [전체 보안 설계](./security.md) §5를 따른다.
 
-대상별 계획: CNN은 사용자 지정 graphdata JSON 전용(비문서화, 승인 필요), DRAM/Naver는 검수된 정적 DOM 우선, SEIBro WebSquare는 정상 렌더링 가능성 검증. 합성 fixture로 parser/DOM 변경/오인식/권한 취소/redirect/SSRF 및 브라우저 격리 테스트 후에만 활성화한다. PizzINT는 Scrapling HTML 수집 대상에서 제외하고 공개 JSON API 전용 DOUGHCON 어댑터를 사용한다.
+대상별 계획: CNN은 사용자 지정 graphdata JSON 전용(비문서화, 승인 필요), DRAM은 검수된 정적 DOM, Toss는 정상 Playwright 렌더링, SEIBro WebSquare는 정상 렌더링 가능성 검증. 합성 fixture로 parser/DOM 변경/오인식/권한 취소/redirect/SSRF 및 브라우저 격리 테스트 후에만 활성화한다. PizzINT는 Scrapling HTML 수집 대상에서 제외하고 공개 JSON API 전용 DOUGHCON 어댑터를 사용한다.
 
 ## 2. 파이프라인
 
@@ -44,7 +44,7 @@ ScrapeRequest는 사용자 URL 대신 source_id, approved adapter version, 조�
 
 ### 공급원 선택 및 신선도
 
-네이버 증권 `US2YT=RR`을 최우선 원본(`UST_2Y_NAVER`)으로 지정한다. 스크래핑 실패로 실행할 수 없는 경우에만 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)을 임시 fallback으로 표시한다. 네이버 정상 수집 복구 즉시 우선 원본으로 복귀하고 전환 사유·시각·원본을 기록한다. 원본별 데이터 정의·시각·신선도를 분리하고 일별 fallback을 장중 실시간 수익률로 사용하지 않는다.
+토스증권 `ROB.US2YT-RR` (`UST_2Y_TOSS`)을 15분 승인형 Playwright 수집의 최우선 원본으로 지정한다. 최근 검수된 표시값이 없거나 수집 실패·권한 제한 시 미국 재무부 `BC_2YEAR` 일별값(`UST_2Y_TREASURY`)으로 임시 fallback한다. 원본 갱신 시각 미확인 토스값은 수집 시각과 구분하고 자동 거래 및 제3자 재배포에 사용하지 않는다. 원본 시계열과 전환 이력을 분리하며 기존 네이버 관측값은 변경하지 않는다.
 
 indicator_id는 논리 지표, series_id는 원본 제공자·상품·단위·계약·정의가 고정된 시계열이다. 가격, VIX, 국채, Nasdaq 등 동일 관심 자산의 다른 계약·공급원은 분리 저장한다. Workflow는 원본 series_id 고정 기본, 사용자 명시적 허용 시에만 호환 정의의 fallback을 사용한다. UST_2Y 화면은 위 우선순위로 표시하되 장중 전략은 일별 fallback 사용을 명시적으로 허용하고 해당 신선도·정의 조건을 만족할 때만 평가한다. 전환 경계의 수익률/EDGE/rolling 계산은 재기준화 또는 UNKNOWN 처리한다.
 
@@ -55,7 +55,7 @@ indicator_id는 논리 지표, series_id는 원본 제공자·상품·단위·�
 | VIX yfinance ^VIX | **10초**, 원본 이벤트 시각 기준 |
 | yfinance 국채 3M/5Y/10Y/30Y | 원본 TTL 5분; 정기 조회 15분 |
 | Binance 롱숏 4종 | 10분, 원본 최소 5분 집계 |
-| 네이버 2Y | 정기 조회 15분(900초), 원본 TTL 및 원본 시각·지연은 별도 기존 계약 유지 |
+| 토스증권 2Y | 정기 조회 15분(900초), 원본 시각 미확인; 표시값 수집 시각 최대 960초 (TTL 아님) |
 | Treasury 공식 일별 수익률 | 다음 공식 발표 예정 시각 기준 |
 | 기업 재무지표 | 최근 유효 공시 및 정정 여부 |
 | 경제지표 | 공식 발표 일정·revision 기준 |
