@@ -27,7 +27,7 @@ SEIBro는 해외주식 TOP50 결제금액(매수/매도/순매수 USD)이며 전
 | 용도 | 선택 |
 |---|---|
 | 정적 HTML/응답 파싱 | Scrapling Selector, CSS/XPath, 정확한 Item·열·원본 시각 검증 |
-| 일반 HTTP 수집 | httpx로 정책·TLS·redirect를 통제하고 Selector로 파싱, 또는 Scrapling Fetcher/FetcherSession의 동일 정책 지원을 확인 후 사용 |
+| 일반 HTTP 수집 | DRAM: Scrapling FetcherSession + IP-pinned TLS + Selector; Toss: Fetcher 우선. JSON API는 기존 전송 모듈 유지 |
 | JS 렌더링이 꼭 필요한 공개 UI | 별도 승인된 Scrapling 브라우저 fetcher; 정상 렌더링/UI 동작, sandbox와 egress 통제를 실제 검증할 때만 활성화 |
 | 여러 페이지 | 등록된 source별 제한된 URL/페이지 범위, scheduler/큐 유지; 자동 광역 크롤링 미사용 |
 | DOM 변화 | adaptive/similar-element 매칭은 개발 중 후보 탐색에 한정; 운영 자동 재매핑 금지, 값·행·열·단위·기준시각 검증 실패 시 quarantine |
@@ -36,7 +36,7 @@ SEIBro는 해외주식 TOP50 결제금액(매수/매도/순매수 USD)이며 전
 
 ScrapeRequest는 사용자 URL 대신 source_id, approved adapter version, 조회 기간/국가 등 정해진 enum/범위만 받는다. job broker를 통해 isolated scraper-worker가 받아 외부 도메인만 접근하고, 크기 제한된 typed ObservationCandidate와 source metadata를 검증 서비스에 반환한다. scraper에는 DB 직접 접근·NH credential·Docker socket·임의 파일 접근·내부망 접근 권한이 없다. 승인 취소는 새 작업 및 결과 반영을 차단한다. redirect, subresource, WebSocket, 다운로드, IPv4/IPv6 및 DNS 재해석을 포함한 egress 보안은 [전체 보안 설계](./security.md) §5를 따른다.
 
-대상별 계획: CNN은 사용자 지정 graphdata JSON 전용(비문서화, 승인 필요), DRAM은 검수된 정적 DOM, Toss는 Scrapling Fetcher(정상 HTTP) 우선, 정상 페이지의 동적 렌더링 필요 시 DynamicSession, SEIBro WebSquare는 DynamicSession 한 세션·페이지에서 기존 15-scope UI 조회. 두 수집기는 첫 navigation 전 context fence를 설치하며 콜백 실패를 별도 보존·검증한다. HTTP 401/403/429 및 기타 비200, redirect, 인식 불가 응답, 전송 오류에서 browser fallback 금지. 정상 UI만 사용하고 impersonation/stealth/가짜 referrer/재시도는 사용하지 않는다. 실사이트 DOM·권한·운영 egress 검증 후에만 활성화한다. PizzINT는 Scrapling HTML 수집 대상에서 제외하고 공개 JSON API 전용 DOUGHCON 어댑터를 사용한다.
+대상별 계획: CNN은 사용자 지정 graphdata JSON 전용(비문서화, 승인 필요), DRAM은 Scrapling FetcherSession(IP 고정 TLS, 정적 DOM, browser fallback 없음), Toss는 Scrapling Fetcher(정상 HTTP) 우선, 정상 페이지의 동적 렌더링 필요 시 DynamicSession, SEIBro WebSquare는 DynamicSession 한 세션·페이지에서 기존 15-scope UI 조회. 두 브라우저 수집기는 첫 navigation 전 context fence를 설치하며 콜백 실패를 별도 보존·검증한다. HTTP 401/403/429 및 기타 비200, redirect, 인식 불가 응답, 전송 오류에서 browser fallback 금지. 정상 UI만 사용하고 impersonation/stealth/가짜 referrer/재시도는 사용하지 않는다. 실사이트 DOM·권한·운영 egress 검증 후에만 활성화한다. PizzINT는 Scrapling HTML 수집 대상에서 제외하고 공개 JSON API 전용 DOUGHCON 어댑터를 사용한다. Session27부터 base scraper에 fetchers extra와 curl-cffi 0.17.0을 고정한다. 브라우저 바이너리 설치는 여전히 별도 browser image에 한정한다.
 
 ## 2. 파이프라인
 

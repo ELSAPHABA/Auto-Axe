@@ -18,13 +18,11 @@ from typing import Any, Protocol
 from uuid import UUID
 
 from autoaxe_scraper.parsers import SchemaChanged
-from autoaxe_scraper.policy import fixed_target
 from autoaxe_scraper.reviewed_dom import DOMContract, load_contract, parse_reviewed
 from autoaxe_scraper.transport import (
     ProviderHTTPError,
     SourceBlocked,
     fetch_cnn_fear_greed,
-    fetch_exact_html,
 )
 
 HTTP_SOURCES = frozenset({"cnn", "dramexchange", "toss"})
@@ -196,7 +194,9 @@ def run_once(
 
             parsed = fetch_toss_two_year(permit=permit)
         else:
-            html = fetch_exact_html(fixed_target(source), permit=permit)
+            from autoaxe_scraper.dram_fetcher import fetch_dramexchange_html
+
+            html = fetch_dramexchange_html(permit=permit)
             if contract is not None:
                 parsed = parse_reviewed(contract, html)
             else:

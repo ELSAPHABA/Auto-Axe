@@ -4,6 +4,8 @@
 
 ## METADATA (메타데이터)
 
+- **최신 사용자 확정 2026-11-28 session 27:** [DRAMeXchange Fetcher 전환](phases/phase-02/2026-11-28-27.md). 기준 HEAD 46b9966. Scrapling FetcherSession + Selector, curl-cffi 0.17.0 고정 및 IP pin/TLS/무proxy/1MB 스트림 제한 유지. browser fallback 없음. Windows 전체 125 passed/2 skipped, 새 기본 Docker 이미지 격리 20+1 passed(보류 2건 포함, distinct 127), Chromium 바이너리 없음, Ruff/mypy/lock 통과. 실제 공급자/운영 권한 미검증. Phase2 exit BLOCKED.
+
 - **최신 사용자 확정 2026-11-28 session 26:** [SEIBro 실제 수신 검수](phases/phase-02/2026-11-28-26.md). 시작 HEAD b8dd94d. 실제 공개 UI 서로 다른 세션의 11/15 scope 550행 backend 검증 성공(1주/1개월/3개월 3종, 6개월 매수·매도). 6개월 순매수 timeout, 1년 3종 미검증, 최종 초기 이미지 연결 reset으로 종료. 순매수 정수 표시의 ±1 USD 차이 실측 및 원본 보존 수정(0025 migration), 정상 POST XHR/fetch 최대 90s·UI 105s·deadline 제한, fail fast. 실제 단일 세션 15-scope 전체/운영 권한·egress·실주문 미검증, 운영 DB 변경 없음. Phase2 전체 exit BLOCKED.
 
 - **최신 사용자 확정 2026-11-28 session 25:** [Scrapling 수집 리팩터링](phases/phase-02/2026-11-28-25.md). 기준 HEAD 9ffaa2f3569650a0ecbeb0434b151bb38c2a596e 원격 반영 확인. Scrapling 0.4.15 (0.5.1 Dynamic API 제거 확인), browser 그룹 fetchers 추가, SEIBro DynamicSession / Toss Fetcher→DynamicSession. 직접 Playwright launch/goto 제거, context fence 선설치 및 콜백 실패 검증. Windows 114+2 tests, Docker network-none 실제 Fetcher loopback 1 test (총 117 distinct passed), browser image build 및 Ruff/mypy/lock 통과. 기존 cadence, permissions, DB/API/거래 계약 유지. 실제 provider/운영 미검증. Phase2 IN_PROGRESS/exit BLOCKED.

@@ -73,14 +73,14 @@ name = "autoaxe-scraper"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "scrapling" },
+    { name = "curl-cffi" },
+    { name = "scrapling", extra = ["fetchers"] },
     { name = "tzdata" },
 ]
 
 [package.dev-dependencies]
 browser = [
     { name = "playwright" },
-    { name = "scrapling", extra = ["fetchers"] },
 ]
 dev = [
     { name = "mypy" },
@@ -90,15 +90,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "scrapling", specifier = "==0.4.15" },
+    { name = "curl-cffi", specifier = "==0.17.0" },
+    { name = "scrapling", extras = ["fetchers"], specifier = "==0.4.15" },
     { name = "tzdata", specifier = ">=2025.1" },
 ]
 
 [package.metadata.requires-dev]
-browser = [
-    { name = "playwright", specifier = "==1.62.0" },
-    { name = "scrapling", extras = ["fetchers"], specifier = "==0.4.15" },
-]
+browser = [{ name = "playwright", specifier = "==1.62.0" }]
 dev = [
     { name = "mypy", specifier = ">=1.15,<3" },
     { name = "pytest", specifier = ">=8,<10" },

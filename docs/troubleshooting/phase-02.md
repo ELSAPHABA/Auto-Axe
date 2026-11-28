@@ -263,3 +263,7 @@
 - 사용자 요청 실제 검수: HTTP 200, UI 조작 후 50행 렌더링 확인. DOM 전체 innerText와 가시 열은 다르므로 숨은 합계 열을 사용하지 않는다. 1주 순매수 실제 50행의 원본−계산 delta −1/0/+1 USD는 각각 6/41/3행. 기존 strict net equality가 정상 표시값을 거부했다.
 - 순매수 browser_capture에서만 정수 USD operands 및 delta ∈ {-1,0,1} 허용. 공급자 순매수 그대로 보존, 합계는 정확한 파생값, 소수·범위 초과·기타 기준·수동 입력은 strict. 0025 DB에서 명시 delta 및 derived provenance FK, 기존 행은 delta=0 유지. 원본 내부 반올림 방식은 미확인.
 - 3개월 매수 실제 조회에서 10초 POST XHR timeout 발생, 30초로 조정 후 3개월 3종 실제 약 13초, 6개월 매수/매도 약 29초 성공. 6개월 순매수는 30초 초과. 최종 XHR/fetch POST만 최대 90초, UI freshness wait 105초, 최초 control wait 30초, fence fail-fast; 전체 deadline 및 budget, 0 retries, 0 redirects 유지. 최종 초기 이미지 GET socket hang up으로 추가 검수 중단. 실제 11/15 scope 550행 backend 검증 성공; 나머지 4종 및 단일 실제 전체 batch/운영 egress와 실제 자동 이용 권한 미검증.
+
+## TS-02-48 — Scrapling Fetcher의 DNS 고정 연결 옵션 및 DRAM 후보 검수
+- Scrapling 0.4.15 Fetcher.get/FetcherSession 공개 인자와 curl-cffi 0.17.0 Session.request는 요청별 CURLOPT_RESOLVE 옵션을 노출하지 않는다. 단순 HTTP 전환 시 기존 DNS pinning이 제거될 수 있어 FetcherSession의 새 내부 curl session 계약을 확인 후 검증된 단일 IP 및 TLS·no-proxy 옵션을 설정한다. 버전 고정, 내부 계약 변경 시 fail closed, 일반 fetcher만 사용.
+- 네트워크 없는 Docker의 실제 loopback HTTPS 시험에서 IP pinning, TLS 호스트/CA 검증, 무proxy, redirect/429, 과대·압축 응답 차단 확인. 실사이트 및 운영 이용 권한 미검증. 첫 회귀 시험의 실패는 기존 DRAM 후보에 없는 automated_trading_allowed 필드를 기대한 새 테스트의 문제였으며 실제 manual_review_required/unit_verified 계약에 맞춰 정정했다. [Session27](../../.ai-context/phases/phase-02/2026-11-28-27.md).

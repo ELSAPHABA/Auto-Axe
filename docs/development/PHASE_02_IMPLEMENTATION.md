@@ -2,7 +2,11 @@
 
 2026-11-27 KST. 원본 [Phase 계획](PHASE_PLAN.md) §5의 P2.1~P2.8을 변경하지 않는다. [상세 세션 기록](../../.ai-context/phases/phase-02/2026-11-27-01.md) · [별도 트러블슈팅](../troubleshooting/phase-02.md) · [전체 운영 맥락](../../.ai-context/CONTEXT.md).
 
-## 최신 사용자 변경 — 2026-11-28 Session 26
+## 최신 사용자 변경 — 2026-11-28 Session 27
+
+[Session 27](../../.ai-context/phases/phase-02/2026-11-28-27.md): DRAMeXchange HTTP 수신을 Scrapling FetcherSession으로 통일, IP 고정 TLS와 기존 승인형 DOM/후보 검증 유지. 격리 실제 HTTPS 시험 성공. 실제 공급자/운영 승인 미검증, Phase2 exit BLOCKED.
+
+## 이전 사용자 변경 — 2026-11-28 Session 26
 
 [Session 26](../../.ai-context/phases/phase-02/2026-11-28-26.md): 실제 SEIBro 공개 UI 수신 검수 및 관측한 정수 순매수의 ±1 USD 차이 보존 처리(0025). 정상 요청의 응답 지연을 고려한 제한적 timeout 변경. 기존 운영 권한·일괄 승격 계약 유지. 전체 Phase2 exit BLOCKED.
 

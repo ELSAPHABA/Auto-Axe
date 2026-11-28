@@ -252,6 +252,10 @@ DRAM: root/title/table/timestamp. Selectors must resolve exactly one node;
 all extracted data must come from reviewed static HTML text, not guessed
 fixture attributes. Naver timestamp must explicitly include timezone offset;
 DRAM must show Last Update with GMT+8. Missing/ambiguous DOM fails closed.
+Session 27: DRAM acquisition uses Scrapling FetcherSession with a fixed
+public-IP TLS destination, strict response bounds, no proxy/redirect/retry
+or browser fallback. Rebuild the generic scraper image after the lock change.
+The base image installs the HTTP fetchers extra but no Chromium binary.
 Dynamic pages need a separate independently approved rendering contract.
 The operator must independently pin and record the manifest hash in the
 adapter-grant evidence; source permissions and adapter-grant review remain

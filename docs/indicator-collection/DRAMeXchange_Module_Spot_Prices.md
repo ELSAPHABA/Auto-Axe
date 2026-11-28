@@ -1,6 +1,6 @@
 # DRAMeXchange DDR5 모듈 가격 지표 수집 명세
 
-> 확인일: 2026-11-24. 지정 공개 홈페이지의 대상 행 및 열 확인 완료. 자동 스크래핑·적재·활용 권한 확인 필요; 실제 HTTP 파서 및 운영 수집기 미구현. 유료 서비스 제외.
+> 상태(2026-11-28 Session27): 지정 공개 홈페이지의 대상 행 및 열은 2026-11-24 조사에서 확인했다. 승인형 Scrapling FetcherSession + Selector 운영 코드 및 일일 점검 계약 구현, 격리 합성 HTTPS 검증 완료. 실제 공급자 HTTP/DOM 및 자동 수집·적재·활용 권한은 미검증. 유료 서비스 제외.
 
 ## 1. 지정 수집 대상
 
@@ -29,14 +29,14 @@
 
 [Scrapling 수집 표준](../tech-stack/data-collection.md)을 적용한다. 아래 파서 예시는 필드·산식 검증 참고용이며 운영 파서는 실제 HTML fixture를 기반으로 검증한다.
 
-목표 수집 방식은 `SCRAPE`: 공개 홈페이지 HTML을 일반 HTTP GET으로 받아 정책이 적용된 HTTP 클라이언트와 Scrapling Selector를 기반으로 파싱한다. 웹 열람 도구에서 대상 텍스트는 확인했으나 raw HTTP/DOM 구조 및 정확한 CSS selector는 실측하지 않았다. 셀 인덱스나 CSS ID를 고정 추정하지 않는다.
+수집 방식은 `SCRAPE`: 공개 홈페이지 HTML을 Scrapling 0.4.15 FetcherSession의 일반 HTTP GET으로 받고 Selector로 파싱한다. curl-cffi 0.17.0의 세션 옵션으로 검증된 public IP에 TLS 연결을 고정하고, 인증서·호스트 검증, TLS 1.2 이상, 무redirect·무재시도·무proxy·무impersonation·identity encoding 및 1 MB 스트림 제한을 유지한다. DNS 전후 및 수신 후 broker permit을 확인한다. 공개 API에 IP pinning 옵션이 없어 고정 버전의 내부 curl session 계약을 검증하며 계약 변경 시 fail closed. 실제 공급자 raw HTTP/DOM 및 정확한 selector는 미검증이므로 reviewed manifest가 필요하다. 셀 인덱스나 CSS ID를 고정 추정하지 않는다.
 
 1. HTTP 200 및 정상 HTML 응답 확인.
 2. 제목이 정확히 `Module Spot Price`인 섹션과 인접한 Last Update 및 표를 식별한다. `DRAM Spot Price`나 다른 표의 동일한 열 이름은 제외한다.
 3. 헤더의 공백·개행을 정규화한 뒤 `Item`, `Session Average`의 열 위치를 이름으로 찾는다. rowspan/colspan 등은 실제 DOM에 맞게 정규화한다.
 4. 지정된 두 원문 Item과 정규화 공백 기준으로 정확히 일치하는 행을 각각 1개 확인한다. `Session Average` 텍스트를 Decimal로 파싱한다. `Weekly High/Low`, `Session High/Low`, `Average Change`는 목표 열이 아니다.
 5. 양 행의 존재·중복·수치 형식·업데이트 시각·양수 여부를 검증하고 원본 문자열을 보존한다. 행이나 값이 누락되면 0으로 채우지 않는다. `SCHEMA_CHANGED`, `MISSING_VALUE`, `PERMISSION_REQUIRED`, `FETCH_FAILED` 등으로 구분한다. 통화와 가격 단위는 제공자 공식 표기 확인 전 확정하지 않는다.
-6. 초기 HTTP 결과에 정상 표가 없다면 일반 브라우저 렌더링(Scrapling, 승인 및 격리 검증 후)을 검토한다. 로그인 벽, 유료 멤버십, CAPTCHA, 403/429 등을 우회하지 않고 중단하거나 허용 범위에서 백오프한다. 숨은 API는 역공학하지 않는다.
+6. 현재는 정적 FetcherSession만 사용하며 browser fallback은 없다. 정상 표 부재, 로그인 벽, 유료 멤버십, CAPTCHA, 403/429 등은 중단하거나 허용 범위에서 백오프한다. 숨은 API는 역공학하지 않는다.
 
 ### 파서 핵심 예시 (DOM 식별 이후, 네트워크 호출 없는 예제)
 
@@ -98,7 +98,7 @@ def extract_module_averages(rows):
 
 - 홈페이지에 두 행 및 Session Average가 공개 표시되는 것은 확인했다.
 - 상세 [Module Spot Price](https://www.dramexchange.com/Price/Module_Spot) 페이지는 조사에서 로그인 페이지로 이동했다. 공개 홈페이지만 목표로 하며 제한된 상세자료·유료 히스토리 다운로드는 사용하지 않는다.
-- 현재 작업 범위는 docs 명세 등록이며, 운영 코드 및 스케줄은 미구현.
+- 현재 운영 경로는 승인형 worker의 FetcherSession과 reviewed DOM parser이며 운영 승인 및 공급자 실측 전 비활성이다. [Session27](../../.ai-context/phases/phase-02/2026-11-28-27.md).
 
 ## 출처
 

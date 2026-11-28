@@ -60,6 +60,40 @@ def test_worker_checks_lease_and_quarantines_exact_candidate(monkeypatch, cnn_do
     assert candidate["automated_trading_allowed"] is False
 
 
+def test_dram_worker_uses_fetcher_and_reviewed_selector(monkeypatch):
+    from autoaxe_scraper import dram_fetcher
+    from autoaxe_scraper.reviewed_dom import DOMContract
+
+    html = (
+        '<div id="module"><h2>Module Spot Price</h2>'
+        "<p>Last Update:Aug.3 2026 14:40 (GMT+8)</p>"
+        "<table><tr><th>Item</th><th>Session Average</th></tr>"
+        "<tr><td>DDR5 UDIMM 16GB 4800/5600</td><td>12.5</td></tr>"
+        "<tr><td>DDR5 RDIMM 32GB 4800/5600</td><td>22.5</td></tr></table></div>"
+    )
+
+    def fetch(*, permit):
+        permit()
+        permit()
+        permit()
+        return html
+
+    monkeypatch.setattr(dram_fetcher, "fetch_dramexchange_html", fetch)
+    broker = FakeBroker()
+    broker.job["source_id"] = "dramexchange"
+    contract = DOMContract(
+        "dramexchange",
+        1,
+        datetime.now(UTC) + timedelta(hours=1),
+        {"root": "#module", "title": "h2", "table": "table", "timestamp": "p"},
+    )
+    assert worker.run_once(broker, "dramexchange", contract=contract) == "quarantined"
+    candidates = broker.calls[-1][1]["candidates"]
+    assert [r["value"] for r in candidates] == ["22.5", "12.5"]
+    assert all(r["quality"] == "manual_review_required" for r in candidates)
+    assert all(r["unit_verified"] is False for r in candidates)
+
+
 @pytest.mark.parametrize("mode", ["idle", "invalid", "revoked", "pizzint", "seibro"])
 def test_worker_never_dials_provider_without_valid_lease(monkeypatch, mode):
     def guarded_fetch(*, permit):
