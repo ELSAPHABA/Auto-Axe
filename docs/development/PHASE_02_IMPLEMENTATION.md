@@ -2,6 +2,23 @@
 
 2026-11-27 KST. 원본 [Phase 계획](PHASE_PLAN.md) §5의 P2.1~P2.8을 변경하지 않는다. [상세 세션 기록](../../.ai-context/phases/phase-02/2026-11-27-01.md) · [별도 트러블슈팅](../troubleshooting/phase-02.md) · [전체 운영 맥락](../../.ai-context/CONTEXT.md).
 
+## 최신 재개 점검 — 2026-11-28 Session 22
+
+기준 main `74241667254a1620fc2efca0eac2c30355c90126`. [Session 22](../../.ai-context/phases/phase-02/2026-11-28-22.md) 및 [TS-02-44](../troubleshooting/phase-02.md#ts-02-44--mexc-pong-응답-기한-회귀-및-ci-실패) 우선. Phase2 IN_PROGRESS / exit BLOCKED. [최신 CI](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/46098260168) 및 [직전 CI](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/46037802004)에서 동일 MEXC pong timeout 테스트 실패(386 passed/1 failed, exit1), frontend/fixture-compose/secret-scan 성공. standalone executor/scraper/SDK steps skip. 이전 아래의 fixture 성공 및 로컬 scoped test는 해당 커밋에 한정한다. 이번 코드 수정/새 테스트 없음.
+
+| 작업 | 현재 증거 | 남은 gate |
+|---|---|---|
+| P2.1 | BFF/권한 구현 | 실제 IdP, TLS 및 인가 운영 |
+| P2.2 | Yahoo 승인형 HTTP, cache-first 및 VIX 갱신 구현 | 자동 접근 권한 및 실제 WS/HTTP/확정봉 원본 실측 |
+| P2.3 | 공식 task 실측 이력, MEXC/QQQ 원본 분리 | MEXC CI heartbeat 회귀 해결, source별 반복/실측 및 12-01 전환 재검증 |
+| P2.4 | 규칙 기반 만기, 검수형 공시·일정 구현 | 실제 상품별 근거·검수 및 PIT 완결성 |
+| P2.5 | broker/worker 및 approved DOM/Playwright | 운영 mTLS/DNS/egress/브라우저 격리 검증 |
+| P2.6 | DOUGHCON 단발 실측, CNN graphdata-only, Toss 900초(0023) | 각 source 권한/실측, 기존 운영 DB upgrade, 독립 검수. Naver 2Y 퇴역, Treasury 일별 fallback 유지 |
+| P2.7 | frontend 및 E2E CI 통과 | 실제 공급자 데이터 기반 화면 검증 |
+| P2.8 | DB version SSE/replay 및 UI 구현 | 운영 장시간 세션, 부하·권한 폐기 실측 |
+
+기존 표는 최초 상태의 역사적 기록이다. Session 17~21 구현 세부/부분 검증을 보존하고 현재 표와 함께 적용. Phase3~8 미착수. 운영 grant/LIVE/외부 MCP 승인 없음.
+
 ## 상태 정의
 
 | 상태 | 의미 |

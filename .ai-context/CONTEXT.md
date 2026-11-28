@@ -4,6 +4,8 @@
 
 ## METADATA (메타데이터)
 
+- **최신 원격 재개 점검 2026-11-28 session 22:** [상세 기록](phases/phase-02/2026-11-28-22.md) 최우선. 기준 main `74241667254a1620fc2efca0eac2c30355c90126`, tree `17bad12fa83c2f288cd069b545814dab4d564062`. 최신 CI [46098260168](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/46098260168) 및 직전 [46037802004](https://github.com/ELSAPHABA/Auto-Axe/actions/runs/46037802004) 둘 다 backend pytest 386 passed/1 failed (MEXC `test_missing_pong_times_out`, [TS-02-44](../docs/troubleshooting/phase-02.md#ts-02-44--mexc-pong-응답-기한-회귀-및-ci-실패)), 나머지 3 jobs 성공. pending pong deadline 재할당 구조가 유력 원인 후보, 수정/재현 미실행. standalone executor/scraper/SDK steps skipped. Phase2 IN_PROGRESS/exit BLOCKED; Phase3~8 NOT_STARTED. 이전 통과 기록은 해당 commit·scope 한정. 이번은 GitHub 원격 점검 및 기록만, 로컬 작업 트리/운영 상태 unknown, 실제 외부 요청 없음. 최신 사용자 요구: 이후 각 Phase 진행·의사결정·오류·구현·검증 상세 기록 및 실제 증거로 완료 판단. Session21 Toss 교체 및 나머지 기존 계약 유지. 다음은 MEXC 회귀 재현·수정·전체 CI 및 미검증 source/운영 게이트 순서. Session20 독립 로그 부재(기준 tree)도 기록했으며 과거 증거를 추측 복원하지 않음.
+
 - **최신 사용자 확정 2026-11-28 session 21:** [토스증권 2Y 교체](phases/phase-02/2026-11-28-21.md). Naver 2Y 퇴역, Toss `ROB.US2YT-RR` / `UST_2Y_TOSS` 승인형 Playwright 900초, Treasury 일별 fallback 유지. 정상 브라우저 DOM 확인, 원본 시간 미확인, 독립 검수·개인 열람 전용·거래 금지, 0023 migration. 실제 운영 grant/격리 컨테이너 실측 미완료. 이전 Naver 지시는 이 결정으로 대체된다. Session 20 CNN graphdata 종합·하위 지표 및 그래프 보존 구현(0022, 시작 HEAD 3f1587f)은 그대로 유지.
 
 - **사용자 확정 2026-11-28 session 19:** [CNN JSON 전용/Naver 15분](phases/phase-02/2026-11-28-19.md). CNN graphdata만 자동 대상, HTML 제거, 원본 score/rating/timestamp만, Naver 900초 조회(기존 TTL/Treasury fallback 유지). 0021 migration 및 합성 DB 테스트 통과. 실제 공급자 운영 허용/실측 미확인.
